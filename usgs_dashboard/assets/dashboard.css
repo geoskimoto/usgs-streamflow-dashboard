@@ -1,0 +1,137 @@
+/* USGS Streamflow Dashboard Custom Styles */
+
+/* Main dashboard styling */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+}
+
+/* Header styling */
+.display-4 {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.lead {
+    color: #6c757d;
+    font-size: 1.1rem;
+}
+
+/* Card styling */
+.card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.card-header {
+    background-color: #fff;
+    border-bottom: 2px solid #e9ecef;
+    font-weight: 600;
+    color: #495057;
+}
+
+/* Map container styling */
+#gauge-map {
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+
+/* Control panel styling */
+.form-label {
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 0.25rem;
+}
+
+/* Button styling */
+.btn-group .btn {
+    font-size: 0.875rem;
+}
+
+/* Badge styling */
+.badge {
+    font-size: 0.75rem;
+    padding: 0.4em 0.6em;
+}
+
+/* Loading spinner customization */
+._dash-loading {
+    margin: 2rem auto;
+}
+
+/* Gauge info panel styling */
+#gauge-info-content {
+    font-size: 0.9rem;
+}
+
+#gauge-info-content .text-primary {
+    color: #0066cc !important;
+}
+
+/* Alert styling */
+.alert {
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .display-4 {
+        font-size: 2rem;
+    }
+    
+    .lead {
+        font-size: 1rem;
+    }
+    
+    #gauge-map {
+        height: 400px !important;
+    }
+}
+
+/* Plotly figure styling */
+.js-plotly-plot {
+    border-radius: 6px;
+}
+
+/* Dropdown styling */
+.Select-control {
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+}
+
+/* Slider styling */
+.rc-slider-track {
+    background-color: #0066cc;
+}
+
+.rc-slider-handle {
+    border-color: #0066cc;
+}
+
+/* Custom utility classes */
+.text-muted {
+    color: #6c757d !important;
+}
+
+.mb-1 {
+    margin-bottom: 0.25rem !important;
+}
+
+.mb-2 {
+    margin-bottom: 0.5rem !important;
+}
+
+.mb-3 {
+    margin-bottom: 1rem !important;
+}
+
+/* Status indicators */
+.status-excellent { color: #2E8B57; }
+.status-good { color: #FFD700; }
+.status-fair { color: #FF8C00; }
+.status-poor { color: #DC143C; }
+.status-inactive { color: #808080; }

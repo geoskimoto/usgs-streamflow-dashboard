@@ -1,0 +1,40 @@
+# USGS Streamflow Dashboard Dependencies
+# For Render deployment
+
+# Web Framework
+dash>=2.14.0
+dash-bootstrap-components>=1.5.0
+gunicorn>=21.2.0
+flask-login>=0.6.0
+
+# Visualization
+plotly>=5.15.0
+matplotlib>=3.5.0
+
+# Data Processing
+pandas>=2.0.0
+numpy>=1.24.0
+dataretrieval>=1.0.10
+
+# Geospatial (optional but recommended)
+geopandas>=0.13.0
+
+# Statistical analysis
+scipy>=1.8.0
+
+# Performance & Caching
+diskcache>=5.6.0
+
+# Additional utilities
+requests>=2.28.0
+python-dateutil>=2.8.0
+
+# Excel export support
+openpyxl>=3.0.0
+
+# Jupyter notebook support (optional)
+jupyter>=1.0.0
+ipywidgets>=7.0.0
+
+# Database
+# sqlite3 - Built-in Python module

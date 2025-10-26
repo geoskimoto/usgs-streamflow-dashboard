@@ -1,0 +1,29 @@
+USGS Pacific Northwest Discharge Stations Summary
+==================================================
+Generated: 2025-10-23 10:35:05
+
+Total Stations: 4724
+Active Stations: 4724
+Inactive Stations: 0
+HUC 17 Stations: 3500
+
+State Distribution:
+  WA: 1162 total (1162 HUC 17)
+  OR: 1152 total (1104 HUC 17)
+  ID: 1024 total (967 HUC 17)
+  MT: 956 total (235 HUC 17)
+  NV: 430 total (32 HUC 17)
+
+Basin Distribution:
+  Pacific Northwest: 3500 stations
+  Missouri: 704 stations
+  Great Basin: 352 stations
+  Lower Colorado: 85 stations
+  California: 66 stations
+  HUC 09: 16 stations
+  Unknown: 1 stations
+
+Files Created:
+  all_pnw_discharge_stations.csv: 4724 stations
+  huc17_discharge_stations.csv: 3500 stations
+  active_pnw_discharge_stations.csv: 4724 stations
