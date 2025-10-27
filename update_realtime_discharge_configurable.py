@@ -282,6 +282,13 @@ class ConfigurableRealtimeUpdater(ConfigurableDataCollector):
             
             self.update_collection_logging(status=status, error_summary=error_summary)
             
+            # Sync metadata to filters table for dashboard
+            if success and stations:
+                self.logger.info("🔄 Syncing station metadata to filters table...")
+                synced = self.sync_metadata_to_filters(stations)
+                if synced > 0:
+                    self.logger.info(f"   ✅ Synced {synced} stations to filters table")
+            
             # Summary
             self.logger.info("🎉 Real-time collection completed!")
             self.logger.info(f"   ✅ Successful stations: {self.collection_stats['successful']}")

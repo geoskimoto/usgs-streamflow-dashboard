@@ -1220,6 +1220,19 @@ def load_gauge_data(refresh_clicks, site_limit):
         global gauges_df
         gauges_df = filters_df.copy()
         
+        # Convert binary columns to avoid serialization issues
+        # years_of_record is stored as BLOB but not needed for map display
+        if 'years_of_record' in gauges_df.columns:
+            gauges_df = gauges_df.drop('years_of_record', axis=1)
+        
+        # Convert any remaining binary columns to None
+        for col in gauges_df.columns:
+            if gauges_df[col].dtype == object:
+                # Check if any values are bytes
+                sample = gauges_df[col].dropna().head(1)
+                if len(sample) > 0 and isinstance(sample.iloc[0], bytes):
+                    gauges_df[col] = None
+        
         alert_msg = f"Successfully loaded {len(gauges_df)} USGS gauges from {', '.join(TARGET_STATES)} (limit: {site_limit})"
         
         alert = dbc.Alert(
@@ -1331,17 +1344,18 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, searc
     if states:
         filtered_gauges = filtered_gauges[filtered_gauges['state'].isin(states)]
     
-    # Drainage area filter
+    # Drainage area filter - only apply if not at default range [0, 90000]
     if drainage_range and len(drainage_range) == 2:
         min_area, max_area = drainage_range
-        if max_area < 90000:  # Not at maximum
+        # Only filter if the user has changed from default range
+        if min_area > 0 or max_area < 90000:
+            # Filter for stations with drainage area in range (excluding None/NaN)
             area_filter = (
+                filtered_gauges['drainage_area'].notna() &
                 (filtered_gauges['drainage_area'] >= min_area) & 
                 (filtered_gauges['drainage_area'] <= max_area)
             )
-        else:  # At maximum, so just filter minimum
-            area_filter = filtered_gauges['drainage_area'] >= min_area
-        filtered_gauges = filtered_gauges[area_filter]
+            filtered_gauges = filtered_gauges[area_filter]
     
     # Basin filter
     if basins:

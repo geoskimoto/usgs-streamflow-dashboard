@@ -67,8 +67,9 @@ class ModernMapComponent:
         
         # Create modern map using px.scatter_map (NEW METHOD)
         # Prepare custom_data for tooltips
+        # Note: years_of_record column may have been dropped for serialization
         custom_data_fields = [
-            'site_id', 'state', 'drainage_area', 'years_of_record', 'status',
+            'site_id', 'state', 'drainage_area', 'num_water_years', 'status',
             'latitude', 'longitude', 'size_value', 'station_name'
         ]
         
@@ -133,6 +134,10 @@ class ModernMapComponent:
             
         if 'drainage_area' not in map_data.columns:
             map_data['drainage_area'] = 100  # Default size
+        
+        # Ensure num_water_years column exists (may have been dropped for serialization)
+        if 'num_water_years' not in map_data.columns:
+            map_data['num_water_years'] = None  # Will show as N/A in tooltip
             
         # Create size values for markers (normalized) - Increased for better visibility
         if 'drainage_area' in map_data.columns and map_data['drainage_area'].notna().any():
@@ -163,9 +168,12 @@ class ModernMapComponent:
             # Prepare custom data for this status group
             custom_data = []
             for _, row in status_data.iterrows():
+                # Use num_water_years if available and not null, otherwise 'N/A'
+                years_record = row['num_water_years'] if pd.notna(row['num_water_years']) else 'N/A'
+                drainage = row['drainage_area'] if pd.notna(row['drainage_area']) else 'N/A'
                 custom_data.append([
-                    row['site_id'], row['state'], row['drainage_area'], 
-                    row['years_of_record'], row['status'], row['latitude'], 
+                    row['site_id'], row['state'], drainage, 
+                    years_record, row['status'], row['latitude'], 
                     row['longitude'], row['size_value'], row['station_name']
                 ])
             
@@ -185,7 +193,7 @@ class ModernMapComponent:
                     "<b>%{customdata[8]}</b><br>"
                     "Site ID: %{customdata[0]}<br>"
                     "State: %{customdata[1]}<br>"
-                    "Drainage Area: %{customdata[2]:,.0f} sq mi<br>"
+                    "Drainage Area: %{customdata[2]}<br>"
                     "Years of Record: %{customdata[3]}<br>"
                     "Status: %{customdata[4]}<br>"
                     "Lat: %{customdata[5]:.4f}, Lon: %{customdata[6]:.4f}<br>"
@@ -259,9 +267,12 @@ class ModernMapComponent:
             # Prepare custom data for this status group
             custom_data = []
             for _, row in status_data.iterrows():
+                # Use num_water_years if available and not null, otherwise 'N/A'
+                years_record = row['num_water_years'] if pd.notna(row['num_water_years']) else 'N/A'
+                drainage = row['drainage_area'] if pd.notna(row['drainage_area']) else 'N/A'
                 custom_data.append([
-                    row['site_id'], row['state'], row['drainage_area'], 
-                    row['years_of_record'], row['status'], row['latitude'], 
+                    row['site_id'], row['state'], drainage, 
+                    years_record, row['status'], row['latitude'], 
                     row['longitude'], row['size_value'], row['station_name']
                 ])
             
@@ -281,7 +292,7 @@ class ModernMapComponent:
                     "<b>%{customdata[8]}</b><br>"
                     "Site ID: %{customdata[0]}<br>"
                     "State: %{customdata[1]}<br>"
-                    "Drainage Area: %{customdata[2]:,.0f} sq mi<br>"
+                    "Drainage Area: %{customdata[2]}<br>"
                     "Years of Record: %{customdata[3]}<br>"
                     "Status: %{customdata[4]}<br>"
                     "Lat: %{customdata[5]:.4f}, Lon: %{customdata[6]:.4f}<br>"
@@ -487,7 +498,7 @@ class ModernMapComponent:
             'total_gauges': len(gauges_df),
             'by_status': gauges_df['status'].value_counts().to_dict() if 'status' in gauges_df.columns else {},
             'by_state': gauges_df['state'].value_counts().to_dict() if 'state' in gauges_df.columns else {},
-            'avg_years_record': gauges_df['years_of_record'].mean() if 'years_of_record' in gauges_df.columns else 0,
+            'avg_years_record': gauges_df['num_water_years'].mean() if 'num_water_years' in gauges_df.columns else 0,
             'total_drainage_area': gauges_df['drainage_area'].sum() if 'drainage_area' in gauges_df.columns else 0,
             'active_gauges': len(gauges_df[gauges_df['status'] != 'inactive']) if 'status' in gauges_df.columns else len(gauges_df)
         }

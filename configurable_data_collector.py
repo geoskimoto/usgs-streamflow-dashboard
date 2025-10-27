@@ -396,6 +396,105 @@ class ConfigurableDataCollector:
             return combined_df
         else:
             return pd.DataFrame()
+    
+    def sync_metadata_to_filters(self, stations: List[Dict]) -> int:
+        """
+        Sync station metadata to the filters table for dashboard use.
+        This should be called after successful data collection.
+        
+        Parameters:
+        -----------
+        stations : List[Dict]
+            List of station dictionaries with metadata
+            
+        Returns:
+        --------
+        int
+            Number of stations synced
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            synced_count = 0
+            
+            for station in stations:
+                usgs_id = station['usgs_id']
+                station_name = station['station_name']
+                state = station.get('state', '')
+                lat = station.get('latitude')
+                lon = station.get('longitude')
+                huc_code = station.get('huc_code')
+                drainage_area = station.get('drainage_area')
+                
+                # Calculate basin from HUC code
+                basin = str(huc_code)[:4] if huc_code else None
+                
+                # Check if station exists in filters
+                cursor.execute("SELECT site_id FROM filters WHERE site_id = ?", (usgs_id,))
+                exists = cursor.fetchone()
+                
+                if exists:
+                    # Update existing record (keep calculated fields like num_water_years)
+                    cursor.execute("""
+                        UPDATE filters SET
+                            station_name = ?,
+                            latitude = ?,
+                            longitude = ?,
+                            state = ?,
+                            huc_code = ?,
+                            basin = ?,
+                            drainage_area = COALESCE(?, drainage_area),
+                            agency = 'USGS',
+                            last_updated = ?
+                        WHERE site_id = ?
+                    """, (
+                        station_name,
+                        lat,
+                        lon,
+                        state,
+                        huc_code,
+                        basin,
+                        drainage_area,
+                        datetime.now().isoformat(),
+                        usgs_id
+                    ))
+                else:
+                    # Insert new record
+                    cursor.execute("""
+                        INSERT INTO filters (
+                            site_id, station_name, latitude, longitude, state,
+                            huc_code, basin, drainage_area, agency,
+                            site_type, status, color, is_active, last_updated
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        usgs_id,
+                        station_name,
+                        lat,
+                        lon,
+                        state,
+                        huc_code,
+                        basin,
+                        drainage_area,
+                        'USGS',
+                        'Stream',
+                        'active',
+                        '#2E86AB',  # Blue color
+                        1,  # is_active
+                        datetime.now().isoformat()
+                    ))
+                
+                synced_count += 1
+            
+            conn.commit()
+            conn.close()
+            
+            self.logger.info(f"✅ Synced metadata for {synced_count} stations to filters table")
+            return synced_count
+            
+        except Exception as e:
+            self.logger.error(f"Error syncing metadata to filters: {e}")
+            return 0
 
 
 def main():
