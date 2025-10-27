@@ -1,4 +1,5 @@
-# Database files (except *.db which is tracked by Git LFS)
+# Database files
+*.db
 *.sqlite
 *.sqlite3
 

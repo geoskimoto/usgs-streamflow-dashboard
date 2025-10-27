@@ -45,12 +45,13 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
     def ensure_daily_tables(self):
         """Ensure the daily discharge tables exist with proper schema."""
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30.0)
+            conn.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging for concurrent access
             cursor = conn.cursor()
             
-            # Main streamflow data table
+            # Main daily discharge data table
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS streamflow_data (
+                CREATE TABLE IF NOT EXISTS daily_discharge_data (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     site_no TEXT NOT NULL,
                     datetime DATE NOT NULL,
@@ -75,13 +76,13 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
             
             # Create indexes for performance
             cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_streamflow_site_datetime 
-                ON streamflow_data(site_no, datetime)
+                CREATE INDEX IF NOT EXISTS idx_daily_discharge_site_datetime 
+                ON daily_discharge_data(site_no, datetime)
             """)
             
             cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_streamflow_datetime 
-                ON streamflow_data(datetime)
+                CREATE INDEX IF NOT EXISTS idx_daily_discharge_datetime 
+                ON daily_discharge_data(datetime)
             """)
             
             cursor.execute("""
@@ -113,7 +114,8 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
             Dictionary mapping station IDs to last update dates
         """
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30.0)
+            conn.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging for concurrent access
             cursor = conn.cursor()
             
             # Get last update dates from log
@@ -169,7 +171,9 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
             return 0, 0
         
         try:
-            conn = sqlite3.connect(self.db_path)
+            # Connect with timeout and enable WAL mode for better concurrency
+            conn = sqlite3.connect(self.db_path, timeout=30.0)
+            conn.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging for concurrent access
             cursor = conn.cursor()
             
             # Convert datetime_utc to date for daily data
@@ -188,7 +192,7 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
                     try:
                         # Try to insert new record
                         cursor.execute("""
-                            INSERT INTO streamflow_data 
+                            INSERT INTO daily_discharge_data 
                             (site_no, datetime, discharge_cfs, data_quality)
                             VALUES (?, ?, ?, ?)
                         """, (
@@ -202,7 +206,7 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
                     except sqlite3.IntegrityError:
                         # Record exists, update it if data is different
                         cursor.execute("""
-                            UPDATE streamflow_data 
+                            UPDATE daily_discharge_data 
                             SET discharge_cfs = ?, data_quality = ?, created_at = CURRENT_TIMESTAMP
                             WHERE site_no = ? AND datetime = ?
                             AND (discharge_cfs != ? OR data_quality != ?)

@@ -739,6 +739,15 @@ app.layout = dbc.Container([
     dcc.Store(id='site-limit-store', data=300),
     dcc.Store(id='auth-store', data={'authenticated': False}),
     
+    # Toast container for notifications
+    html.Div(id='toast-container', style={
+        'position': 'fixed',
+        'top': '80px',
+        'right': '20px',
+        'zIndex': '9999',
+        'width': '350px'
+    }),
+    
 ], fluid=True)
 
 
@@ -1735,20 +1744,24 @@ def toggle_sidebar(n_clicks):
      Input('admin-configs-tab', 'n_clicks'),
      Input('admin-stations-tab', 'n_clicks'),
      Input('admin-schedules-tab', 'n_clicks'),
-     Input('admin-monitoring-tab', 'n_clicks'),
-     Input('admin-refresh-interval', 'n_intervals')]
+     Input('admin-monitoring-tab', 'n_clicks')],
+    [State('admin-tab-content', 'children')]
 )
 def update_admin_tab_content(dash_clicks, config_clicks, station_clicks, 
-                           schedule_clicks, monitor_clicks, n_intervals):
+                           schedule_clicks, monitor_clicks, current_content):
     """Update admin tab content based on selected tab."""
     from admin_components import (get_configurations_table, get_system_health_display, 
-                                get_recent_activity_table, StationAdminPanel)
+                                get_recent_activity_table, get_currently_running_jobs, StationAdminPanel)
     
     ctx = callback_context
     if not ctx.triggered:
         button_id = 'admin-dashboard-tab'
     else:
         button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    # If no button was actually clicked, return current content (prevents refresh interval from resetting tabs)
+    if not any([dash_clicks, config_clicks, station_clicks, schedule_clicks, monitor_clicks]):
+        return current_content or no_update
     
     try:
         if button_id == 'admin-configs-tab':
@@ -1835,14 +1848,16 @@ def update_admin_tab_content(dash_clicks, config_clicks, station_clicks,
                 
                 dbc.Row([
                     dbc.Col([
-                        dbc.Button("➕ New Schedule", color="success", className="me-2"),
-                        dbc.Button("▶️ Run Selected", color="primary", className="me-2"),
-                        dbc.Button("⏸️ Disable Selected", color="warning", className="me-2"),
-                        dbc.Button("🔄 Refresh", color="info")
+                        dbc.Button("➕ New Schedule", id="new-schedule-btn", color="success", className="me-2", disabled=True),
+                        dbc.Button("▶️ Run Selected", id="run-selected-schedule-btn", color="primary", className="me-2"),
+                        dbc.Button("⏸️ Disable Selected", id="disable-schedule-btn", color="warning", className="me-2", disabled=True),
+                        dbc.Button("🔄 Refresh", id="refresh-schedules-btn", color="info")
                     ])
                 ], className="mb-4"),
                 
-                get_schedules_table()
+                html.Div(id="schedule-status-message"),
+                
+                html.Div(id="schedules-table-container", children=[get_schedules_table()])
             ])
         
         elif button_id == 'admin-monitoring-tab':
@@ -1928,6 +1943,162 @@ def filter_stations_table(n_clicks, states, huc_code, sources, search_text):
         search_text=search_text.strip() if search_text else None,
         limit=200  # Higher limit when filtering
     )
+
+
+@app.callback(
+    [Output('system-health-indicators', 'children'),
+     Output('current-collections', 'children'),
+     Output('recent-activity-table', 'children')],
+    [Input('admin-refresh-interval', 'n_intervals'),
+     Input('refresh-monitoring-btn', 'n_clicks')]
+)
+def update_monitoring_displays(n_intervals, refresh_clicks):
+    """Update monitoring tab displays - runs every 30 seconds or on refresh button."""
+    from admin_components import get_system_health_display, get_currently_running_jobs, get_recent_activity_table
+    
+    try:
+        return (
+            get_system_health_display(),
+            get_currently_running_jobs(),
+            get_recent_activity_table()
+        )
+    except Exception as e:
+        error_msg = dbc.Alert(f"Error updating monitoring displays: {e}", color="danger")
+        return error_msg, error_msg, error_msg
+
+
+@app.callback(
+    [Output('schedule-status-message', 'children'),
+     Output('schedules-table-container', 'children'),
+     Output('toast-container', 'children')],
+    [Input('run-selected-schedule-btn', 'n_clicks'),
+     Input('refresh-schedules-btn', 'n_clicks')],
+    [State('schedules-table', 'selected_rows'),
+     State('schedules-table', 'data')]
+)
+def handle_schedule_actions(run_clicks, refresh_clicks, selected_rows, table_data):
+    """Handle schedule management actions (run, refresh)."""
+    import subprocess
+    import os
+    from admin_components import get_schedules_table
+    
+    ctx = callback_context
+    if not ctx.triggered:
+        return "", get_schedules_table(), None
+    
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    # Handle refresh
+    if button_id == 'refresh-schedules-btn':
+        return "", get_schedules_table(), None
+    
+    # Handle run selected
+    if button_id == 'run-selected-schedule-btn':
+        if not run_clicks:
+            return "", get_schedules_table(), None
+        
+        if not selected_rows or len(selected_rows) == 0:
+            return dbc.Alert("⚠️ Please select a schedule to run", color="warning", dismissable=True), get_schedules_table(), None
+        
+        # Get the selected schedule data
+        selected_idx = selected_rows[0]
+        if selected_idx >= len(table_data):
+            return dbc.Alert("❌ Invalid selection", color="danger", dismissable=True), get_schedules_table(), None
+        
+        schedule_row = table_data[selected_idx]
+        schedule_name = schedule_row['Schedule']
+        config_name = schedule_row['Configuration']
+        data_type = schedule_row['Data Type'].lower()
+        
+        try:
+            # Determine which script to run
+            if data_type == 'realtime':
+                script = 'update_realtime_discharge_configurable.py'
+            elif data_type == 'daily':
+                script = 'update_daily_discharge_configurable.py'
+            else:
+                return dbc.Alert(f"❌ Unknown data type: {data_type}", color="danger", dismissable=True), get_schedules_table(), None
+            
+            # Build command
+            project_root = os.path.dirname(os.path.abspath(__file__))
+            script_path = os.path.join(project_root, script)
+            
+            # Create logs directory if it doesn't exist
+            logs_dir = os.path.join(project_root, 'logs')
+            os.makedirs(logs_dir, exist_ok=True)
+            
+            # Create log files for this run
+            from datetime import datetime
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            log_file = os.path.join(logs_dir, f'manual_run_{data_type}_{timestamp}.log')
+            
+            # Run in background
+            cmd = [
+                'python3', script_path,
+                '--config', config_name
+            ]
+            
+            # Debug: Print command for troubleshooting
+            print(f"🚀 Starting collection process:")
+            print(f"   Command: {' '.join(cmd)}")
+            print(f"   Working directory: {project_root}")
+            print(f"   Log file: {log_file}")
+            
+            # Start the collection process in background
+            with open(log_file, 'w') as log_f:
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=log_f,
+                    stderr=subprocess.STDOUT,  # Redirect stderr to stdout (same log file)
+                    cwd=project_root,
+                    start_new_session=True  # Detach from parent process
+                )
+            
+            print(f"   Process ID: {process.pid}")
+            print(f"   Log file created: {log_file}")
+            
+            success_msg = dbc.Alert([
+                html.H5(f"✅ Collection Started!", className="alert-heading"),
+                html.P([
+                    f"Schedule: {schedule_name}", html.Br(),
+                    f"Configuration: {config_name}", html.Br(),
+                    f"Data Type: {data_type.title()}", html.Br(),
+                    html.Hr(),
+                    html.Small([
+                        "The collection is running in the background. ",
+                        html.Strong("Check the Monitoring tab"), " to see live progress and results. ", html.Br(),
+                        f"Process ID: {process.pid}", html.Br(),
+                        f"Log file: logs/manual_run_{data_type}_{timestamp}.log"
+                    ])
+                ])
+            ], color="success", dismissable=True)
+            
+            # Create toast notification
+            toast = dbc.Toast(
+                [html.P([
+                    f"🔄 Collection started: {schedule_name}", html.Br(),
+                    html.Small(f"{config_name} - {data_type.title()}", className="text-muted"), html.Br(),
+                    html.Small("View progress in Monitoring tab →", className="text-info")
+                ], className="mb-0 small")],
+                header="Collection Started",
+                icon="success",
+                dismissable=True,
+                is_open=True,
+                duration=5000,  # Auto-dismiss after 5 seconds
+                style={"position": "fixed", "top": 80, "right": 20, "width": 350, "zIndex": 9999}
+            )
+            
+            return success_msg, get_schedules_table(), toast
+            
+        except Exception as e:
+            error_msg = dbc.Alert([
+                html.H5("❌ Error Starting Collection", className="alert-heading"),
+                html.P(f"Error: {str(e)}")
+            ], color="danger", dismissable=True)
+            
+            return error_msg, get_schedules_table(), None
+    
+    return "", get_schedules_table(), None
 
 
 if __name__ == '__main__':

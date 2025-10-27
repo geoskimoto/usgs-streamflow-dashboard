@@ -114,49 +114,37 @@ class StationAdminPanel:
     
     def create_collection_monitoring(self):
         """Create the collection monitoring section."""
-        return dbc.Card([
-            dbc.CardHeader([
-                html.H5("📊 Collection Monitoring", className="mb-0"),
-                dbc.ButtonGroup([
-                    dbc.Button("▶️ Manual Run", id="manual-collection-btn", color="success", size="sm"),
-                    dbc.Button("⏸️ Stop All", id="stop-collection-btn", color="danger", size="sm"),
-                    dbc.Button("🔄 Refresh", id="refresh-monitoring-btn", color="info", size="sm")
-                ], className="float-end")
-            ]),
-            dbc.CardBody([
-                # System health overview
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Card([
-                            dbc.CardBody([
-                                html.H6("System Health", className="text-center"),
-                                html.Div(id="system-health-indicators")
-                            ])
-                        ])
-                    ], width=4),
-                    dbc.Col([
-                        dbc.Card([
-                            dbc.CardBody([
-                                html.H6("Collection Statistics (24h)", className="text-center"),
-                                html.Div(id="collection-stats-24h")
-                            ])
-                        ])
-                    ], width=4),
-                    dbc.Col([
-                        dbc.Card([
-                            dbc.CardBody([
-                                html.H6("Currently Running", className="text-center"),
-                                html.Div(id="current-collections")
-                            ])
-                        ])
-                    ], width=4)
-                ], className="mb-3"),
-                
-                # Recent activity
-                html.H6("Recent Collection Activity"),
-                html.Div(id="recent-activity-table")
-            ])
-        ], className="mb-4")
+        return html.Div([
+            # System health overview card
+            dbc.Card([
+                dbc.CardHeader([
+                    html.H5("🏥 System Health", className="mb-0"),
+                    dbc.Button("🔄 Refresh", id="refresh-monitoring-btn", color="info", size="sm", className="float-end")
+                ]),
+                dbc.CardBody([
+                    html.Div(id="system-health-indicators")
+                ])
+            ], className="mb-4"),
+            
+            # Currently running collections card
+            dbc.Card([
+                dbc.CardHeader([
+                    html.H5("🔄 Currently Running Collections", className="mb-0"),
+                    html.Small("Updates every 30 seconds", className="text-muted float-end mt-1")
+                ]),
+                dbc.CardBody([
+                    html.Div(id="current-collections")
+                ])
+            ], className="mb-4"),
+            
+            # Recent activity card
+            dbc.Card([
+                dbc.CardHeader(html.H5("📊 Recent Collection Activity", className="mb-0")),
+                dbc.CardBody([
+                    html.Div(id="recent-activity-table")
+                ])
+            ], className="mb-4")
+        ])
     
     def create_schedule_management(self):
         """Create the schedule management section."""
@@ -409,6 +397,102 @@ def get_recent_activity_table():
         return dbc.Alert(f"Error loading recent activity: {e}", color="danger")
 
 
+def get_currently_running_jobs():
+    """Get currently running collection jobs with progress details."""
+    try:
+        with StationConfigurationManager() as manager:
+            # Get running collections
+            cursor = manager.connection.cursor()
+            cursor.execute("""
+                SELECT 
+                    dcl.id,
+                    sc.config_name,
+                    dcl.data_type,
+                    dcl.stations_attempted,
+                    dcl.stations_successful,
+                    dcl.stations_failed,
+                    dcl.start_time,
+                    dcl.triggered_by
+                FROM data_collection_logs dcl
+                JOIN station_configurations sc ON dcl.config_id = sc.id
+                WHERE dcl.status = 'running'
+                ORDER BY dcl.start_time DESC
+            """)
+            
+            running_jobs = cursor.fetchall()
+            
+            if not running_jobs:
+                return dbc.Alert([
+                    html.I(className="fas fa-check-circle me-2"),
+                    "No collections currently running."
+                ], color="success", className="mb-0")
+            
+            job_cards = []
+            for job in running_jobs:
+                log_id, config_name, data_type, attempted, successful, failed, start_time, triggered_by = job
+                
+                # Calculate progress
+                completed = successful + failed
+                progress_pct = (completed / attempted * 100) if attempted > 0 else 0
+                
+                # Calculate elapsed time
+                from datetime import datetime
+                start_dt = datetime.fromisoformat(start_time)
+                elapsed = datetime.now() - start_dt
+                elapsed_str = f"{int(elapsed.total_seconds() // 60)}m {int(elapsed.total_seconds() % 60)}s"
+                
+                # Estimate remaining time (rough estimate)
+                if completed > 0:
+                    avg_time_per_station = elapsed.total_seconds() / completed
+                    remaining_stations = attempted - completed
+                    est_remaining = int((remaining_stations * avg_time_per_station) // 60)
+                    time_estimate = f"~{est_remaining}m remaining" if est_remaining > 0 else "Finishing..."
+                else:
+                    time_estimate = "Calculating..."
+                
+                job_cards.append(
+                    dbc.Card([
+                        dbc.CardBody([
+                            dbc.Row([
+                                dbc.Col([
+                                    html.H5([
+                                        html.I(className="fas fa-spinner fa-spin me-2"),
+                                        f"{config_name} - {data_type.title()}"
+                                    ], className="text-primary mb-2"),
+                                    html.P([
+                                        html.Strong("Progress: "),
+                                        f"{completed}/{attempted} stations ({progress_pct:.1f}%)", html.Br(),
+                                        html.Strong("Success: "),
+                                        html.Span(f"{successful}", className="text-success"),
+                                        " | ",
+                                        html.Strong("Failed: "),
+                                        html.Span(f"{failed}", className="text-danger"), html.Br(),
+                                        html.Strong("Elapsed: "),
+                                        f"{elapsed_str} | {time_estimate}", html.Br(),
+                                        html.Small([
+                                            f"Started by: {triggered_by} | Log ID: {log_id}"
+                                        ], className="text-muted")
+                                    ], className="mb-2"),
+                                    dbc.Progress(
+                                        value=progress_pct,
+                                        label=f"{progress_pct:.0f}%",
+                                        color="info" if progress_pct < 90 else "success",
+                                        striped=True,
+                                        animated=True,
+                                        className="mb-2"
+                                    )
+                                ], width=12)
+                            ])
+                        ])
+                    ], className="mb-3", color="light", outline=True)
+                )
+            
+            return html.Div(job_cards)
+            
+    except Exception as e:
+        return dbc.Alert(f"Error loading running jobs: {e}", color="danger")
+
+
 def get_stations_table(states=None, huc_code=None, source_datasets=None, search_text=None, limit=100):
     """Get stations table with filtering."""
     try:
@@ -501,6 +585,8 @@ def get_schedules_table():
                 status_icon = "✅" if schedule['is_enabled'] else "❌"
                 
                 table_data.append({
+                    'schedule_id': schedule['id'],  # Hidden ID for reference
+                    'config_id': schedule['config_id'],  # Hidden config ID
                     'Status': f"{status_icon} {'Enabled' if schedule['is_enabled'] else 'Disabled'}",
                     'Schedule': schedule['schedule_name'],
                     'Configuration': schedule['config_name'],
@@ -512,8 +598,11 @@ def get_schedules_table():
                 })
             
             return dash_table.DataTable(
+                id='schedules-table',
                 data=table_data,
                 columns=[
+                    {'name': 'schedule_id', 'id': 'schedule_id'},  # Hidden
+                    {'name': 'config_id', 'id': 'config_id'},  # Hidden
                     {'name': 'Status', 'id': 'Status'},
                     {'name': 'Schedule Name', 'id': 'Schedule'},
                     {'name': 'Configuration', 'id': 'Configuration'},
@@ -523,6 +612,7 @@ def get_schedules_table():
                     {'name': 'Next Run', 'id': 'Next Run'},
                     {'name': 'Runs', 'id': 'Run Count'}
                 ],
+                hidden_columns=['schedule_id', 'config_id'],  # Hide ID columns
                 style_cell={'textAlign': 'left', 'padding': '8px', 'fontSize': '12px'},
                 style_header={'backgroundColor': '#007bff', 'color': 'white', 'fontWeight': 'bold'},
                 style_data_conditional=[

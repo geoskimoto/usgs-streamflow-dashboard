@@ -45,7 +45,8 @@ class ConfigurableRealtimeUpdater(ConfigurableDataCollector):
     def ensure_realtime_table(self):
         """Ensure the real-time discharge table exists with proper schema."""
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30.0)
+            conn.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging for concurrent access
             cursor = conn.cursor()
             
             # Create table if it doesn't exist
@@ -84,7 +85,8 @@ class ConfigurableRealtimeUpdater(ConfigurableDataCollector):
     def clear_old_data(self, cutoff_date: datetime):
         """Remove data older than cutoff date."""
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30.0)
+            conn.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging for concurrent access
             cursor = conn.cursor()
             
             # Convert datetime to string for SQLite compatibility
@@ -124,7 +126,8 @@ class ConfigurableRealtimeUpdater(ConfigurableDataCollector):
             return 0, 0
         
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=30.0)
+            conn.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging for concurrent access
             cursor = conn.cursor()
             
             inserted_count = 0
