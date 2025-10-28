@@ -37,24 +37,7 @@ class USGSDataManager:
         conn = sqlite3.connect(self.cache_db)
         cursor = conn.cursor()
         
-        # Create tables for caching
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS gauges (
-                site_id TEXT PRIMARY KEY,
-                station_name TEXT,
-                latitude REAL,
-                longitude REAL,
-                drainage_area REAL,
-                state TEXT,
-                county TEXT,
-                site_type TEXT,
-                years_of_record INTEGER,
-                status TEXT,
-                color TEXT,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
+        # Create streamflow_data table for historical daily data
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS streamflow_data (
                 site_id TEXT,
@@ -73,29 +56,8 @@ class USGSDataManager:
                 last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS gauge_metadata (
-                site_id TEXT PRIMARY KEY,
-                station_name TEXT,
-                latitude REAL,
-                longitude REAL,
-                drainage_area REAL,
-                state_cd TEXT,
-                site_type TEXT,
-                agency TEXT,
-                county TEXT,
-                huc_code TEXT,
-                well_depth REAL,
-                years_of_record INTEGER,
-                is_active BOOLEAN,
-                status TEXT,
-                color TEXT,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
 
-        # New: Create a comprehensive filters table for each site
+        # Create comprehensive filters table for station metadata
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS filters (
                 site_id TEXT PRIMARY KEY,

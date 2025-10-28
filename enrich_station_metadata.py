@@ -15,16 +15,36 @@ from datetime import datetime
 from pathlib import Path
 
 
-def calculate_station_statistics(cache_db_path: str):
-    """Calculate statistics from collected data and update filters table."""
+def calculate_station_statistics(cache_db_path: str, logger=None, quiet: bool = False):
+    """
+    Calculate statistics from collected data and update filters table.
     
-    print("🔍 Analyzing collected discharge data...")
+    Parameters:
+    -----------
+    cache_db_path : str
+        Path to the cache database
+    logger : logging.Logger, optional
+        Logger instance to use for output. If None, uses print()
+    quiet : bool
+        If True, suppress progress messages (only final count)
+    """
+    
+    def log(message):
+        """Helper to log or print depending on configuration."""
+        if logger:
+            logger.info(message)
+        elif not quiet:
+            print(message)
+    
+    if not quiet:
+        log("🔍 Analyzing collected discharge data...")
     
     conn = sqlite3.connect(cache_db_path)
     
     # Get list of stations in filters
     filters_df = pd.read_sql("SELECT site_id FROM filters", conn)
-    print(f"📊 Found {len(filters_df)} stations in filters table")
+    if not quiet:
+        log(f"📊 Found {len(filters_df)} stations in filters table")
     
     updated_count = 0
     
@@ -54,13 +74,14 @@ def calculate_station_statistics(cache_db_path: str):
             ))
             updated_count += 1
             
-            if (idx + 1) % 100 == 0:
-                print(f"  Progress: {idx + 1}/{len(filters_df)} stations processed")
+            if not quiet and (idx + 1) % 100 == 0:
+                log(f"  Progress: {idx + 1}/{len(filters_df)} stations processed")
     
     conn.commit()
     conn.close()
     
-    print(f"\n✅ Updated statistics for {updated_count} stations")
+    if not quiet:
+        log(f"\n✅ Updated statistics for {updated_count} stations")
     return updated_count
 
 
@@ -74,7 +95,54 @@ def calculate_site_stats(conn, site_id):
         'is_active': 0
     }
     
-    # Try to get data from realtime_discharge first
+    # Try streamflow_data FIRST (has full historical data from 1910-present as JSON)
+    try:
+        streamflow_query = """
+            SELECT data_json, start_date, end_date 
+            FROM streamflow_data 
+            WHERE site_id = ?
+            ORDER BY end_date DESC
+            LIMIT 1
+        """
+        cursor = conn.cursor()
+        cursor.execute(streamflow_query, (site_id,))
+        result = cursor.fetchone()
+        
+        if result:
+            data_json, start_date, end_date = result
+            
+            # Parse the JSON data to get years
+            import json
+            data = json.loads(data_json)
+            
+            if data:
+                # Extract years from the datetime field in each record
+                years = set()
+                for record in data:
+                    date_str = record.get('datetime', '')
+                    if date_str:
+                        year = int(date_str.split('-')[0])
+                        years.add(year)
+                
+                stats['num_water_years'] = len(years)
+                stats['last_data_date'] = end_date
+                
+                # Years of record (span from first to last year)
+                if years:
+                    stats['years_of_record'] = max(years) - min(years) + 1
+                
+                # Check if active (data within last 60 days)
+                from datetime import datetime
+                last_date = datetime.strptime(end_date, '%Y-%m-%d')
+                days_since_last = (datetime.now() - last_date).days
+                stats['is_active'] = 1 if days_since_last <= 60 else 0
+                
+                return stats
+    except Exception as e:
+        # print(f"Warning: Error checking streamflow_data for {site_id}: {e}")
+        pass
+    
+    # Fall back to realtime_discharge if streamflow_data doesn't exist
     try:
         realtime_query = """
             SELECT datetime_utc 
@@ -97,40 +165,6 @@ def calculate_site_stats(conn, site_id):
             
             # Calculate water years (unique years)
             water_years = realtime_df['datetime_utc'].dt.year.unique()
-            stats['num_water_years'] = len(water_years)
-            
-            # Years of record (first to last year span)
-            if len(water_years) > 0:
-                stats['years_of_record'] = water_years.max() - water_years.min() + 1
-            
-            return stats
-    except Exception as e:
-        # print(f"Warning: Error checking realtime data for {site_id}: {e}")
-        pass
-    
-    # Try daily_discharge_data if realtime didn't work
-    try:
-        daily_query = """
-            SELECT datetime 
-            FROM daily_discharge_data 
-            WHERE site_no = ?
-            ORDER BY datetime DESC
-        """
-        daily_df = pd.read_sql(daily_query, conn, params=(site_id,))
-        
-        if not daily_df.empty:
-            daily_df['datetime'] = pd.to_datetime(daily_df['datetime'])
-            
-            # Get last data date
-            last_date = daily_df['datetime'].max()
-            stats['last_data_date'] = last_date.strftime('%Y-%m-%d')
-            
-            # Check if active (data within last 60 days)
-            days_since_last = (datetime.now() - last_date).days
-            stats['is_active'] = 1 if days_since_last <= 60 else 0
-            
-            # Calculate water years
-            water_years = daily_df['datetime'].dt.year.unique()
             stats['num_water_years'] = len(water_years)
             
             # Years of record

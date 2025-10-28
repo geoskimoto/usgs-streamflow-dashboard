@@ -6,6 +6,9 @@ This script fetches daily discharge data from the USGS DV (daily values)
 service using database-driven station configurations instead of hardcoded 
 station lists.
 
+Stores data in streamflow_data table (JSON blob format) compatible with the
+main dashboard data_manager for visualization and analysis.
+
 Features:
 - Database-driven station selection via configuration management  
 - Incremental updates (only fetches new data since last update)
@@ -14,6 +17,7 @@ Features:
 - Robust error handling with detailed logging
 - Support for different station configurations (PNW Full, Columbia Basin, etc.)
 - Command-line configuration selection
+- JSON blob storage format compatible with dashboard visualizations
 """
 
 import os
@@ -21,6 +25,7 @@ import sys
 import sqlite3
 import pandas as pd
 import numpy as np
+import json
 from datetime import datetime, timedelta, timezone
 import argparse
 import logging
@@ -33,6 +38,7 @@ sys.path.append(project_root)
 
 from configurable_data_collector import ConfigurableDataCollector
 from station_config_manager import StationConfigurationManager
+from enrich_station_metadata import calculate_station_statistics
 
 
 class ConfigurableDailyUpdater(ConfigurableDataCollector):
@@ -43,65 +49,48 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
         super().__init__(db_path)
         
     def ensure_daily_tables(self):
-        """Ensure the daily discharge tables exist with proper schema."""
+        """Ensure the streamflow_data table exists with proper schema."""
         try:
             conn = sqlite3.connect(self.db_path, timeout=30.0)
             conn.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging for concurrent access
             cursor = conn.cursor()
             
-            # Main daily discharge data table
+            # Streamflow data table (JSON blob format for historical data)
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS daily_discharge_data (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    site_no TEXT NOT NULL,
-                    datetime DATE NOT NULL,
-                    discharge_cfs REAL,
-                    data_quality TEXT DEFAULT 'A',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(site_no, datetime)
-                )
-            """)
-            
-            # Update tracking table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS daily_update_log (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    site_no TEXT NOT NULL,
-                    last_update_date DATE NOT NULL,
-                    last_data_date DATE,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(site_no)
+                CREATE TABLE IF NOT EXISTS streamflow_data (
+                    site_id TEXT,
+                    data_json TEXT,
+                    start_date TEXT,
+                    end_date TEXT,
+                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (site_id, start_date, end_date)
                 )
             """)
             
             # Create indexes for performance
             cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_daily_discharge_site_datetime 
-                ON daily_discharge_data(site_no, datetime)
+                CREATE INDEX IF NOT EXISTS idx_streamflow_site 
+                ON streamflow_data(site_id)
             """)
             
             cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_daily_discharge_datetime 
-                ON daily_discharge_data(datetime)
-            """)
-            
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_daily_log_site 
-                ON daily_update_log(site_no)
+                CREATE INDEX IF NOT EXISTS idx_streamflow_dates 
+                ON streamflow_data(start_date, end_date)
             """)
             
             conn.commit()
             conn.close()
             
-            self.logger.info("Daily discharge tables ready")
+            self.logger.info("Streamflow data tables ready")
             
         except Exception as e:
-            self.logger.error(f"Error ensuring daily tables: {e}")
+            self.logger.error(f"Error ensuring streamflow tables: {e}")
             raise
     
     def get_last_update_dates(self, station_ids: List[str]) -> Dict[str, datetime]:
         """
-        Get the last update date for each station.
+        Get the last data date for each station from streamflow_data table.
+        Returns 1910-10-01 for new stations (full historical collection).
         
         Parameters:
         -----------
@@ -111,51 +100,58 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
         Returns:
         --------
         Dict[str, datetime]
-            Dictionary mapping station IDs to last update dates
+            Dictionary mapping station IDs to start dates for collection
         """
         try:
             conn = sqlite3.connect(self.db_path, timeout=30.0)
-            conn.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging for concurrent access
+            conn.execute("PRAGMA journal_mode=WAL")
             cursor = conn.cursor()
             
-            # Get last update dates from log
-            placeholders = ','.join(['?'] * len(station_ids))
-            cursor.execute(f"""
-                SELECT site_no, last_data_date, last_update_date
-                FROM daily_update_log 
-                WHERE site_no IN ({placeholders})
-            """, station_ids)
-            
-            results = cursor.fetchall()
-            
             last_dates = {}
-            for site_no, last_data_date, last_update_date in results:
-                # Use the most recent data date, or fall back to 30 days ago if new station
-                if last_data_date:
-                    last_dates[site_no] = pd.to_datetime(last_data_date).date()
-                else:
-                    # New station, start from 30 days ago
-                    last_dates[site_no] = (datetime.now() - timedelta(days=30)).date()
             
-            # For stations not in log, start from 30 days ago
+            # Check streamflow_data table for each station's latest end_date
             for site_no in station_ids:
-                if site_no not in last_dates:
-                    last_dates[site_no] = (datetime.now() - timedelta(days=30)).date()
+                cursor.execute("""
+                    SELECT MAX(end_date) 
+                    FROM streamflow_data 
+                    WHERE site_id = ?
+                """, (site_no,))
+                
+                result = cursor.fetchone()
+                end_date = result[0] if result and result[0] else None
+                
+                if end_date:
+                    # Station exists - collect from day after last end_date
+                    last_date = pd.to_datetime(end_date).date()
+                    # Add one day to avoid duplicate
+                    next_date = last_date + timedelta(days=1)
+                    last_dates[site_no] = next_date
+                    self.logger.debug(f"Station {site_no}: incremental from {next_date}")
+                else:
+                    # New station - collect full historical record from 1910
+                    historical_start = datetime(1910, 10, 1).date()
+                    last_dates[site_no] = historical_start
+                    self.logger.info(f"Station {site_no}: NEW - collecting full history from {historical_start}")
             
             conn.close()
             
-            self.logger.debug(f"Retrieved last update dates for {len(last_dates)} stations")
+            new_stations = sum(1 for d in last_dates.values() if d.year == 1910)
+            incremental_stations = len(last_dates) - new_stations
+            
+            self.logger.info(f"📊 Collection strategy: {new_stations} new (full history), {incremental_stations} incremental")
+            
             return last_dates
             
         except Exception as e:
             self.logger.error(f"Error getting last update dates: {e}")
-            # Return default dates (30 days ago) for all stations
-            default_date = (datetime.now() - timedelta(days=30)).date()
-            return {site_no: default_date for site_no in station_ids}
+            # Return historical start date (1910) for all stations on error
+            historical_start = datetime(1910, 10, 1).date()
+            return {site_no: historical_start for site_no in station_ids}
     
     def update_daily_data(self, df: pd.DataFrame) -> Tuple[int, int]:
         """
-        Update daily discharge data in database.
+        Update the streamflow_data table with new daily discharge data.
+        Stores data in JSON blob format compatible with data_manager.
         
         Parameters:
         -----------
@@ -165,85 +161,75 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
         Returns:
         --------
         Tuple[int, int]
-            Number of records inserted and updated
+            Number of stations updated, total records processed
         """
-        if df.empty:
-            return 0, 0
-        
         try:
-            # Connect with timeout and enable WAL mode for better concurrency
             conn = sqlite3.connect(self.db_path, timeout=30.0)
-            conn.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging for concurrent access
+            conn.execute("PRAGMA journal_mode=WAL")
             cursor = conn.cursor()
             
             # Convert datetime_utc to date for daily data
             df = df.copy()
             df['date'] = pd.to_datetime(df['datetime_utc']).dt.date
             
-            inserted_count = 0
-            updated_count = 0
+            stations_updated = 0
+            total_records = 0
             
             # Group by station for efficient processing
             for site_no, site_df in df.groupby('site_no'):
-                # Sort by date to get latest data
+                # Sort by date
                 site_df = site_df.sort_values('date')
                 
+                # Create JSON data structure expected by data_manager
+                time_series_data = []
                 for _, row in site_df.iterrows():
-                    try:
-                        # Try to insert new record
-                        cursor.execute("""
-                            INSERT INTO daily_discharge_data 
-                            (site_no, datetime, discharge_cfs, data_quality)
-                            VALUES (?, ?, ?, ?)
-                        """, (
-                            row['site_no'],
-                            row['date'],
-                            row['discharge_cfs'],
-                            row['data_quality']
-                        ))
-                        inserted_count += 1
-                        
-                    except sqlite3.IntegrityError:
-                        # Record exists, update it if data is different
-                        cursor.execute("""
-                            UPDATE daily_discharge_data 
-                            SET discharge_cfs = ?, data_quality = ?, created_at = CURRENT_TIMESTAMP
-                            WHERE site_no = ? AND datetime = ?
-                            AND (discharge_cfs != ? OR data_quality != ?)
-                        """, (
-                            row['discharge_cfs'],
-                            row['data_quality'],
-                            row['site_no'],
-                            row['date'],
-                            row['discharge_cfs'],
-                            row['data_quality']
-                        ))
-                        
-                        if cursor.rowcount > 0:
-                            updated_count += 1
+                    time_series_data.append({
+                        'datetime': str(row['date']),
+                        'discharge_cfs': float(row['discharge_cfs']) if pd.notna(row['discharge_cfs']) else None,
+                        'data_quality': str(row['data_quality']) if pd.notna(row['data_quality']) else 'A'
+                    })
                 
-                # Update the daily log with latest data date
-                latest_date = site_df['date'].max()
+                # Convert to JSON string
+                data_json = json.dumps(time_series_data)
+                
+                # Get date range for this batch
+                start_date = str(site_df['date'].min())
+                end_date = str(site_df['date'].max())
+                
+                # Insert or replace the streamflow_data record
                 cursor.execute("""
-                    INSERT OR REPLACE INTO daily_update_log
-                    (site_no, last_update_date, last_data_date)
-                    VALUES (?, DATE('now'), ?)
-                """, (site_no, latest_date))
+                    INSERT OR REPLACE INTO streamflow_data 
+                    (site_id, data_json, start_date, end_date, last_updated)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (
+                    site_no,
+                    data_json,
+                    start_date,
+                    end_date,
+                    datetime.now(timezone.utc).isoformat()
+                ))
+                
+                stations_updated += 1
+                total_records += len(site_df)
             
             conn.commit()
             conn.close()
             
-            self.logger.info(f"Daily data update: {inserted_count} inserted, {updated_count} updated")
-            return inserted_count, updated_count
+            self.logger.info(f"Streamflow data update: {stations_updated} stations, {total_records} records")
+            return stations_updated, total_records
             
         except Exception as e:
-            self.logger.error(f"Error updating daily data: {e}")
+            self.logger.error(f"Error updating streamflow data: {e}")
             raise
     
     def run_daily_collection(self, config_name: str = None, config_id: int = None,
-                           days_back: int = None, full_refresh: bool = False) -> bool:
+                           full_refresh: bool = False) -> bool:
         """
-        Run complete daily data collection process.
+        Run complete daily data collection process with smart incremental updates.
+        
+        Collects historical daily values (not high-resolution data):
+        - New stations: Full historical data from 1910-10-01 to present
+        - Existing stations: Incremental updates from last end_date to present
         
         Parameters:
         -----------
@@ -251,10 +237,9 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
             Name of configuration to use
         config_id : int, optional  
             Configuration ID to use
-        days_back : int, optional
-            Maximum days back to collect (default: 30)
         full_refresh : bool
-            If True, collect all available data (ignores last update dates)
+            If True, force full historical collection for all stations (1910-present)
+            regardless of existing data.
             
         Returns:
         --------
@@ -262,10 +247,6 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
             True if collection was successful
         """
         try:
-            # Setup
-            if days_back is None:
-                days_back = 30
-            
             # Ensure database tables exist
             self.ensure_daily_tables()
             
@@ -302,26 +283,32 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
             
             # Determine collection strategy
             station_ids = [station['usgs_id'] for station in stations]
+            last_dates = self.get_last_update_dates(station_ids)
             
             if full_refresh:
-                # Full refresh: collect all available data
-                start_date = datetime(1900, 1, 1)
+                # Full refresh: collect all available data from 1910
+                start_date = datetime(1910, 10, 1)
                 end_date = datetime.now()
-                self.logger.info(f"📅 Full refresh: collecting all available data")
+                self.logger.info(f"📅 Full refresh: collecting from {start_date.date()} to {end_date.date()}")
             else:
-                # Incremental update: collect since last update
-                last_dates = self.get_last_update_dates(station_ids)
-                
-                # Find the earliest start date
+                # Smart incremental update
+                # Use the earliest start date to capture all new/updated data
                 earliest_date = min(last_dates.values())
-                # Ensure we don't go back more than specified days
-                cutoff_date = (datetime.now() - timedelta(days=days_back)).date()
-                start_date = max(earliest_date, cutoff_date)
                 end_date = datetime.now()
                 
-                self.logger.info(f"📅 Incremental update from {start_date} to {end_date.date()}")
-                self.logger.info(f"   Earliest station last update: {earliest_date}")
-                self.logger.info(f"   Latest station last update: {max(last_dates.values())}")
+                # For historical backfill: use 1910 if any new stations
+                has_new_stations = any(d.year == 1910 for d in last_dates.values())
+                
+                if has_new_stations:
+                    start_date = datetime(1910, 10, 1)
+                    new_count = sum(1 for d in last_dates.values() if d.year == 1910)
+                    self.logger.info(f"📅 Historical backfill: {new_count} new stations - collecting from 1910")
+                else:
+                    start_date = earliest_date
+                    self.logger.info(f"📅 Incremental update from {start_date} to {end_date.date()}")
+                
+                self.logger.info(f"   Earliest station start: {earliest_date}")
+                self.logger.info(f"   Latest station start: {max(last_dates.values())}")
             
             # Collect data
             df = self.process_stations_in_batches(
@@ -355,6 +342,19 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
                 synced = self.sync_metadata_to_filters(stations)
                 if synced > 0:
                     self.logger.info(f"   ✅ Synced {synced} stations to filters table")
+                
+                # Calculate statistics (years_of_record, num_water_years) from collected data
+                self.logger.info("📊 Calculating station statistics from historical data...")
+                try:
+                    stats_updated = calculate_station_statistics(
+                        cache_db_path=self.db_path,
+                        logger=self.logger,
+                        quiet=False
+                    )
+                    if stats_updated > 0:
+                        self.logger.info(f"   ✅ Updated statistics for {stats_updated} stations")
+                except Exception as e:
+                    self.logger.warning(f"   ⚠️ Statistics calculation failed: {e}")
             
             # Summary
             self.logger.info("🎉 Daily collection completed!")
@@ -382,10 +382,8 @@ def main():
     parser.add_argument('--config', type=str, 
                       help='Configuration name (e.g., "Pacific Northwest Full", "Columbia River Basin")')
     parser.add_argument('--config-id', type=int, help='Configuration ID number')
-    parser.add_argument('--days-back', type=int, default=30,
-                      help='Maximum days back to collect (default: 30)')
     parser.add_argument('--full-refresh', action='store_true',
-                      help='Perform full refresh (collect all available data)')
+                      help='Perform full refresh (re-collect all historical data from 1910)')
     parser.add_argument('--db-path', type=str, default='data/usgs_cache.db',
                       help='Path to database file (default: data/usgs_cache.db)')
     parser.add_argument('--list-configs', action='store_true',
@@ -431,7 +429,6 @@ def main():
         success = updater.run_daily_collection(
             config_name=args.config,
             config_id=args.config_id,
-            days_back=args.days_back,
             full_refresh=args.full_refresh
         )
         

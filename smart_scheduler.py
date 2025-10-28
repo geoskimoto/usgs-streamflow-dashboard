@@ -80,11 +80,11 @@ class SmartScheduler:
     def _execute_job(self, job_name: str, frequency_hours: int, retention_days: int):
         """Execute a specific job."""
         try:
-            # Determine script to run
+            # Determine script to run (using configurable versions)
             if job_name == 'realtime_update':
-                script = 'update_realtime_discharge.py'
+                script = 'update_realtime_discharge_configurable.py'
             elif job_name == 'daily_update':
-                script = 'update_daily_discharge.py'
+                script = 'update_daily_discharge_configurable.py'
             else:
                 logging.warning(f"Unknown job: {job_name}")
                 return

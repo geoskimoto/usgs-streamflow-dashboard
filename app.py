@@ -530,80 +530,9 @@ def create_admin_content():
                     
                     # Data Update Management Section
                     html.H5("🔄 Automated Data Updates", className="text-primary mb-3"),
-                    
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Card([
-                                dbc.CardHeader(html.H6("📊 Real-time Data (15-min)", className="mb-0")),
-                                dbc.CardBody([
-                                    html.P("Updates high-resolution discharge data (last 5 days)", 
-                                          className="text-muted small"),
-                                    
-                                    dbc.Row([
-                                        dbc.Col([
-                                            dbc.Label("Update Frequency (hours):"),
-                                            dbc.Input(
-                                                id="realtime-frequency-input",
-                                                type="number",
-                                                min=1,
-                                                max=24,
-                                                step=1,
-                                                value=2,
-                                                size="sm"
-                                            ),
-                                        ], width=6),
-                                        dbc.Col([
-                                            dbc.Label("Status:"),
-                                            html.Div(id="realtime-status", className="small"),
-                                        ], width=6),
-                                    ], className="mb-3"),
-                                    
-                                    dbc.ButtonGroup([
-                                        dbc.Button("▶️ Run Now", id="run-realtime-btn", 
-                                                  color="success", size="sm"),
-                                        dbc.Button("⏸️ Enable/Disable", id="toggle-realtime-btn", 
-                                                  color="secondary", size="sm"),
-                                    ], className="w-100"),
-                                ])
-                            ])
-                        ], width=6),
-                        
-                        dbc.Col([
-                            dbc.Card([
-                                dbc.CardHeader(html.H6("📈 Daily Data (Historical)", className="mb-0")),
-                                dbc.CardBody([
-                                    html.P("Updates historical daily discharge data", 
-                                          className="text-muted small"),
-                                    
-                                    dbc.Row([
-                                        dbc.Col([
-                                            dbc.Label("Update Frequency (hours):"),
-                                            dbc.Input(
-                                                id="daily-frequency-input",
-                                                type="number",
-                                                min=6,
-                                                max=72,
-                                                step=6,
-                                                value=12,
-                                                size="sm"
-                                            ),
-                                        ], width=6),
-                                        dbc.Col([
-                                            dbc.Label("Status:"),
-                                            html.Div(id="daily-status", className="small"),
-                                        ], width=6),
-                                    ], className="mb-3"),
-                                    
-                                    dbc.ButtonGroup([
-                                        dbc.Button("▶️ Run Now", id="run-daily-btn", 
-                                                  color="success", size="sm"),
-                                        dbc.Button("⏸️ Enable/Disable", id="toggle-daily-btn", 
-                                                  color="secondary", size="sm"),
-                                    ], className="w-100"),
-                                ])
-                            ])
-                        ], width=6),
-                    ], className="mb-4"),
+                    html.P("Data updates are managed through the station configuration system. "
+                          "Use the Station Management tab to configure which stations to collect data for.",
+                          className="text-muted mb-4"),
                     
                     # Job Execution History
                     html.H6("📋 Recent Update History", className="text-info mb-2"),
@@ -1038,61 +967,6 @@ def update_daily_frequency(frequency, auth_data):
     return 12  # Default fallback
 
 # Manual job execution callbacks
-@app.callback(
-    Output('realtime-status', 'children', allow_duplicate=True),
-    Input('run-realtime-btn', 'n_clicks'),
-    [State('auth-store', 'data')],
-    prevent_initial_call=True
-)
-def run_realtime_update_now(clicks, auth_data):
-    """Manually trigger real-time data update."""
-    if not auth_data or not auth_data.get('authenticated'):
-        return "Authentication required"
-    
-    if clicks and clicks > 0:
-        try:
-            import subprocess
-            import os
-            
-            # Run the real-time updater script in background
-            script_path = os.path.join(os.getcwd(), 'update_realtime_discharge.py')
-            subprocess.Popen(['python', script_path], 
-                           stdout=subprocess.DEVNULL, 
-                           stderr=subprocess.DEVNULL)
-            
-            return "🔄 Real-time update started... Check history for results."
-        except Exception as e:
-            return f"❌ Failed to start: {str(e)}"
-    
-    return no_update
-
-@app.callback(
-    Output('daily-status', 'children', allow_duplicate=True),
-    Input('run-daily-btn', 'n_clicks'),
-    [State('auth-store', 'data')],
-    prevent_initial_call=True
-)
-def run_daily_update_now(clicks, auth_data):
-    """Manually trigger daily data update."""
-    if not auth_data or not auth_data.get('authenticated'):
-        return "Authentication required"
-    
-    if clicks and clicks > 0:
-        try:
-            import subprocess
-            import os
-            
-            # Run the daily updater script in background
-            script_path = os.path.join(os.getcwd(), 'update_daily_discharge.py')
-            subprocess.Popen(['python', script_path], 
-                           stdout=subprocess.DEVNULL, 
-                           stderr=subprocess.DEVNULL)
-            
-            return "🔄 Daily update started... Check history for results."
-        except Exception as e:
-            return f"❌ Failed to start: {str(e)}"
-    
-    return no_update
 
 
 # Admin Panel Callbacks
@@ -1650,13 +1524,17 @@ def update_filter_summary(gauges_data):
         state_labels = {
             'OR': '🌲 Oregon',
             'WA': '🏔️ Washington', 
-            'ID': '⛰️ Idaho'
+            'ID': '⛰️ Idaho',
+            'MT': '⛰️ Montana',
+            'CA': '☀️ California',
+            'NV': '🏜️ Nevada'
         }
         
-        for state in ['OR', 'WA', 'ID']:
+        for state in ['OR', 'WA', 'ID', 'MT', 'CA', 'NV']:
             count = state_counts.get(state, 0)
-            label = f"{state_labels[state]} ({count} sites)"
-            state_options.append({"label": label, "value": state})
+            if count > 0:  # Only show states that have stations
+                label = f"{state_labels[state]} ({count} sites)"
+                state_options.append({"label": label, "value": state})
         
         # Create summary text
         summary_text = f"Filter {total_sites} USGS streamflow gauges (1910-present)"

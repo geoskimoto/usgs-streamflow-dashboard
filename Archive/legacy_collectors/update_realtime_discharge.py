@@ -79,35 +79,22 @@ class RealtimeDataUpdater:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
-            # First check which table has site data and what status values exist
-            cursor.execute("SELECT COUNT(*) FROM gauge_metadata")
-            metadata_count = cursor.fetchone()[0]
+            # Use filters table (the active metadata table)
+            cursor.execute("SELECT COUNT(*) FROM filters")
+            filters_count = cursor.fetchone()[0]
             
-            cursor.execute("SELECT COUNT(*) FROM gauges")
-            gauges_count = cursor.fetchone()[0]
-            
-            if metadata_count > 0:
-                # Use gauge_metadata table and is_active flag
+            if filters_count > 0:
+                # Use filters table with is_active flag
                 cursor.execute("""
-                    SELECT DISTINCT site_id FROM gauge_metadata 
+                    SELECT DISTINCT site_id FROM filters 
                     WHERE is_active = 1
                     ORDER BY site_id
                     LIMIT 50
                 """)
                 sites = [row[0] for row in cursor.fetchall()]
-                print(f"📍 Found {len(sites)} active sites from gauge_metadata (limited to 50 for testing)")
-            elif gauges_count > 0:
-                # Fall back to gauges table
-                cursor.execute("""
-                    SELECT DISTINCT site_id FROM gauges 
-                    WHERE status = 'Active' OR status = 'Yes'
-                    ORDER BY site_id
-                    LIMIT 50
-                """)
-                sites = [row[0] for row in cursor.fetchall()]
-                print(f"📍 Found {len(sites)} active sites from gauges (limited to 50 for testing)")
+                print(f"📍 Found {len(sites)} active sites from filters table (limited to 50 for testing)")
             else:
-                print("❌ No site data found in either gauges or gauge_metadata tables")
+                print("❌ No site data found in filters table")
                 sites = []
             
             conn.close()
