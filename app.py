@@ -240,35 +240,6 @@ def create_sidebar():
         dbc.Card([
             dbc.CardHeader(html.H5("⚙️ Dashboard Controls", className="mb-0")),
             dbc.CardBody([
-                # Data refresh controls
-                html.H6("Data Management", className="text-muted mb-2"),
-                dbc.ButtonGroup([
-                    dbc.Button("🔄 Refresh Gauges", id="refresh-gauges-btn", 
-                              color="primary", size="sm"),
-                    dbc.Button("🗑️ Clear Cache", id="clear-cache-btn", 
-                              color="warning", size="sm")
-                ], className="mb-3 w-100"),
-                
-                html.Hr(),
-                
-                # Site limit controls
-                html.H6("Site Loading", className="text-muted mb-2"),
-                dbc.Label("Max Sites to Load:"),
-                dbc.Input(
-                    id="site-limit-input",
-                    type="number",
-                    min=1,
-                    max=3000,
-                    step=1,
-                    value=300,
-                    className="mb-2"
-                ),
-                html.P("Enter number of sites (1-3000). Higher values take longer to load.", 
-                      className="small text-muted mb-3"),
-                html.Div(id="site-limit-feedback", className="mb-3"),
-                
-                html.Hr(),
-                
                 # Map controls
                 html.H6("Map Settings", className="text-muted mb-2"),
                 
@@ -1488,8 +1459,159 @@ def update_admin_tab_styles(dash_clicks, config_clicks, station_clicks,
 
 
 # Removed filter_stations_table callback - component doesn't exist
-# Removed update_monitoring_displays callback - components don't exist
-# Removed handle_schedule_actions callback - components don't exist
+
+@app.callback(
+    [Output('system-health-indicators', 'children'),
+     Output('recent-activity-table', 'children')],
+    [Input('admin-refresh-interval', 'n_intervals'),
+     Input('refresh-monitoring-btn', 'n_clicks')]
+)
+def update_monitoring_displays(n_intervals, refresh_clicks):
+    """Update monitoring tab displays - runs every 30 seconds or on refresh button."""
+    from admin_components import get_system_health_display, get_recent_activity_table
+    
+    try:
+        return (
+            get_system_health_display(),
+            get_recent_activity_table()
+        )
+    except Exception as e:
+        error_msg = dbc.Alert(f"Error updating monitoring displays: {e}", color="danger")
+        return error_msg, error_msg
+
+
+@app.callback(
+    [Output('schedule-status-message', 'children'),
+     Output('schedules-table-container', 'children'),
+     Output('toast-container', 'children')],
+    [Input('run-selected-schedule-btn', 'n_clicks'),
+     Input('refresh-schedules-btn', 'n_clicks')],
+    [State('schedules-table', 'selected_rows'),
+     State('schedules-table', 'data')]
+)
+def handle_schedule_actions(run_clicks, refresh_clicks, selected_rows, table_data):
+    """Handle schedule management actions (run, refresh)."""
+    import subprocess
+    import os
+    from admin_components import get_schedules_table
+    
+    ctx = callback_context
+    if not ctx.triggered:
+        return "", get_schedules_table(), None
+    
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    # Handle refresh
+    if button_id == 'refresh-schedules-btn':
+        return "", get_schedules_table(), None
+    
+    # Handle run selected
+    if button_id == 'run-selected-schedule-btn':
+        if not run_clicks:
+            return "", get_schedules_table(), None
+        
+        if not selected_rows or len(selected_rows) == 0:
+            return dbc.Alert("⚠️ Please select a schedule to run", color="warning", dismissable=True), get_schedules_table(), None
+        
+        # Get the selected schedule data
+        selected_idx = selected_rows[0]
+        if selected_idx >= len(table_data):
+            return dbc.Alert("❌ Invalid selection", color="danger", dismissable=True), get_schedules_table(), None
+        
+        schedule_row = table_data[selected_idx]
+        schedule_name = schedule_row['Schedule']
+        config_name = schedule_row['Configuration']
+        data_type = schedule_row['Data Type'].lower()
+        
+        try:
+            # Determine which script to run
+            if data_type == 'realtime':
+                script = 'update_realtime_discharge_configurable.py'
+            elif data_type == 'daily':
+                script = 'update_daily_discharge_configurable.py'
+            else:
+                return dbc.Alert(f"❌ Unknown data type: {data_type}", color="danger", dismissable=True), get_schedules_table(), None
+            
+            # Build command
+            project_root = os.path.dirname(os.path.abspath(__file__))
+            script_path = os.path.join(project_root, script)
+            
+            # Create logs directory if it doesn't exist
+            logs_dir = os.path.join(project_root, 'logs')
+            os.makedirs(logs_dir, exist_ok=True)
+            
+            # Create log files for this run
+            from datetime import datetime
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            log_file = os.path.join(logs_dir, f'manual_run_{data_type}_{timestamp}.log')
+            
+            # Run in background
+            cmd = [
+                'python3', script_path,
+                '--config', config_name
+            ]
+            
+            # Debug: Print command for troubleshooting
+            print(f"🚀 Starting collection process:")
+            print(f"   Command: {' '.join(cmd)}")
+            print(f"   Working directory: {project_root}")
+            print(f"   Log file: {log_file}")
+            
+            # Start the collection process in background
+            with open(log_file, 'w') as log_f:
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=log_f,
+                    stderr=subprocess.STDOUT,  # Redirect stderr to stdout (same log file)
+                    cwd=project_root,
+                    start_new_session=True  # Detach from parent process
+                )
+            
+            print(f"   Process ID: {process.pid}")
+            print(f"   Log file created: {log_file}")
+            
+            success_msg = dbc.Alert([
+                html.H5(f"✅ Collection Started!", className="alert-heading"),
+                html.P([
+                    f"Schedule: {schedule_name}", html.Br(),
+                    f"Configuration: {config_name}", html.Br(),
+                    f"Data Type: {data_type.title()}", html.Br(),
+                    html.Hr(),
+                    html.Small([
+                        "The collection is running in the background. ",
+                        html.Strong("Check the Monitoring tab"), " to see live progress and results. ", html.Br(),
+                        f"Process ID: {process.pid}", html.Br(),
+                        f"Log file: logs/manual_run_{data_type}_{timestamp}.log"
+                    ])
+                ])
+            ], color="success", dismissable=True)
+            
+            # Create toast notification
+            toast = dbc.Toast(
+                [html.P([
+                    f"🔄 Collection started: {schedule_name}", html.Br(),
+                    html.Small(f"{config_name} - {data_type.title()}", className="text-muted"), html.Br(),
+                    html.Small("View progress in Monitoring tab →", className="text-info")
+                ], className="mb-0 small")],
+                header="Collection Started",
+                icon="success",
+                dismissable=True,
+                is_open=True,
+                duration=5000,  # Auto-dismiss after 5 seconds
+                style={"position": "fixed", "top": 80, "right": 20, "width": 350, "zIndex": 9999}
+            )
+            
+            return success_msg, get_schedules_table(), toast
+            
+        except Exception as e:
+            error_msg = dbc.Alert([
+                html.H5("❌ Error Starting Collection", className="alert-heading"),
+                html.P(f"Error: {str(e)}")
+            ], color="danger", dismissable=True)
+            
+            return error_msg, get_schedules_table(), None
+    
+    return "", get_schedules_table(), None
 
 
 if __name__ == '__main__':
