@@ -483,61 +483,6 @@ def create_admin_content():
                     
                     html.Hr(),
                     
-                    # Legacy Data Management Section (keeping existing functionality)
-                    html.H5("📊 Legacy Data Management", className="text-primary mb-3"),
-                    
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Card([
-                                dbc.CardBody([
-                                    html.H6("Site Loading Controls"),
-                                    dbc.Label("Max Sites to Load:"),
-                                    dbc.Input(
-                                        id="site-limit-input",
-                                        type="number",
-                                        min=1,
-                                        max=3000,
-                                        step=1,
-                                        value=300,
-                                        className="mb-2"
-                                    ),
-                                    html.P("Enter number of sites (1-3000). Higher values take longer to load.", 
-                                          className="small text-muted mb-3"),
-                                    html.Div(id="site-limit-feedback", className="mb-3"),
-                                ])
-                            ])
-                        ], width=6),
-                        
-                        dbc.Col([
-                            dbc.Card([
-                                dbc.CardBody([
-                                    html.H6("Data Operations"),
-                                    dbc.ButtonGroup([
-                                        dbc.Button("🔄 Refresh Gauges", id="refresh-gauges-btn", 
-                                                  color="primary", size="sm"),
-                                        dbc.Button("🗑️ Clear Cache", id="clear-cache-btn", 
-                                                  color="warning", size="sm")
-                                    ], className="mb-3 w-100"),
-                                    
-                                    dbc.Button("📥 Export Data", id="export-data-btn", 
-                                              color="success", size="sm", className="w-100 mb-2"),
-                                    dbc.Button("🔍 System Status", id="system-status-btn", 
-                                              color="info", size="sm", className="w-100"),
-                                ])
-                            ])
-                        ], width=6),
-                    ], className="mb-4"),
-                    
-                    # Data Update Management Section
-                    html.H5("🔄 Automated Data Updates", className="text-primary mb-3"),
-                    html.P("Data updates are managed through the station configuration system. "
-                          "Use the Station Management tab to configure which stations to collect data for.",
-                          className="text-muted mb-4"),
-                    
-                    # Job Execution History
-                    html.H6("📋 Recent Update History", className="text-info mb-2"),
-                    html.Div(id="job-history-display", className="mb-4"),
-                    
                     # System Information Section
                     html.H5("ℹ️ System Information", className="text-primary mb-3"),
                     html.Div(id="admin-system-info"),
@@ -545,8 +490,6 @@ def create_admin_content():
                     # Logs Section
                     html.H5("📝 Recent Activity", className="text-primary mb-3"),
                     html.Div(id="admin-activity-log"),
-                    
-
                     
                 ])
             ])
@@ -660,6 +603,9 @@ app.layout = dbc.Container([
     
     # Login modal - ALWAYS exists in layout
     create_login_modal(),
+    
+    # Location component for URL tracking
+    dcc.Location(id='url', refresh=False),
     
     # Store components for data persistence and authentication
     dcc.Store(id='gauges-store'),
@@ -1058,38 +1004,51 @@ def show_activity_log(active_tab, auth_data):
     [Output('gauges-store', 'data'),
      Output('status-alerts', 'children'),
      Output('site-limit-store', 'data')],
-    [Input('refresh-gauges-btn', 'n_clicks'),
-     Input('site-limit-input', 'value')],
+    [Input('url', 'pathname'),
+     Input('refresh-gauges-btn', 'n_clicks')],
+    [State('site-limit-input', 'value')],
     prevent_initial_call=False
 )
-def load_gauge_data(refresh_clicks, site_limit):
-    """Load gauge data on app start or refresh, using the filters table for metadata."""
+def load_gauge_data(pathname, refresh_clicks, site_limit):
+    """Load gauge data on app start from the filters table (modern system)."""
     import sqlite3
+    
+    print(f"\n=== load_gauge_data CALLBACK FIRED ===")
+    print(f"pathname: {pathname}")
+    print(f"refresh_clicks: {refresh_clicks}")
+    print(f"site_limit: {site_limit}")
+    
     try:
         ctx = callback_context
+        print(f"Callback triggered by: {ctx.triggered}")
         
-        # Validate site limit input
+        # Validate site limit
         if site_limit is None or site_limit < 1:
             site_limit = 300
         elif site_limit > 3000:
             site_limit = 3000
         
-        # Determine if this is a refresh or initial load
-        refresh = False
+        print(f"Using site_limit: {site_limit}")
+        
+        # Check if this is a manual refresh (optional - could trigger manual load if needed)
+        is_refresh = False
         if ctx.triggered:
             trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
             if trigger_id == 'refresh-gauges-btn' and refresh_clicks:
-                refresh = True
+                is_refresh = True
+                print("Manual refresh triggered")
+                # Note: Manual refresh still just loads from filters table
+                # The modern system updates filters via scheduled collectors
         
-        # Always refresh the filters table if requested
-        if refresh:
-            data_manager.load_regional_gauges(refresh=True, max_sites=site_limit)
-        
-        # Load from filters table
+        # Load from filters table (populated by modern configurable collectors)
         db_path = data_manager.cache_db
+        print(f"Loading from database: {db_path}")
+        
         conn = sqlite3.connect(db_path)
         filters_df = pd.read_sql_query('SELECT * FROM filters', conn)
         conn.close()
+        
+        print(f"Loaded {len(filters_df)} stations from filters table")
         
         global gauges_df
         gauges_df = filters_df.copy()
@@ -1109,15 +1068,25 @@ def load_gauge_data(refresh_clicks, site_limit):
         
         alert_msg = f"Successfully loaded {len(gauges_df)} USGS gauges from {', '.join(TARGET_STATES)} (limit: {site_limit})"
         
+        gauges_data = gauges_df.to_dict('records')
+        print(f"Returning {len(gauges_data)} gauge records")
+        print(f"Sample gauge: {gauges_data[0] if gauges_data else 'NONE'}")
+        print("=== CALLBACK COMPLETE ===\n")
+        
         alert = dbc.Alert(
             alert_msg,
             color="success",
             dismissable=True,
             duration=4000
         )
-        return gauges_df.to_dict('records'), alert, site_limit
+        return gauges_data, alert, site_limit
         
     except Exception as e:
+        print(f"ERROR in load_gauge_data: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        print("=== CALLBACK ERROR ===\n")
+        
         alert = dbc.Alert(
             f"Error loading gauge data: {str(e)}",
             color="danger",
@@ -1126,48 +1095,7 @@ def load_gauge_data(refresh_clicks, site_limit):
         return [], alert, site_limit or 300
 
 
-@app.callback(
-    Output('status-alerts', 'children', allow_duplicate=True),
-    Input('clear-cache-btn', 'n_clicks'),
-    prevent_initial_call=True
-)
-def clear_cache(n_clicks):
-    """Clear the data cache."""
-    if n_clicks:
-        try:
-            data_manager.clear_cache()
-            return dbc.Alert(
-                "Cache cleared successfully. Refresh gauges to reload data.",
-                color="info",
-                dismissable=True,
-                duration=4000
-            )
-        except Exception as e:
-            return dbc.Alert(
-                f"Error clearing cache: {str(e)}",
-                color="danger",
-                dismissable=True
-            )
-    return no_update
-
-
-@app.callback(
-    Output('site-limit-feedback', 'children'),
-    Input('site-limit-input', 'value')
-)
-def update_site_limit_feedback(site_limit):
-    """Provide feedback for site limit input."""
-    if site_limit is None:
-        return ""
-    
-    if site_limit < 1:
-        return dbc.Alert("Minimum 1 site required", color="warning", className="p-2")
-    elif site_limit > 3000:
-        return dbc.Alert("Maximum 3000 sites allowed", color="warning", className="p-2")
-    elif site_limit > 1000:
-        return dbc.Alert(f"Loading {site_limit} sites may take several minutes", color="info", className="p-2")
-    else:
-        return dbc.Alert(f"Will load {site_limit} sites", color="light", className="p-2")
+# Legacy callbacks removed - UI components no longer exist
 
 
 @app.callback(
@@ -1487,17 +1415,21 @@ def update_dropdown_options(selected_states):
         else:
             state_filtered = filters_df
         
-        # Get unique basins
+        # Get unique basins - convert to string and filter out invalid values
         basins = state_filtered['basin'].dropna().unique()
-        basin_options = [{"label": basin, "value": basin} for basin in sorted(basins)]
+        basins_str = [str(b) for b in basins if b and not isinstance(b, bytes)]
+        basin_options = [{"label": basin, "value": basin} for basin in sorted(basins_str)]
         
-        # Get unique HUC codes
+        # Get unique HUC codes - convert to string and filter out invalid values
         huc_codes = state_filtered['huc_code'].dropna().unique()
-        huc_options = [{"label": huc, "value": huc} for huc in sorted(huc_codes)]
+        huc_str = [str(h) for h in huc_codes if h and not isinstance(h, bytes)]
+        huc_options = [{"label": huc, "value": huc} for huc in sorted(huc_str)]
         
         return basin_options, huc_options
     except Exception as e:
         print(f"Error updating dropdown options: {e}")
+        import traceback
+        traceback.print_exc()
         return [], []
 
 
