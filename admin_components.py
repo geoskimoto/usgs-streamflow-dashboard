@@ -126,17 +126,6 @@ class StationAdminPanel:
                 ])
             ], className="mb-4"),
             
-            # Currently running collections card
-            dbc.Card([
-                dbc.CardHeader([
-                    html.H5("🔄 Currently Running Collections", className="mb-0"),
-                    html.Small("Updates every 30 seconds", className="text-muted float-end mt-1")
-                ]),
-                dbc.CardBody([
-                    html.Div(id="current-collections")
-                ])
-            ], className="mb-4"),
-            
             # Recent activity card
             dbc.Card([
                 dbc.CardHeader(html.H5("📊 Recent Collection Activity", className="mb-0")),
@@ -395,102 +384,6 @@ def get_recent_activity_table():
             
     except Exception as e:
         return dbc.Alert(f"Error loading recent activity: {e}", color="danger")
-
-
-def get_currently_running_jobs():
-    """Get currently running collection jobs with progress details."""
-    try:
-        with StationConfigurationManager() as manager:
-            # Get running collections
-            cursor = manager.connection.cursor()
-            cursor.execute("""
-                SELECT 
-                    dcl.id,
-                    sc.config_name,
-                    dcl.data_type,
-                    dcl.stations_attempted,
-                    dcl.stations_successful,
-                    dcl.stations_failed,
-                    dcl.start_time,
-                    dcl.triggered_by
-                FROM data_collection_logs dcl
-                JOIN station_configurations sc ON dcl.config_id = sc.id
-                WHERE dcl.status = 'running'
-                ORDER BY dcl.start_time DESC
-            """)
-            
-            running_jobs = cursor.fetchall()
-            
-            if not running_jobs:
-                return dbc.Alert([
-                    html.I(className="fas fa-check-circle me-2"),
-                    "No collections currently running."
-                ], color="success", className="mb-0")
-            
-            job_cards = []
-            for job in running_jobs:
-                log_id, config_name, data_type, attempted, successful, failed, start_time, triggered_by = job
-                
-                # Calculate progress
-                completed = successful + failed
-                progress_pct = (completed / attempted * 100) if attempted > 0 else 0
-                
-                # Calculate elapsed time
-                from datetime import datetime
-                start_dt = datetime.fromisoformat(start_time)
-                elapsed = datetime.now() - start_dt
-                elapsed_str = f"{int(elapsed.total_seconds() // 60)}m {int(elapsed.total_seconds() % 60)}s"
-                
-                # Estimate remaining time (rough estimate)
-                if completed > 0:
-                    avg_time_per_station = elapsed.total_seconds() / completed
-                    remaining_stations = attempted - completed
-                    est_remaining = int((remaining_stations * avg_time_per_station) // 60)
-                    time_estimate = f"~{est_remaining}m remaining" if est_remaining > 0 else "Finishing..."
-                else:
-                    time_estimate = "Calculating..."
-                
-                job_cards.append(
-                    dbc.Card([
-                        dbc.CardBody([
-                            dbc.Row([
-                                dbc.Col([
-                                    html.H5([
-                                        html.I(className="fas fa-spinner fa-spin me-2"),
-                                        f"{config_name} - {data_type.title()}"
-                                    ], className="text-primary mb-2"),
-                                    html.P([
-                                        html.Strong("Progress: "),
-                                        f"{completed}/{attempted} stations ({progress_pct:.1f}%)", html.Br(),
-                                        html.Strong("Success: "),
-                                        html.Span(f"{successful}", className="text-success"),
-                                        " | ",
-                                        html.Strong("Failed: "),
-                                        html.Span(f"{failed}", className="text-danger"), html.Br(),
-                                        html.Strong("Elapsed: "),
-                                        f"{elapsed_str} | {time_estimate}", html.Br(),
-                                        html.Small([
-                                            f"Started by: {triggered_by} | Log ID: {log_id}"
-                                        ], className="text-muted")
-                                    ], className="mb-2"),
-                                    dbc.Progress(
-                                        value=progress_pct,
-                                        label=f"{progress_pct:.0f}%",
-                                        color="info" if progress_pct < 90 else "success",
-                                        striped=True,
-                                        animated=True,
-                                        className="mb-2"
-                                    )
-                                ], width=12)
-                            ])
-                        ])
-                    ], className="mb-3", color="light", outline=True)
-                )
-            
-            return html.Div(job_cards)
-            
-    except Exception as e:
-        return dbc.Alert(f"Error loading running jobs: {e}", color="danger")
 
 
 def get_stations_table(states=None, huc_code=None, source_datasets=None, search_text=None, limit=100):

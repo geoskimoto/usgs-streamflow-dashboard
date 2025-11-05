@@ -1643,7 +1643,7 @@ def update_admin_tab_content(dash_clicks, config_clicks, station_clicks,
                            schedule_clicks, monitor_clicks, current_content):
     """Update admin tab content based on selected tab."""
     from admin_components import (get_configurations_table, get_system_health_display, 
-                                get_recent_activity_table, get_currently_running_jobs, StationAdminPanel)
+                                get_recent_activity_table, StationAdminPanel)
     
     ctx = callback_context
     if not ctx.triggered:
@@ -1839,24 +1839,22 @@ def filter_stations_table(n_clicks, states, huc_code, sources, search_text):
 
 @app.callback(
     [Output('system-health-indicators', 'children'),
-     Output('current-collections', 'children'),
      Output('recent-activity-table', 'children')],
     [Input('admin-refresh-interval', 'n_intervals'),
      Input('refresh-monitoring-btn', 'n_clicks')]
 )
 def update_monitoring_displays(n_intervals, refresh_clicks):
     """Update monitoring tab displays - runs every 30 seconds or on refresh button."""
-    from admin_components import get_system_health_display, get_currently_running_jobs, get_recent_activity_table
+    from admin_components import get_system_health_display, get_recent_activity_table
     
     try:
         return (
             get_system_health_display(),
-            get_currently_running_jobs(),
             get_recent_activity_table()
         )
     except Exception as e:
         error_msg = dbc.Alert(f"Error updating monitoring displays: {e}", color="danger")
-        return error_msg, error_msg, error_msg
+        return error_msg, error_msg
 
 
 @app.callback(
