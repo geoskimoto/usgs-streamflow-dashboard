@@ -332,12 +332,8 @@ class WaterYearDateTime:
                 visible=True,
                 showlegend=False,  # Will be controlled by group toggle
                 legendgroup='historical',
-                hovertemplate=(
-                    f"Water Year {year}<br>" +
-                    "Date: %{customdata}<br>" +
-                    "Discharge: %{y:.1f} cfs<br>" +
-                    "<extra></extra>"
-                ),
+                hoverinfo='skip',  # Don't show in hover
+                hovertemplate=None,
                 customdata=year_data['month_day']
             ))
         
@@ -352,7 +348,8 @@ class WaterYearDateTime:
                 visible='legendonly',  # Start hidden, user can toggle
                 showlegend=True,
                 legendgroup='historical',
-                hovertemplate="<extra></extra>"
+                hoverinfo='skip',  # Don't show in hover
+                hovertemplate=None
             ))
         
         # Add statistics on top of background years  
@@ -479,7 +476,7 @@ class WaterYearDateTime:
                 showgrid=True,
                 gridcolor='lightgray'
             ),
-            hovermode='x unified',
+            hovermode='x unified',  # Show all relevant traces at same x-coordinate (hoverinfo='skip' controls which ones)
             showlegend=True,
             height=500,
             template='plotly_white',
