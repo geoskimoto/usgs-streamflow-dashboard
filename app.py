@@ -240,35 +240,6 @@ def create_sidebar():
         dbc.Card([
             dbc.CardHeader(html.H5("⚙️ Dashboard Controls", className="mb-0")),
             dbc.CardBody([
-                # Data refresh controls
-                html.H6("Data Management", className="text-muted mb-2"),
-                dbc.ButtonGroup([
-                    dbc.Button("🔄 Refresh Gauges", id="refresh-gauges-btn", 
-                              color="primary", size="sm"),
-                    dbc.Button("🗑️ Clear Cache", id="clear-cache-btn", 
-                              color="warning", size="sm")
-                ], className="mb-3 w-100"),
-                
-                html.Hr(),
-                
-                # Site limit controls
-                html.H6("Site Loading", className="text-muted mb-2"),
-                dbc.Label("Max Sites to Load:"),
-                dbc.Input(
-                    id="site-limit-input",
-                    type="number",
-                    min=1,
-                    max=3000,
-                    step=1,
-                    value=300,
-                    className="mb-2"
-                ),
-                html.P("Enter number of sites (1-3000). Higher values take longer to load.", 
-                      className="small text-muted mb-3"),
-                html.Div(id="site-limit-feedback", className="mb-3"),
-                
-                html.Hr(),
-                
                 # Map controls
                 html.H6("Map Settings", className="text-muted mb-2"),
                 
@@ -483,61 +454,6 @@ def create_admin_content():
                     
                     html.Hr(),
                     
-                    # Legacy Data Management Section (keeping existing functionality)
-                    html.H5("📊 Legacy Data Management", className="text-primary mb-3"),
-                    
-                    dbc.Row([
-                        dbc.Col([
-                            dbc.Card([
-                                dbc.CardBody([
-                                    html.H6("Site Loading Controls"),
-                                    dbc.Label("Max Sites to Load:"),
-                                    dbc.Input(
-                                        id="site-limit-input",
-                                        type="number",
-                                        min=1,
-                                        max=3000,
-                                        step=1,
-                                        value=300,
-                                        className="mb-2"
-                                    ),
-                                    html.P("Enter number of sites (1-3000). Higher values take longer to load.", 
-                                          className="small text-muted mb-3"),
-                                    html.Div(id="site-limit-feedback", className="mb-3"),
-                                ])
-                            ])
-                        ], width=6),
-                        
-                        dbc.Col([
-                            dbc.Card([
-                                dbc.CardBody([
-                                    html.H6("Data Operations"),
-                                    dbc.ButtonGroup([
-                                        dbc.Button("🔄 Refresh Gauges", id="refresh-gauges-btn", 
-                                                  color="primary", size="sm"),
-                                        dbc.Button("🗑️ Clear Cache", id="clear-cache-btn", 
-                                                  color="warning", size="sm")
-                                    ], className="mb-3 w-100"),
-                                    
-                                    dbc.Button("📥 Export Data", id="export-data-btn", 
-                                              color="success", size="sm", className="w-100 mb-2"),
-                                    dbc.Button("🔍 System Status", id="system-status-btn", 
-                                              color="info", size="sm", className="w-100"),
-                                ])
-                            ])
-                        ], width=6),
-                    ], className="mb-4"),
-                    
-                    # Data Update Management Section
-                    html.H5("🔄 Automated Data Updates", className="text-primary mb-3"),
-                    html.P("Data updates are managed through the station configuration system. "
-                          "Use the Station Management tab to configure which stations to collect data for.",
-                          className="text-muted mb-4"),
-                    
-                    # Job Execution History
-                    html.H6("📋 Recent Update History", className="text-info mb-2"),
-                    html.Div(id="job-history-display", className="mb-4"),
-                    
                     # System Information Section
                     html.H5("ℹ️ System Information", className="text-primary mb-3"),
                     html.Div(id="admin-system-info"),
@@ -545,8 +461,6 @@ def create_admin_content():
                     # Logs Section
                     html.H5("📝 Recent Activity", className="text-primary mb-3"),
                     html.Div(id="admin-activity-log"),
-                    
-
                     
                 ])
             ])
@@ -660,6 +574,9 @@ app.layout = dbc.Container([
     
     # Login modal - ALWAYS exists in layout
     create_login_modal(),
+    
+    # Location component for URL tracking
+    dcc.Location(id='url', refresh=False),
     
     # Store components for data persistence and authentication
     dcc.Store(id='gauges-store'),
@@ -807,249 +724,13 @@ def handle_logout(logout_clicks):
 
 
 # Data Update Management Callbacks
-
-@app.callback(
-    [Output('realtime-status', 'children'),
-     Output('daily-status', 'children'),
-     Output('job-history-display', 'children')],
-    [Input('refresh-gauges-btn', 'n_clicks'),  # Trigger on page refresh
-     Input('run-realtime-btn', 'n_clicks'),
-     Input('run-daily-btn', 'n_clicks'),
-     Input('toggle-realtime-btn', 'n_clicks'),
-     Input('toggle-daily-btn', 'n_clicks')],
-    [State('auth-store', 'data')],
-    prevent_initial_call=False
-)
-def update_job_status_and_history(refresh_clicks, run_rt_clicks, run_daily_clicks, 
-                                toggle_rt_clicks, toggle_daily_clicks, auth_data):
-    """Update job status displays and execution history."""
-    if not auth_data or not auth_data.get('authenticated'):
-        return "Not authenticated", "Not authenticated", "Authentication required"
-    
-    try:
-        import sqlite3
-        conn = sqlite3.connect('data/usgs_cache.db')
-        cursor = conn.cursor()
-        
-        # Get current schedule configuration
-        cursor.execute("""
-            SELECT job_name, frequency_hours, last_run, next_run, enabled 
-            FROM update_schedules
-            ORDER BY job_name
-        """)
-        schedules = cursor.fetchall()
-        
-        realtime_status = "Configuration not found"
-        daily_status = "Configuration not found"
-        
-        for job_name, freq_hours, last_run, next_run, enabled in schedules:
-            status_text = "🟢 Enabled" if enabled else "🔴 Disabled"
-            if last_run:
-                last_run_formatted = last_run[:19].replace('T', ' ')
-                status_detail = f"{status_text} | Every {freq_hours}h | Last: {last_run_formatted}"
-            else:
-                status_detail = f"{status_text} | Every {freq_hours}h | Never run"
-            
-            if job_name == 'realtime_update':
-                realtime_status = status_detail
-            elif job_name == 'daily_update':
-                daily_status = status_detail
-        
-        # Get recent job execution history
-        cursor.execute("""
-            SELECT job_name, start_time, status, sites_processed, sites_failed, error_message
-            FROM job_execution_log
-            ORDER BY start_time DESC
-            LIMIT 10
-        """)
-        history = cursor.fetchall()
-        
-        if history:
-            history_items = []
-            for job_name, start_time, status, sites_proc, sites_fail, error_msg in history:
-                start_formatted = start_time[:19].replace('T', ' ')
-                
-                if status == 'success':
-                    status_badge = dbc.Badge("✅ Success", color="success")
-                elif status == 'partial':
-                    status_badge = dbc.Badge("⚠️ Partial", color="warning")
-                else:
-                    status_badge = dbc.Badge("❌ Failed", color="danger")
-                
-                job_display = "📊 Real-time" if job_name == 'realtime_update' else "📈 Daily"
-                
-                history_items.append(
-                    html.Div([
-                        dbc.Row([
-                            dbc.Col([
-                                html.Strong(job_display),
-                                html.Br(),
-                                html.Small(start_formatted, className="text-muted")
-                            ], width=3),
-                            dbc.Col(status_badge, width=2),
-                            dbc.Col([
-                                html.Small(f"Sites: {sites_proc} ✅, {sites_fail} ❌")
-                            ], width=4),
-                            dbc.Col([
-                                html.Small(error_msg[:50] + "..." if error_msg and len(error_msg) > 50 else error_msg or "")
-                            ], width=3)
-                        ], className="align-items-center")
-                    ], className="mb-2 p-2 border-bottom")
-                )
-            
-            job_history = html.Div(history_items)
-        else:
-            job_history = html.P("No job execution history found", className="text-muted")
-        
-        conn.close()
-        
-        return realtime_status, daily_status, job_history
-        
-    except Exception as e:
-        return f"Error: {str(e)}", f"Error: {str(e)}", f"Error loading history: {str(e)}"
-
-@app.callback(
-    Output('realtime-frequency-input', 'value'),
-    Input('realtime-frequency-input', 'value'),
-    [State('auth-store', 'data')],
-    prevent_initial_call=True
-)
-def update_realtime_frequency(frequency, auth_data):
-    """Update real-time job frequency in database."""
-    if not auth_data or not auth_data.get('authenticated'):
-        return 2  # Default
-    
-    if frequency and 1 <= frequency <= 24:
-        try:
-            import sqlite3
-            conn = sqlite3.connect('data/usgs_cache.db')
-            cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE update_schedules 
-                SET frequency_hours = ?, modified_at = datetime('now')
-                WHERE job_name = 'realtime_update'
-            """, (frequency,))
-            conn.commit()
-            conn.close()
-            return frequency
-        except Exception as e:
-            print(f"Error updating realtime frequency: {e}")
-    
-    return 2  # Default fallback
-
-@app.callback(
-    Output('daily-frequency-input', 'value'),
-    Input('daily-frequency-input', 'value'),
-    [State('auth-store', 'data')],
-    prevent_initial_call=True
-)
-def update_daily_frequency(frequency, auth_data):
-    """Update daily job frequency in database."""
-    if not auth_data or not auth_data.get('authenticated'):
-        return 12  # Default
-    
-    if frequency and 6 <= frequency <= 72:
-        try:
-            import sqlite3
-            conn = sqlite3.connect('data/usgs_cache.db')
-            cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE update_schedules 
-                SET frequency_hours = ?, modified_at = datetime('now')
-                WHERE job_name = 'daily_update'
-            """, (frequency,))
-            conn.commit()
-            conn.close()
-            return frequency
-        except Exception as e:
-            print(f"Error updating daily frequency: {e}")
-    
-    return 12  # Default fallback
+# (Legacy callbacks removed - components no longer exist in layout)
 
 # Manual job execution callbacks
 
 
 # Admin Panel Callbacks
-
-@app.callback(
-    [Output('admin-system-info', 'children')],
-    [Input('system-status-btn', 'n_clicks')],
-    [State('auth-store', 'data')],
-    prevent_initial_call=True
-)
-def show_system_status(clicks, auth_data):
-    """Show system status information."""
-    if not auth_data or not auth_data.get('authenticated'):
-        return [dbc.Alert("Authentication required", color="danger")]
-    
-    if clicks:
-        try:
-            import sqlite3
-            import os
-            from datetime import datetime
-            
-            # Get database info
-            db_path = "data/usgs_cache.db"
-            db_size = os.path.getsize(db_path) if os.path.exists(db_path) else 0
-            db_size_mb = db_size / (1024 * 1024)
-            
-            # Get cache stats
-            conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-            
-            # Count cached data
-            cursor.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table'")
-            table_count = cursor.fetchone()[0]
-            
-            conn.close()
-            
-            return [dbc.Card([
-                dbc.CardBody([
-                    html.H6("Database Status"),
-                    html.P(f"📁 Cache size: {db_size_mb:.2f} MB"),
-                    html.P(f"📊 Tables: {table_count}"),
-                    html.P(f"🕐 Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"),
-                ])
-            ])]
-            
-        except Exception as e:
-            return [dbc.Alert(f"Error getting system status: {str(e)}", color="warning")]
-    
-    return [html.P("Click 'System Status' to view information.", className="text-muted")]
-
-
-@app.callback(
-    [Output('admin-activity-log', 'children')],
-    [Input('main-tabs', 'active_tab')],
-    [State('auth-store', 'data')],
-    prevent_initial_call=True
-)
-def show_activity_log(active_tab, auth_data):
-    """Show recent activity log."""
-    if active_tab != "admin-tab" or not auth_data or not auth_data.get('authenticated'):
-        return [""]
-    
-    # Simulated activity log
-    activities = [
-        {"time": "10:30 AM", "action": "Dashboard accessed", "user": "Public"},
-        {"time": "10:25 AM", "action": "Data refresh completed", "user": "System"},
-        {"time": "10:20 AM", "action": "Admin login", "user": auth_data.get('username', 'Admin')},
-    ]
-    
-    log_items = []
-    for activity in activities:
-        log_items.append(
-            dbc.ListGroupItem([
-                html.Div([
-                    html.Small(activity["time"], className="text-muted float-end"),
-                    html.Strong(activity["action"]),
-                    html.Br(),
-                    html.Small(f"User: {activity['user']}", className="text-muted")
-                ])
-            ])
-        )
-    
-    return [dbc.ListGroup(log_items, flush=True)]
+# (Legacy Admin callbacks removed - components no longer exist in layout)
 
 
 # Main Dashboard Callbacks
@@ -1058,38 +739,30 @@ def show_activity_log(active_tab, auth_data):
     [Output('gauges-store', 'data'),
      Output('status-alerts', 'children'),
      Output('site-limit-store', 'data')],
-    [Input('refresh-gauges-btn', 'n_clicks'),
-     Input('site-limit-input', 'value')],
+    [Input('url', 'pathname')],
     prevent_initial_call=False
 )
-def load_gauge_data(refresh_clicks, site_limit):
-    """Load gauge data on app start or refresh, using the filters table for metadata."""
+def load_gauge_data(pathname):
+    """Load gauge data on app start from the filters table (modern system)."""
     import sqlite3
+    
+    print(f"\n=== load_gauge_data CALLBACK FIRED ===")
+    print(f"pathname: {pathname}")
+    
     try:
-        ctx = callback_context
+        # Fixed site limit (no longer configurable from UI)
+        site_limit = 300
+        print(f"Using site_limit: {site_limit}")
         
-        # Validate site limit input
-        if site_limit is None or site_limit < 1:
-            site_limit = 300
-        elif site_limit > 3000:
-            site_limit = 3000
-        
-        # Determine if this is a refresh or initial load
-        refresh = False
-        if ctx.triggered:
-            trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
-            if trigger_id == 'refresh-gauges-btn' and refresh_clicks:
-                refresh = True
-        
-        # Always refresh the filters table if requested
-        if refresh:
-            data_manager.load_regional_gauges(refresh=True, max_sites=site_limit)
-        
-        # Load from filters table
+        # Load from filters table (populated by modern configurable collectors)
         db_path = data_manager.cache_db
+        print(f"Loading from database: {db_path}")
+        
         conn = sqlite3.connect(db_path)
         filters_df = pd.read_sql_query('SELECT * FROM filters', conn)
         conn.close()
+        
+        print(f"Loaded {len(filters_df)} stations from filters table")
         
         global gauges_df
         gauges_df = filters_df.copy()
@@ -1109,15 +782,25 @@ def load_gauge_data(refresh_clicks, site_limit):
         
         alert_msg = f"Successfully loaded {len(gauges_df)} USGS gauges from {', '.join(TARGET_STATES)} (limit: {site_limit})"
         
+        gauges_data = gauges_df.to_dict('records')
+        print(f"Returning {len(gauges_data)} gauge records")
+        print(f"Sample gauge: {gauges_data[0] if gauges_data else 'NONE'}")
+        print("=== CALLBACK COMPLETE ===\n")
+        
         alert = dbc.Alert(
             alert_msg,
             color="success",
             dismissable=True,
             duration=4000
         )
-        return gauges_df.to_dict('records'), alert, site_limit
+        return gauges_data, alert, site_limit
         
     except Exception as e:
+        print(f"ERROR in load_gauge_data: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        print("=== CALLBACK ERROR ===\n")
+        
         alert = dbc.Alert(
             f"Error loading gauge data: {str(e)}",
             color="danger",
@@ -1126,48 +809,7 @@ def load_gauge_data(refresh_clicks, site_limit):
         return [], alert, site_limit or 300
 
 
-@app.callback(
-    Output('status-alerts', 'children', allow_duplicate=True),
-    Input('clear-cache-btn', 'n_clicks'),
-    prevent_initial_call=True
-)
-def clear_cache(n_clicks):
-    """Clear the data cache."""
-    if n_clicks:
-        try:
-            data_manager.clear_cache()
-            return dbc.Alert(
-                "Cache cleared successfully. Refresh gauges to reload data.",
-                color="info",
-                dismissable=True,
-                duration=4000
-            )
-        except Exception as e:
-            return dbc.Alert(
-                f"Error clearing cache: {str(e)}",
-                color="danger",
-                dismissable=True
-            )
-    return no_update
-
-
-@app.callback(
-    Output('site-limit-feedback', 'children'),
-    Input('site-limit-input', 'value')
-)
-def update_site_limit_feedback(site_limit):
-    """Provide feedback for site limit input."""
-    if site_limit is None:
-        return ""
-    
-    if site_limit < 1:
-        return dbc.Alert("Minimum 1 site required", color="warning", className="p-2")
-    elif site_limit > 3000:
-        return dbc.Alert("Maximum 3000 sites allowed", color="warning", className="p-2")
-    elif site_limit > 1000:
-        return dbc.Alert(f"Loading {site_limit} sites may take several minutes", color="info", className="p-2")
-    else:
-        return dbc.Alert(f"Will load {site_limit} sites", color="light", className="p-2")
+# Legacy callbacks removed - UI components no longer exist
 
 
 @app.callback(
@@ -1197,6 +839,15 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, searc
             height=700
         )
         return empty_fig, "Loading...", "Loading..."
+    
+    # Check what triggered the callback - don't auto-fit bounds if just changing map style/height
+    ctx = callback_context
+    auto_fit = True  # Default to auto-fit
+    if ctx.triggered:
+        trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        # Don't auto-fit for map style, height changes, or when map is just being built from store
+        if trigger_id in ['map-style-dropdown', 'map-height-dropdown', 'gauges-store']:
+            auto_fit = False
     
     # Convert data to DataFrame
     all_gauges = pd.DataFrame(gauges_data)
@@ -1258,7 +909,7 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, searc
             selected_gauge=selected_gauge,
             map_style=map_style,
             height=map_height,
-            auto_fit_bounds=True  # Auto-fit bounds for filtered data
+            auto_fit_bounds=auto_fit  # Only auto-fit when filters change, not on map style/height changes
         )
     else:
         fig = go.Figure()
@@ -1487,17 +1138,21 @@ def update_dropdown_options(selected_states):
         else:
             state_filtered = filters_df
         
-        # Get unique basins
+        # Get unique basins - convert to string and filter out invalid values
         basins = state_filtered['basin'].dropna().unique()
-        basin_options = [{"label": basin, "value": basin} for basin in sorted(basins)]
+        basins_str = [str(b) for b in basins if b and not isinstance(b, bytes)]
+        basin_options = [{"label": basin, "value": basin} for basin in sorted(basins_str)]
         
-        # Get unique HUC codes
+        # Get unique HUC codes - convert to string and filter out invalid values
         huc_codes = state_filtered['huc_code'].dropna().unique()
-        huc_options = [{"label": huc, "value": huc} for huc in sorted(huc_codes)]
+        huc_str = [str(h) for h in huc_codes if h and not isinstance(h, bytes)]
+        huc_options = [{"label": huc, "value": huc} for huc in sorted(huc_str)]
         
         return basin_options, huc_options
     except Exception as e:
         print(f"Error updating dropdown options: {e}")
+        import traceback
+        traceback.print_exc()
         return [], []
 
 
@@ -1812,30 +1467,7 @@ def update_admin_tab_styles(dash_clicks, config_clicks, station_clicks,
     return colors
 
 
-@app.callback(
-    Output('stations-table-content', 'children'),
-    [Input('filter-stations-btn', 'n_clicks')],
-    [State('station-state-filter', 'value'),
-     State('station-huc-filter', 'value'),
-     State('station-source-filter', 'value'),
-     State('station-search-filter', 'value')]
-)
-def filter_stations_table(n_clicks, states, huc_code, sources, search_text):
-    """Filter stations table based on user input."""
-    if not n_clicks:
-        # Return default view on initial load
-        from admin_components import get_stations_table
-        return get_stations_table(limit=50)
-    
-    from admin_components import get_stations_table
-    return get_stations_table(
-        states=states,
-        huc_code=huc_code.strip() if huc_code else None,
-        source_datasets=sources,
-        search_text=search_text.strip() if search_text else None,
-        limit=200  # Higher limit when filtering
-    )
-
+# Removed filter_stations_table callback - component doesn't exist
 
 @app.callback(
     [Output('system-health-indicators', 'children'),

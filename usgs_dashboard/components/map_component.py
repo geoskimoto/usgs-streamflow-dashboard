@@ -390,18 +390,18 @@ class ModernMapComponent:
     
     def _add_selected_gauge_highlight(self, fig: go.Figure, gauges_df: pd.DataFrame, 
                                     selected_gauge: str):
-        """Add highlight for selected gauge using modern Scattermap."""
+        """Add highlight for selected gauge using Scattermapbox (not Scattermap)."""
         selected_data = gauges_df[gauges_df['site_id'] == selected_gauge].iloc[0]
         
-        # Add professional multi-layer selection highlight (reduced sizes)
-        # Layer 1: Outer ring (moderate size, semi-transparent)
-        fig.add_trace(go.Scattermap(
+        # Add larger, more visible circle highlight for selected station
+        # Layer 1: Outer ring (larger size, semi-transparent orange)
+        fig.add_trace(go.Scattermapbox(
             lat=[selected_data['latitude']],
             lon=[selected_data['longitude']],
             mode='markers',
             marker=dict(
-                size=20,  # Reduced from 35
-                color='rgba(255, 69, 0, 0.3)',  # Orange with transparency
+                size=28,  # Larger outer ring for visibility
+                color='rgba(255, 69, 0, 0.4)',  # Orange with transparency
                 symbol='circle'
             ),
             name='Selection Outer Ring',
@@ -409,15 +409,15 @@ class ModernMapComponent:
             hoverinfo='skip'
         ))
         
-        # Layer 2: Inner highlight (smaller diamond)
-        fig.add_trace(go.Scattermap(
+        # Layer 2: Inner circle (solid, bright orange)
+        fig.add_trace(go.Scattermapbox(
             lat=[selected_data['latitude']],
             lon=[selected_data['longitude']],
             mode='markers',
             marker=dict(
-                size=14,  # Reduced from 22
-                color='#FF4500',  # Orange red for visibility
-                symbol='diamond'  # Professional diamond shape (no line property supported in Scattermap)
+                size=16,  # Solid inner circle
+                color='#FF4500',  # Orange red for high visibility
+                symbol='circle'  # Simple circle - very visible
             ),
             hovertemplate=(
                 f"<b>🎯 SELECTED: {selected_data['station_name']}</b><br>"
