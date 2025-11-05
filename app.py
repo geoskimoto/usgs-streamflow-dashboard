@@ -1004,41 +1004,20 @@ def show_activity_log(active_tab, auth_data):
     [Output('gauges-store', 'data'),
      Output('status-alerts', 'children'),
      Output('site-limit-store', 'data')],
-    [Input('url', 'pathname'),
-     Input('refresh-gauges-btn', 'n_clicks')],
-    [State('site-limit-input', 'value')],
+    [Input('url', 'pathname')],
     prevent_initial_call=False
 )
-def load_gauge_data(pathname, refresh_clicks, site_limit):
+def load_gauge_data(pathname):
     """Load gauge data on app start from the filters table (modern system)."""
     import sqlite3
     
     print(f"\n=== load_gauge_data CALLBACK FIRED ===")
     print(f"pathname: {pathname}")
-    print(f"refresh_clicks: {refresh_clicks}")
-    print(f"site_limit: {site_limit}")
     
     try:
-        ctx = callback_context
-        print(f"Callback triggered by: {ctx.triggered}")
-        
-        # Validate site limit
-        if site_limit is None or site_limit < 1:
-            site_limit = 300
-        elif site_limit > 3000:
-            site_limit = 3000
-        
+        # Fixed site limit (no longer configurable from UI)
+        site_limit = 300
         print(f"Using site_limit: {site_limit}")
-        
-        # Check if this is a manual refresh (optional - could trigger manual load if needed)
-        is_refresh = False
-        if ctx.triggered:
-            trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
-            if trigger_id == 'refresh-gauges-btn' and refresh_clicks:
-                is_refresh = True
-                print("Manual refresh triggered")
-                # Note: Manual refresh still just loads from filters table
-                # The modern system updates filters via scheduled collectors
         
         # Load from filters table (populated by modern configurable collectors)
         db_path = data_manager.cache_db
