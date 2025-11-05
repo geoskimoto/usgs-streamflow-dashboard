@@ -840,6 +840,15 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, searc
         )
         return empty_fig, "Loading...", "Loading..."
     
+    # Check what triggered the callback - don't auto-fit bounds if just changing map style/height
+    ctx = callback_context
+    auto_fit = True  # Default to auto-fit
+    if ctx.triggered:
+        trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        # Don't auto-fit for map style, height changes, or when map is just being built from store
+        if trigger_id in ['map-style-dropdown', 'map-height-dropdown', 'gauges-store']:
+            auto_fit = False
+    
     # Convert data to DataFrame
     all_gauges = pd.DataFrame(gauges_data)
     original_count = len(all_gauges)
@@ -900,7 +909,7 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, searc
             selected_gauge=selected_gauge,
             map_style=map_style,
             height=map_height,
-            auto_fit_bounds=True  # Auto-fit bounds for filtered data
+            auto_fit_bounds=auto_fit  # Only auto-fit when filters change, not on map style/height changes
         )
     else:
         fig = go.Figure()
