@@ -30,7 +30,7 @@ logging.basicConfig(
 class SmartScheduler:
     """Database-driven job scheduler for USGS data updates."""
     
-    def __init__(self, db_path: str = "data/usgs_cache.db"):
+    def __init__(self, db_path: str = "data/usgs_data.db"):
         self.db_path = db_path
         self.project_root = os.path.dirname(os.path.abspath(__file__))
         
@@ -43,7 +43,7 @@ class SmartScheduler:
             # Get all enabled jobs
             cursor.execute('''
                 SELECT job_name, frequency_hours, last_run, next_run, retention_days
-                FROM update_schedules 
+                FROM schedules 
                 WHERE enabled = 1
             ''')
             
@@ -169,7 +169,7 @@ class SmartScheduler:
             next_run = now + timedelta(hours=frequency_hours)
             
             cursor.execute('''
-                UPDATE update_schedules 
+                UPDATE schedules 
                 SET last_run = ?, next_run = ?, modified_at = ?
                 WHERE job_name = ?
             ''', (now.isoformat(), next_run.isoformat(), now.isoformat(), job_name))
