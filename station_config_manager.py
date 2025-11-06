@@ -16,7 +16,7 @@ import logging
 class StationConfigurationManager:
     """Manages station configurations and collection operations."""
     
-    def __init__(self, db_path="data/station_config.db"):
+    def __init__(self, db_path="data/usgs_data.db"):  # Updated to unified database
         """Initialize with database path."""
         self.db_path = Path(db_path)
         self.connection = None
