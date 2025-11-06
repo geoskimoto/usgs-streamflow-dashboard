@@ -141,9 +141,25 @@ class WaterYearDateTime:
         return result_df
     
     def get_current_water_year_day(self) -> int:
-        """Get the current day of the water year."""
+        """Get the current day of the water year (integer)."""
         today = pd.Timestamp.now()
         return self.get_day_of_water_year(today)
+    
+    def get_current_water_year_day_precise(self) -> float:
+        """Get the current day of the water year with fractional day (includes time)."""
+        now = pd.Timestamp.now()
+        water_year = self.get_water_year(now)
+        
+        # Water year start date
+        if now.month >= self.wy_start_month:
+            wy_start = pd.Timestamp(now.year, self.wy_start_month, 1)
+        else:
+            wy_start = pd.Timestamp(now.year - 1, self.wy_start_month, 1)
+        
+        # Calculate day difference including fractional day (time component)
+        time_delta = now - wy_start
+        day_of_wy_precise = time_delta.total_seconds() / (24 * 3600) + 1
+        return day_of_wy_precise
     
     def get_default_zoom_range(self, days_buffer: int = 30) -> Tuple[int, int]:
         """
@@ -267,8 +283,7 @@ class WaterYearDateTime:
                 showlegend=True,
                 name='10th-90th Percentile Range',
                 hovertemplate=(
-                    "Day of WY: %{x}<br>" +
-                    "10th-90th Percentile Range<br>" +
+                    "Day %{x}: 10th-90th Percentile" +
                     "<extra></extra>"
                 )
             ))
@@ -293,8 +308,7 @@ class WaterYearDateTime:
                 showlegend=True,
                 name='25th-75th Percentile Range',
                 hovertemplate=(
-                    "Day of WY: %{x}<br>" +
-                    "25th-75th Percentile Range<br>" +
+                    "Day %{x}: 25th-75th Percentile" +
                     "<extra></extra>"
                 )
             ))
@@ -366,9 +380,7 @@ class WaterYearDateTime:
                 visible='legendonly',  # Off by default
                 showlegend=True,
                 hovertemplate=(
-                    "Mean<br>" +
-                    "Day of WY: %{x}<br>" +
-                    "Mean Discharge: %{y:.1f} cfs<br>" +
+                    "<b>Mean</b><br>Day %{x}: %{y:.1f} cfs" +
                     "<extra></extra>"
                 )
             ))
@@ -383,9 +395,7 @@ class WaterYearDateTime:
                 visible=True,  # On by default
                 showlegend=True,
                 hovertemplate=(
-                    "Median<br>" +
-                    "Day of WY: %{x}<br>" +
-                    "Median Discharge: %{y:.1f} cfs<br>" +
+                    "<b>Median</b><br>Day %{x}: %{y:.1f} cfs" +
                     "<extra></extra>"
                 )
             ))
@@ -414,9 +424,8 @@ class WaterYearDateTime:
                 visible=visible,
                 showlegend=True,
                 hovertemplate=(
-                    f"Water Year {year}<br>" +
-                    "Date: %{customdata}<br>" +
-                    "Discharge: %{y:.1f} cfs<br>" +
+                    f"<b>WY {year}</b><br>" +
+                    "%{customdata}: %{y:.1f} cfs" +
                     "<extra></extra>"
                 ),
                 customdata=year_data['month_day']
@@ -424,7 +433,7 @@ class WaterYearDateTime:
         
         # Add current day marker if requested (on top of everything)
         if show_current_day:
-            current_day = self.get_current_water_year_day()
+            current_day = self.get_current_water_year_day_precise()  # Use precise time
             if 1 <= current_day <= 366:
                 # Get y-axis range for the vertical line
                 y_min = plot_data['value'].min()
@@ -442,8 +451,8 @@ class WaterYearDateTime:
                     visible=True,
                     showlegend=True,
                     hovertemplate=(
-                        "Current Day<br>" +
-                        f"Day of WY: {current_day}<br>" +
+                        "<b>Current Day</b><br>" +
+                        f"Day {current_day:.1f}: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')}" +
                         "<extra></extra>"
                     )
                 ))

@@ -40,7 +40,7 @@ class ConfigurableRealtimeUpdater(ConfigurableDataCollector):
     def __init__(self, db_path: str = "data/usgs_data.db"):
         """Initialize the configurable real-time updater."""
         super().__init__(db_path)
-        self.retention_days = 5  # Keep last 5 days of real-time data
+        self.retention_days = 7  # Keep last 7 days of real-time data
         
     def ensure_realtime_table(self):
         """Ensure the real-time discharge table exists with proper schema."""
@@ -201,7 +201,7 @@ class ConfigurableRealtimeUpdater(ConfigurableDataCollector):
         config_id : int, optional  
             Configuration ID to use
         retention_days : int, optional
-            Days of data to retain (default: 5)
+            Days of data to retain (default: 7)
             
         Returns:
         --------
@@ -313,8 +313,8 @@ def main():
     parser.add_argument('--config', type=str, 
                       help='Configuration name (e.g., "Pacific Northwest Full", "Columbia River Basin")')
     parser.add_argument('--config-id', type=int, help='Configuration ID number')
-    parser.add_argument('--retention-days', type=int, default=5,
-                      help='Days of real-time data to retain (default: 5)')
+    parser.add_argument('--retention-days', type=int, default=7,
+                      help='Days of real-time data to retain (default: 7)')
     parser.add_argument('--db-path', type=str, default='data/usgs_data.db',
                       help='Path to database file (default: data/usgs_data.db)')
     parser.add_argument('--list-configs', action='store_true',

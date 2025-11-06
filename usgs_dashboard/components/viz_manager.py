@@ -818,6 +818,12 @@ class VisualizationManager:
                     current_year_rt = current_year_rt.sort_values('day_of_wy')
                     
                     # Add real-time data trace with day-of-water-year x-axis
+                    # Create custom data with both date and time
+                    customdata_array = np.column_stack([
+                        current_year_rt['month_day'].values,
+                        current_year_rt.index.strftime('%H:%M').values
+                    ])
+                    
                     fig.add_trace(
                         go.Scatter(
                             x=current_year_rt['day_of_wy'],
@@ -831,14 +837,12 @@ class VisualizationManager:
                             ),
                             opacity=0.9,
                             hovertemplate=(
-                                '<b>Real-time Data</b><br>' +
-                                f'Water Year {current_wy}<br>' +
-                                'Date: %{customdata}<br>' +
-                                'Day of WY: %{x}<br>' +
-                                'Discharge: %{y:.2f} cfs<br>' +
+                                '<b>Real-time WY' + f' {current_wy}</b><br>' +
+                                'Day %{x:.1f}: %{customdata[0]} %{customdata[1]}<br>' +
+                                'Discharge: %{y:.2f} cfs' +
                                 '<extra></extra>'
                             ),
-                            customdata=current_year_rt['month_day']
+                            customdata=customdata_array
                         )
                     )
                     print(f"Added real-time overlay to water year plot: {len(current_year_rt)} points for WY {current_wy}")

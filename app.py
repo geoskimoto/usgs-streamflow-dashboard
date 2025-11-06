@@ -1628,6 +1628,26 @@ def handle_schedule_actions(run_clicks, refresh_clicks, selected_rows, table_dat
     return "", get_schedules_table(), None
 
 
+@app.callback(
+    Output('admin-system-info', 'children'),
+    [Input('admin-content', 'style'),
+     Input('url', 'pathname')]
+)
+def update_admin_system_info(admin_style, pathname):
+    """Update the admin system information section when admin panel is visible."""
+    from admin_components import get_system_info
+    
+    # Load system info when admin content is visible (display: block)
+    if admin_style and admin_style.get('display') == 'block':
+        return get_system_info()
+    
+    # Also load if pathname is /admin (for direct URL access)
+    if pathname == '/admin':
+        return get_system_info()
+    
+    return None
+
+
 if __name__ == '__main__':
     import os
     
