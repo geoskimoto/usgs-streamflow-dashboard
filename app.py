@@ -1628,6 +1628,21 @@ def handle_schedule_actions(run_clicks, refresh_clicks, selected_rows, table_dat
     return "", get_schedules_table(), None
 
 
+@app.callback(
+    Output('admin-system-info', 'children'),
+    [Input('url', 'pathname')]
+)
+def update_admin_system_info(pathname):
+    """Update the admin system information section."""
+    from admin_components import get_system_info
+    
+    # Only load system info when on admin page
+    if pathname == '/admin':
+        return get_system_info()
+    
+    return None
+
+
 if __name__ == '__main__':
     import os
     

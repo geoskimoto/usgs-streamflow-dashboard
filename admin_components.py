@@ -525,3 +525,202 @@ def get_schedules_table():
             
     except Exception as e:
         return dbc.Alert(f"Error loading schedules: {e}", color="danger")
+
+
+def get_system_info():
+    """Get comprehensive database and system information."""
+    import os
+    import sqlite3
+    from pathlib import Path
+    from datetime import datetime
+    
+    try:
+        db_path = "data/usgs_data.db"
+        
+        if not os.path.exists(db_path):
+            return dbc.Alert("Database not found!", color="danger")
+        
+        # Get database file size
+        db_size_bytes = os.path.getsize(db_path)
+        db_size_mb = db_size_bytes / (1024 * 1024)
+        db_size_gb = db_size_bytes / (1024 * 1024 * 1024)
+        
+        if db_size_gb >= 1:
+            db_size_str = f"{db_size_gb:.2f} GB"
+        else:
+            db_size_str = f"{db_size_mb:.2f} MB"
+        
+        # Get database modification time
+        db_mtime = os.path.getmtime(db_path)
+        db_modified = datetime.fromtimestamp(db_mtime).strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Connect and get database information
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Get table information
+        cursor.execute("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' 
+            ORDER BY name
+        """)
+        tables = [row[0] for row in cursor.fetchall()]
+        
+        # Get row counts for main tables
+        table_stats = []
+        main_tables = ['stations', 'configurations', 'schedules', 'collection_logs', 
+                      'station_errors', 'streamflow_data', 'realtime_discharge']
+        
+        for table in main_tables:
+            if table in tables:
+                cursor.execute(f"SELECT COUNT(*) FROM {table}")
+                count = cursor.fetchone()[0]
+                table_stats.append({'table': table, 'rows': f"{count:,}"})
+        
+        # Get active stations count
+        cursor.execute("SELECT COUNT(*) FROM stations WHERE is_active = 1")
+        active_stations = cursor.fetchone()[0]
+        
+        # Get total stations
+        cursor.execute("SELECT COUNT(*) FROM stations")
+        total_stations = cursor.fetchone()[0]
+        
+        # Get active configurations
+        cursor.execute("SELECT COUNT(*) FROM configurations WHERE is_active = 1")
+        active_configs = cursor.fetchone()[0]
+        
+        # Get date range for streamflow data
+        cursor.execute("""
+            SELECT MIN(date), MAX(date) 
+            FROM streamflow_data
+        """)
+        date_range = cursor.fetchone()
+        min_date = date_range[0] if date_range[0] else "N/A"
+        max_date = date_range[1] if date_range[1] else "N/A"
+        
+        # Get realtime data info
+        cursor.execute("""
+            SELECT MIN(datetime), MAX(datetime), COUNT(DISTINCT site_id)
+            FROM realtime_discharge
+        """)
+        realtime_info = cursor.fetchone()
+        realtime_min = realtime_info[0] if realtime_info[0] else "N/A"
+        realtime_max = realtime_info[1] if realtime_info[1] else "N/A"
+        realtime_sites = realtime_info[2] if realtime_info[2] else 0
+        
+        conn.close()
+        
+        # Create information display
+        return html.Div([
+            # Database File Info
+            dbc.Card([
+                dbc.CardBody([
+                    html.H6("💾 Database File", className="text-muted mb-3"),
+                    dbc.Row([
+                        dbc.Col([
+                            html.Strong("File:"), html.Br(),
+                            html.Code(db_path, style={'fontSize': '0.85rem'})
+                        ], width=12, className="mb-2"),
+                        dbc.Col([
+                            html.Strong("Size:"), f" {db_size_str}",
+                        ], width=6, className="mb-2"),
+                        dbc.Col([
+                            html.Strong("Last Modified:"), html.Br(),
+                            html.Small(db_modified)
+                        ], width=6, className="mb-2"),
+                    ])
+                ])
+            ], className="mb-3"),
+            
+            # Key Metrics
+            dbc.Card([
+                dbc.CardBody([
+                    html.H6("📊 Key Metrics", className="text-muted mb-3"),
+                    dbc.Row([
+                        dbc.Col([
+                            html.Div([
+                                html.H4(f"{active_stations:,}", className="text-primary mb-0"),
+                                html.Small("Active Stations", className="text-muted")
+                            ], className="text-center")
+                        ], width=3),
+                        dbc.Col([
+                            html.Div([
+                                html.H4(f"{total_stations:,}", className="text-secondary mb-0"),
+                                html.Small("Total Stations", className="text-muted")
+                            ], className="text-center")
+                        ], width=3),
+                        dbc.Col([
+                            html.Div([
+                                html.H4(f"{active_configs:,}", className="text-success mb-0"),
+                                html.Small("Active Configurations", className="text-muted")
+                            ], className="text-center")
+                        ], width=3),
+                        dbc.Col([
+                            html.Div([
+                                html.H4(f"{realtime_sites:,}", className="text-info mb-0"),
+                                html.Small("Real-time Sites", className="text-muted")
+                            ], className="text-center")
+                        ], width=3),
+                    ])
+                ])
+            ], className="mb-3"),
+            
+            # Table Statistics
+            dbc.Card([
+                dbc.CardBody([
+                    html.H6("📋 Table Statistics", className="text-muted mb-3"),
+                    dash_table.DataTable(
+                        data=table_stats,
+                        columns=[
+                            {'name': 'Table Name', 'id': 'table'},
+                            {'name': 'Row Count', 'id': 'rows'}
+                        ],
+                        style_cell={'textAlign': 'left', 'padding': '8px', 'fontSize': '0.9rem'},
+                        style_header={'backgroundColor': '#f8f9fa', 'fontWeight': 'bold'},
+                        style_data_conditional=[
+                            {
+                                'if': {'row_index': 'odd'},
+                                'backgroundColor': '#f8f9fa'
+                            }
+                        ]
+                    )
+                ])
+            ], className="mb-3"),
+            
+            # Data Coverage
+            dbc.Card([
+                dbc.CardBody([
+                    html.H6("📅 Data Coverage", className="text-muted mb-3"),
+                    dbc.Row([
+                        dbc.Col([
+                            html.Strong("Historical Daily Data:"), html.Br(),
+                            html.Small(f"{min_date} to {max_date}", className="text-muted")
+                        ], width=6, className="mb-2"),
+                        dbc.Col([
+                            html.Strong("Real-time Data:"), html.Br(),
+                            html.Small(f"{realtime_min} to {realtime_max}", className="text-muted")
+                        ], width=6, className="mb-2"),
+                    ])
+                ])
+            ], className="mb-3"),
+            
+            # All Tables List
+            dbc.Card([
+                dbc.CardBody([
+                    html.H6("🗂️ All Database Tables", className="text-muted mb-3"),
+                    html.Div([
+                        dbc.Badge(table, color="light", text_color="dark", className="me-2 mb-2")
+                        for table in tables
+                    ])
+                ])
+            ])
+        ])
+        
+    except Exception as e:
+        import traceback
+        return dbc.Alert([
+            html.H6("Error loading system information", className="mb-2"),
+            html.Pre(str(e), style={'fontSize': '0.8rem'}),
+            html.Hr(),
+            html.Pre(traceback.format_exc(), style={'fontSize': '0.7rem', 'maxHeight': '200px', 'overflow': 'auto'})
+        ], color="danger")
