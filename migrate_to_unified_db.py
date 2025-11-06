@@ -43,10 +43,11 @@ logger = logging.getLogger(__name__)
 class DatabaseMigration:
     """Migrate station_config.db and usgs_cache.db to unified usgs_data.db"""
     
-    def __init__(self, dry_run: bool = False, verbose: bool = False, no_backup: bool = False):
+    def __init__(self, dry_run: bool = False, verbose: bool = False, no_backup: bool = False, force: bool = False):
         self.dry_run = dry_run
         self.verbose = verbose
         self.no_backup = no_backup
+        self.force = force
         
         # Database paths
         self.config_db_path = Path('data/station_config.db')
@@ -530,8 +531,15 @@ class DatabaseMigration:
             cursor = cache_conn.execute("SELECT COUNT(*) FROM realtime_discharge")
             total = cursor.fetchone()[0]
             
+            # Check for negative/invalid values
+            cursor = cache_conn.execute("SELECT COUNT(*) FROM realtime_discharge WHERE discharge_cfs < 0")
+            invalid_count = cursor.fetchone()[0]
+            if invalid_count > 0:
+                logger.warning(f"  Found {invalid_count} records with negative discharge (will set to NULL)")
+            
             batch_size = 1000
             offset = 0
+            skipped = 0
             
             while offset < total:
                 cursor = cache_conn.execute(
@@ -540,19 +548,32 @@ class DatabaseMigration:
                 )
                 rows = cursor.fetchall()
                 
+                # Clean data: skip records with negative or NULL discharge
+                cleaned_rows = []
+                for row in rows:
+                    discharge = row[3]  # discharge_cfs is index 3
+                    # Skip negative or invalid values entirely
+                    if discharge is None or discharge < 0:
+                        skipped += 1
+                        continue
+                    cleaned_rows.append((row[1], row[2], discharge, row[4], row[5]))
+                
                 target_conn.executemany("""
                 INSERT INTO realtime_discharge 
                 (site_no, datetime_utc, discharge_cfs, data_quality, created_at)
                 VALUES (?, ?, ?, ?, ?)
-                """, [(row[1], row[2], row[3], row[4], row[5]) for row in rows])
+                """, cleaned_rows)
                 
                 offset += batch_size
                 if self.verbose:
                     logger.info(f"  Copied {min(offset, total)}/{total} records...")
             
             target_conn.commit()
-            self.stats['realtime_records'] = total
-            logger.info(f"✓ Copied {total} realtime discharge records")
+            self.stats['realtime_records'] = total - skipped
+            if skipped > 0:
+                logger.info(f"✓ Copied {total - skipped}/{total} realtime discharge records ({skipped} invalid values skipped)")
+            else:
+                logger.info(f"✓ Copied {total} realtime discharge records")
             
             target_conn.close()
         else:
@@ -827,7 +848,7 @@ class DatabaseMigration:
                 return False
             
             # Confirm unless force or dry-run
-            if not self.dry_run:
+            if not self.dry_run and not self.force:
                 print("\n" + "!" * 80)
                 print("WARNING: This will create a new unified database.")
                 print("Source databases will be backed up but NOT modified.")
@@ -910,7 +931,8 @@ def main():
     migration = DatabaseMigration(
         dry_run=args.dry_run,
         verbose=args.verbose,
-        no_backup=args.no_backup
+        no_backup=args.no_backup,
+        force=args.force
     )
     
     success = migration.run()
