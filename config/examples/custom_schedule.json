@@ -1,0 +1,25 @@
+{
+  "name": "Every 30 Minutes - High Priority Stations",
+  "description": "Frequent updates for critical monitoring stations",
+  "configuration": "Development Test Set",
+  "data_type": "realtime",
+  "enabled": true,
+  "timing": {
+    "type": "interval",
+    "interval_minutes": 30,
+    "description": "Every 30 minutes"
+  },
+  "options": {
+    "retry_on_error": true,
+    "max_retries": 5,
+    "retry_delay_seconds": 120,
+    "timeout_seconds": 45,
+    "max_concurrent_requests": 15
+  },
+  "tasks": [
+    "collect_realtime_data",
+    "check_alert_thresholds",
+    "send_notifications"
+  ],
+  "_notes": "This is an example custom schedule. Adjust timing, retries, and tasks as needed for your use case."
+}

@@ -1,0 +1,31 @@
+{
+  "name": "Washington State Rivers",
+  "description": "Major rivers in Washington State with large drainage areas",
+  "is_default": false,
+  "is_active": true,
+  "created_by": "user",
+  "station_source": {
+    "type": "filter",
+    "base_config": "Pacific Northwest Full",
+    "filters": [
+      {
+        "field": "state",
+        "operator": "=",
+        "value": "WA"
+      },
+      {
+        "field": "drainage_area",
+        "operator": ">=",
+        "value": 1000
+      },
+      {
+        "field": "station_name",
+        "operator": "contains",
+        "value": "RIVER"
+      }
+    ],
+    "sort_by": "drainage_area",
+    "sort_order": "desc"
+  },
+  "_notes": "This is an example custom configuration. You can create similar ones via the Admin Panel or by adding to default_configurations.json."
+}
