@@ -591,7 +591,7 @@ def get_system_info():
         
         # Get date range for streamflow data
         cursor.execute("""
-            SELECT MIN(date), MAX(date) 
+            SELECT MIN(start_date), MAX(end_date) 
             FROM streamflow_data
         """)
         date_range = cursor.fetchone()
@@ -600,7 +600,7 @@ def get_system_info():
         
         # Get realtime data info
         cursor.execute("""
-            SELECT MIN(datetime), MAX(datetime), COUNT(DISTINCT site_id)
+            SELECT MIN(datetime_utc), MAX(datetime_utc), COUNT(DISTINCT site_no)
             FROM realtime_discharge
         """)
         realtime_info = cursor.fetchone()
