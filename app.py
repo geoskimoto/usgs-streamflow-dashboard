@@ -764,6 +764,11 @@ def load_gauge_data(pathname):
         
         print(f"Loaded {len(filters_df)} stations from stations table")
         
+        # Rename usgs_id to site_id for backward compatibility with map component
+        if 'usgs_id' in filters_df.columns and 'site_id' not in filters_df.columns:
+            filters_df = filters_df.rename(columns={'usgs_id': 'site_id'})
+            print("Renamed 'usgs_id' to 'site_id' for compatibility")
+        
         global gauges_df
         gauges_df = filters_df.copy()
         
