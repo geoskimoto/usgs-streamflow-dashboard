@@ -743,7 +743,7 @@ def handle_logout(logout_clicks):
     prevent_initial_call=False
 )
 def load_gauge_data(pathname):
-    """Load gauge data on app start from the filters table (modern system)."""
+    """Load gauge data on app start from the stations table (unified database)."""
     import sqlite3
     
     print(f"\n=== load_gauge_data CALLBACK FIRED ===")
@@ -754,15 +754,20 @@ def load_gauge_data(pathname):
         site_limit = 300
         print(f"Using site_limit: {site_limit}")
         
-        # Load from filters table (populated by modern configurable collectors)
+        # Load from stations table (unified database)
         db_path = data_manager.cache_db
         print(f"Loading from database: {db_path}")
         
         conn = sqlite3.connect(db_path)
-        filters_df = pd.read_sql_query('SELECT * FROM filters', conn)
+        filters_df = pd.read_sql_query('SELECT * FROM stations', conn)
         conn.close()
         
-        print(f"Loaded {len(filters_df)} stations from filters table")
+        print(f"Loaded {len(filters_df)} stations from stations table")
+        
+        # Rename usgs_id to site_id for backward compatibility with map component
+        if 'usgs_id' in filters_df.columns and 'site_id' not in filters_df.columns:
+            filters_df = filters_df.rename(columns={'usgs_id': 'site_id'})
+            print("Renamed 'usgs_id' to 'site_id' for compatibility")
         
         global gauges_df
         gauges_df = filters_df.copy()

@@ -1,0 +1,147 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "version": "1.0",
+  "last_updated": "2025-11-06",
+  "description": "System-wide settings for USGS Streamflow Dashboard",
+  
+  "database": {
+    "path": "data/usgs_data.db",
+    "backup_enabled": true,
+    "backup_interval_hours": 24,
+    "backup_path": "data/backups",
+    "max_backups": 7,
+    "auto_vacuum": true,
+    "pragma_settings": {
+      "foreign_keys": "ON",
+      "journal_mode": "WAL",
+      "synchronous": "NORMAL",
+      "temp_store": "MEMORY",
+      "mmap_size": 268435456,
+      "cache_size": -64000
+    }
+  },
+  
+  "data_collection": {
+    "default_timeout_seconds": 30,
+    "max_concurrent_requests": 10,
+    "retry_delay_seconds": 5,
+    "max_retries": 3,
+    "user_agent": "USGS-Streamflow-Dashboard/1.0",
+    "cache_expiry_days": 90,
+    "batch_size": 50,
+    "rate_limit": {
+      "enabled": true,
+      "requests_per_second": 10,
+      "burst_size": 20
+    }
+  },
+  
+  "usgs_api": {
+    "base_url": "https://waterservices.usgs.gov/nwis",
+    "iv_endpoint": "/iv/",
+    "dv_endpoint": "/dv/",
+    "site_endpoint": "/site/",
+    "format": "json",
+    "parameter_code": "00060",
+    "stat_codes": ["00001", "00002", "00003", "00008"],
+    "timeout_seconds": 30
+  },
+  
+  "dashboard": {
+    "default_map_style": "open-street-map",
+    "default_map_height": 600,
+    "max_stations_displayed": 1500,
+    "auto_refresh_interval_seconds": 300,
+    "default_date_range_days": 365,
+    "map_styles": [
+      "open-street-map",
+      "carto-positron",
+      "carto-darkmatter",
+      "stamen-terrain",
+      "stamen-toner"
+    ],
+    "marker_colors": {
+      "active": "#2E86AB",
+      "inactive": "#A23B72",
+      "error": "#F18F01",
+      "no_data": "#C73E1D",
+      "selected": "#FF4500"
+    }
+  },
+  
+  "admin_panel": {
+    "log_retention_days": 30,
+    "max_log_entries_displayed": 1000,
+    "monitoring_refresh_seconds": 30,
+    "page_size": 50,
+    "enable_debug_mode": false
+  },
+  
+  "plotting": {
+    "default_template": "plotly_white",
+    "water_year_start_month": 10,
+    "default_height": 500,
+    "default_width": null,
+    "show_legend": true,
+    "hover_mode": "x unified",
+    "colors": {
+      "current_year": "#2E86AB",
+      "historical": "rgba(200, 200, 200, 0.3)",
+      "mean": "#F18F01",
+      "median": "#A23B72",
+      "realtime": "#C73E1D",
+      "percentile_10": "rgba(100, 150, 200, 0.2)",
+      "percentile_90": "rgba(100, 150, 200, 0.2)"
+    }
+  },
+  
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "date_format": "%Y-%m-%d %H:%M:%S",
+    "file": "logs/app.log",
+    "max_bytes": 10485760,
+    "backup_count": 5,
+    "console_output": true,
+    "file_output": true,
+    "levels": {
+      "werkzeug": "WARNING",
+      "urllib3": "WARNING",
+      "requests": "WARNING"
+    }
+  },
+  
+  "performance": {
+    "cache_enabled": true,
+    "cache_type": "simple",
+    "cache_timeout_seconds": 300,
+    "compress_responses": true,
+    "enable_profiling": false
+  },
+  
+  "security": {
+    "secret_key_env": "USGS_DASHBOARD_SECRET_KEY",
+    "session_timeout_minutes": 120,
+    "enable_cors": false,
+    "allowed_origins": []
+  },
+  
+  "_comments": {
+    "environment_variables": [
+      "USGS_DB_PATH - Override database path",
+      "USGS_LOG_LEVEL - Override log level (DEBUG, INFO, WARNING, ERROR)",
+      "USGS_DASHBOARD_SECRET_KEY - Secret key for sessions",
+      "USGS_API_TIMEOUT - Override API timeout",
+      "USGS_MAX_STATIONS - Override max stations displayed",
+      "USGS_BACKUP_ENABLED - Enable/disable backups (true/false)"
+    ],
+    "pragma_settings_info": {
+      "foreign_keys": "Enforce foreign key constraints",
+      "journal_mode": "WAL = Write-Ahead Logging for better concurrency",
+      "synchronous": "NORMAL = Good balance of safety and speed",
+      "temp_store": "MEMORY = Store temp tables in memory",
+      "mmap_size": "Memory-mapped I/O size (256 MB)",
+      "cache_size": "Negative value = KB, -64000 = 64 MB cache"
+    }
+  }
+}

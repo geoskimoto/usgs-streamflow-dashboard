@@ -37,7 +37,7 @@ from station_config_manager import StationConfigurationManager
 class ConfigurableRealtimeUpdater(ConfigurableDataCollector):
     """Real-time data updater using configurable station management."""
     
-    def __init__(self, db_path: str = "data/usgs_cache.db"):
+    def __init__(self, db_path: str = "data/usgs_data.db"):
         """Initialize the configurable real-time updater."""
         super().__init__(db_path)
         self.retention_days = 5  # Keep last 5 days of real-time data
@@ -315,8 +315,8 @@ def main():
     parser.add_argument('--config-id', type=int, help='Configuration ID number')
     parser.add_argument('--retention-days', type=int, default=5,
                       help='Days of real-time data to retain (default: 5)')
-    parser.add_argument('--db-path', type=str, default='data/usgs_cache.db',
-                      help='Path to database file (default: data/usgs_cache.db)')
+    parser.add_argument('--db-path', type=str, default='data/usgs_data.db',
+                      help='Path to database file (default: data/usgs_data.db)')
     parser.add_argument('--list-configs', action='store_true',
                       help='List available configurations and exit')
     parser.add_argument('--verbose', '-v', action='store_true',

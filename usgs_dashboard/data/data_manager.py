@@ -28,7 +28,7 @@ class USGSDataManager:
             Directory to store cache database
         """
         self.cache_dir = cache_dir
-        self.cache_db = os.path.join(cache_dir, 'usgs_cache.db')
+        self.cache_db = os.path.join(cache_dir, 'usgs_data.db')  # Updated to unified database
         os.makedirs(cache_dir, exist_ok=True)
         self.setup_cache()
         
@@ -1424,20 +1424,20 @@ class USGSDataManager:
 
     def get_filters_table(self) -> pd.DataFrame:
         """
-        Get the filters table from the database.
+        Get the stations table from the unified database.
         
         Returns:
         --------
         pd.DataFrame
-            DataFrame containing all filter data
+            DataFrame containing all station data
         """
         try:
             conn = sqlite3.connect(self.cache_db)
-            filters_df = pd.read_sql_query('SELECT * FROM filters', conn)
+            filters_df = pd.read_sql_query('SELECT * FROM stations', conn)
             conn.close()
             return filters_df
         except Exception as e:
-            print(f"Error getting filters table: {e}")
+            print(f"Error getting stations table: {e}")
             return pd.DataFrame()
 
     def get_available_counties(self, selected_states: List[str]) -> List[str]:

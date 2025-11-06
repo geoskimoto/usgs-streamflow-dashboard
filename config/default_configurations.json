@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "version": "1.0",
+  "last_updated": "2025-11-06",
+  "description": "Default station configurations for USGS Streamflow Dashboard",
+  
+  "configurations": [
+    {
+      "name": "Pacific Northwest Full",
+      "description": "Complete NOAA HADS discharge monitoring stations across WA, OR, ID, MT, NV, CA (1,506 stations)",
+      "is_default": true,
+      "is_active": true,
+      "created_by": "system",
+      "station_source": {
+        "type": "csv",
+        "path": "all_pnw_discharge_stations.csv",
+        "id_column": "usgs_id",
+        "columns": {
+          "usgs_id": "usgs_id",
+          "nws_id": "nws_id",
+          "goes_id": "goes_id",
+          "station_name": "station_name",
+          "state": "state",
+          "latitude": "latitude",
+          "longitude": "longitude",
+          "huc_code": "huc_code",
+          "drainage_area": "drainage_area"
+        },
+        "filters": []
+      },
+      "priority": 1
+    },
+    {
+      "name": "Columbia River Basin (HUC17)",
+      "description": "NOAA HADS discharge stations within Columbia River Basin watershed (563 stations)",
+      "is_default": false,
+      "is_active": true,
+      "created_by": "system",
+      "station_source": {
+        "type": "csv",
+        "path": "columbia_basin_hads_stations.csv",
+        "id_column": "usgs_id",
+        "columns": "auto"
+      },
+      "priority": 2
+    },
+    {
+      "name": "Development Test Set",
+      "description": "Small subset of reliable stations for development and testing (25 stations)",
+      "is_default": false,
+      "is_active": true,
+      "created_by": "system",
+      "station_source": {
+        "type": "filter",
+        "base_config": "Pacific Northwest Full",
+        "filters": [
+          {
+            "field": "state",
+            "operator": "in",
+            "value": ["WA", "OR"]
+          },
+          {
+            "field": "drainage_area",
+            "operator": ">",
+            "value": 500
+          },
+          {
+            "field": "is_active",
+            "operator": "=",
+            "value": true
+          }
+        ],
+        "limit": 25,
+        "sort_by": "drainage_area",
+        "sort_order": "desc"
+      },
+      "priority": 3
+    }
+  ],
+  
+  "_comments": {
+    "station_source_types": [
+      "csv - Load from CSV file in project root",
+      "filter - Derive from existing configuration with filters",
+      "manual - Manually specified station IDs",
+      "database - Query existing database (for migrations)"
+    ],
+    "filter_operators": [
+      "=, !=, >, <, >=, <=, in, not_in, contains, starts_with, ends_with"
+    ],
+    "priority": "Lower numbers = higher priority for default selection"
+  }
+}

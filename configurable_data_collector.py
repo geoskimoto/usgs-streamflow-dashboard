@@ -30,7 +30,7 @@ from station_config_manager import StationConfigurationManager
 class ConfigurableDataCollector:
     """Unified data collection framework using database-driven configurations."""
     
-    def __init__(self, db_path: str = "data/usgs_cache.db"):
+    def __init__(self, db_path: str = "data/usgs_data.db"):
         """
         Initialize the configurable data collector.
         
@@ -506,7 +506,7 @@ def main():
                       help='Type of data to collect')
     parser.add_argument('--days', type=int, default=5,
                       help='Number of days back to collect (default: 5)')
-    parser.add_argument('--db-path', type=str, default='data/usgs_cache.db',
+    parser.add_argument('--db-path', type=str, default='data/usgs_data.db',
                       help='Path to database file')
     parser.add_argument('--dry-run', action='store_true',
                       help='Show what would be done without actually collecting data')

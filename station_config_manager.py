@@ -16,7 +16,7 @@ import logging
 class StationConfigurationManager:
     """Manages station configurations and collection operations."""
     
-    def __init__(self, db_path="data/station_config.db"):
+    def __init__(self, db_path="data/usgs_data.db"):  # Updated to unified database
         """Initialize with database path."""
         self.db_path = Path(db_path)
         self.connection = None
@@ -63,7 +63,7 @@ class StationConfigurationManager:
         """Get configuration by name."""
         cursor = self.connection.cursor()
         cursor.execute("""
-        SELECT * FROM station_configurations 
+        SELECT * FROM configurations 
         WHERE config_name = ?
         """, (config_name,))
         
@@ -74,7 +74,7 @@ class StationConfigurationManager:
         """Get the default configuration."""
         cursor = self.connection.cursor()
         cursor.execute("""
-        SELECT * FROM station_configurations 
+        SELECT * FROM configurations 
         WHERE is_default = 1 AND is_active = 1
         LIMIT 1
         """)
@@ -90,7 +90,7 @@ class StationConfigurationManager:
         try:
             # Insert configuration
             cursor.execute("""
-            INSERT INTO station_configurations 
+            INSERT INTO configurations 
             (config_name, description, station_count, is_default, created_by)
             VALUES (?, ?, ?, ?, ?)
             """, (name, description, len(station_ids), is_default, 'admin'))
@@ -118,11 +118,11 @@ class StationConfigurationManager:
         """Get all stations for a specific configuration."""
         cursor = self.connection.cursor()
         cursor.execute("""
-        SELECT sl.*, cs.priority
-        FROM station_lists sl
-        JOIN configuration_stations cs ON sl.id = cs.station_id
-        WHERE cs.config_id = ? AND sl.is_active = 1
-        ORDER BY cs.priority, sl.usgs_id
+        SELECT s.*, cs.priority
+        FROM stations s
+        JOIN configuration_stations cs ON s.id = cs.station_id
+        WHERE cs.config_id = ? AND s.is_active = 1
+        ORDER BY cs.priority, s.usgs_id
         """, (config_id,))
         
         return [dict(row) for row in cursor.fetchall()]
@@ -157,7 +157,7 @@ class StationConfigurationManager:
             conditions.append(f"source_dataset IN ({placeholders})")
             params.extend(source_datasets)
         
-        query = "SELECT * FROM station_lists"
+        query = "SELECT * FROM stations"
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
         query += " ORDER BY state, usgs_id"
@@ -168,7 +168,7 @@ class StationConfigurationManager:
     def get_station_by_usgs_id(self, usgs_id: str) -> Optional[Dict]:
         """Get station by USGS ID."""
         cursor = self.connection.cursor()
-        cursor.execute("SELECT * FROM station_lists WHERE usgs_id = ?", (usgs_id,))
+        cursor.execute("SELECT * FROM stations WHERE usgs_id = ?", (usgs_id,))
         
         row = cursor.fetchone()
         return dict(row) if row else None
@@ -179,17 +179,17 @@ class StationConfigurationManager:
         cursor = self.connection.cursor()
         
         query = """
-        SELECT us.*, sc.config_name
-        FROM update_schedules us
-        JOIN station_configurations sc ON us.config_id = sc.id
-        WHERE us.config_id = ?
+        SELECT s.*, c.config_name
+        FROM schedules s
+        JOIN configurations c ON s.config_id = c.id
+        WHERE s.config_id = ?
         """
         params = [config_id]
         
         if enabled_only:
-            query += " AND us.is_enabled = 1"
+            query += " AND s.is_enabled = 1"
         
-        query += " ORDER BY us.data_type, us.schedule_name"
+        query += " ORDER BY s.data_type, s.schedule_name"
         
         cursor.execute(query, params)
         return [dict(row) for row in cursor.fetchall()]
@@ -198,11 +198,11 @@ class StationConfigurationManager:
         """Get upcoming scheduled runs."""
         cursor = self.connection.cursor()
         cursor.execute("""
-        SELECT us.*, sc.config_name
-        FROM update_schedules us
-        JOIN station_configurations sc ON us.config_id = sc.id
-        WHERE us.is_enabled = 1 AND us.next_run IS NOT NULL
-        ORDER BY us.next_run
+        SELECT s.*, c.config_name
+        FROM schedules s
+        JOIN configurations c ON s.config_id = c.id
+        WHERE s.is_enabled = 1 AND s.next_run IS NOT NULL
+        ORDER BY s.next_run
         LIMIT ?
         """, (limit,))
         
@@ -212,7 +212,7 @@ class StationConfigurationManager:
         """Update schedule run times."""
         cursor = self.connection.cursor()
         cursor.execute("""
-        UPDATE update_schedules 
+        UPDATE schedules 
         SET last_run = ?, next_run = ?, run_count = run_count + 1
         WHERE id = ?
         """, (last_run, next_run, schedule_id))
@@ -225,7 +225,7 @@ class StationConfigurationManager:
         """Start a new collection log entry."""
         cursor = self.connection.cursor()
         cursor.execute("""
-        INSERT INTO data_collection_logs 
+        INSERT INTO collection_logs 
         (config_id, data_type, stations_attempted, start_time, status, triggered_by)
         VALUES (?, ?, ?, ?, ?, ?)
         """, (config_id, data_type, stations_attempted, datetime.now(), 'running', triggered_by))
@@ -241,13 +241,13 @@ class StationConfigurationManager:
         end_time = datetime.now()
         
         # Calculate duration
-        cursor.execute("SELECT start_time FROM data_collection_logs WHERE id = ?", (log_id,))
+        cursor.execute("SELECT start_time FROM collection_logs WHERE id = ?", (log_id,))
         start_time_str = cursor.fetchone()[0]
         start_time = datetime.fromisoformat(start_time_str)
         duration = int((end_time - start_time).total_seconds())
         
         cursor.execute("""
-        UPDATE data_collection_logs 
+        UPDATE collection_logs 
         SET stations_successful = ?, stations_failed = ?, 
             end_time = ?, duration_seconds = ?, status = ?, error_summary = ?
         WHERE id = ?
@@ -260,7 +260,7 @@ class StationConfigurationManager:
         """Log an error for a specific station."""
         cursor = self.connection.cursor()
         cursor.execute("""
-        INSERT INTO station_collection_errors 
+        INSERT INTO station_errors 
         (log_id, station_id, error_type, error_message, http_status_code)
         VALUES (?, ?, ?, ?, ?)
         """, (log_id, station_id, error_type, error_message, http_status_code))
@@ -274,7 +274,7 @@ class StationConfigurationManager:
         if config_id:
             cursor.execute("""
             SELECT * FROM recent_collection_activity 
-            WHERE config_name = (SELECT config_name FROM station_configurations WHERE id = ?)
+            WHERE config_name = (SELECT config_name FROM configurations WHERE id = ?)
             LIMIT ?
             """, (config_id, limit))
         else:
@@ -306,7 +306,7 @@ class StationConfigurationManager:
                 CAST(stations_successful AS FLOAT) / stations_attempted * 100 
             END) as avg_success_rate,
             AVG(duration_seconds) as avg_duration
-        FROM data_collection_logs
+        FROM collection_logs
         WHERE start_time >= ? {config_condition}
         """, params)
         
@@ -315,9 +315,9 @@ class StationConfigurationManager:
         # Get error breakdown
         cursor.execute(f"""
         SELECT error_type, COUNT(*) as error_count
-        FROM station_collection_errors sce
-        JOIN data_collection_logs dcl ON sce.log_id = dcl.id
-        WHERE dcl.start_time >= ? {config_condition}
+        FROM station_errors se
+        JOIN collection_logs cl ON se.log_id = cl.id
+        WHERE cl.start_time >= ? {config_condition}
         GROUP BY error_type
         ORDER BY error_count DESC
         """, params)
@@ -331,11 +331,11 @@ class StationConfigurationManager:
         cursor = self.connection.cursor()
         
         # Active configurations
-        cursor.execute("SELECT COUNT(*) FROM station_configurations WHERE is_active = 1")
+        cursor.execute("SELECT COUNT(*) FROM configurations WHERE is_active = 1")
         active_configs = cursor.fetchone()[0]
         
         # Total active stations
-        cursor.execute("SELECT COUNT(*) FROM station_lists WHERE is_active = 1")
+        cursor.execute("SELECT COUNT(*) FROM stations WHERE is_active = 1")
         active_stations = cursor.fetchone()[0]
         
         # Recent collection success rate (last 24 hours)
@@ -343,7 +343,7 @@ class StationConfigurationManager:
         SELECT 
             COUNT(*) as recent_runs,
             COUNT(CASE WHEN status = 'completed' THEN 1 END) as successful_runs
-        FROM data_collection_logs
+        FROM collection_logs
         WHERE start_time >= datetime('now', '-24 hours')
         """)
         
@@ -353,7 +353,7 @@ class StationConfigurationManager:
             success_rate = (recent_activity['successful_runs'] / recent_activity['recent_runs']) * 100
         
         # Currently running collections
-        cursor.execute("SELECT COUNT(*) FROM data_collection_logs WHERE status = 'running'")
+        cursor.execute("SELECT COUNT(*) FROM collection_logs WHERE status = 'running'")
         running_collections = cursor.fetchone()[0]
         
         return {

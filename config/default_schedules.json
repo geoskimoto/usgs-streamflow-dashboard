@@ -1,0 +1,121 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "version": "1.0",
+  "last_updated": "2025-11-06",
+  "description": "Default data collection schedules for USGS Streamflow Dashboard",
+  
+  "schedules": [
+    {
+      "name": "Hourly Full Update",
+      "description": "Update all Pacific Northwest stations every hour",
+      "configuration": "Pacific Northwest Full",
+      "data_type": "realtime",
+      "enabled": true,
+      "timing": {
+        "type": "cron",
+        "cron_expression": "0 * * * *",
+        "description": "Every hour at minute 0"
+      },
+      "options": {
+        "retry_on_error": true,
+        "max_retries": 3,
+        "retry_delay_seconds": 300,
+        "timeout_seconds": 30,
+        "max_concurrent_requests": 10
+      },
+      "priority": 1
+    },
+    {
+      "name": "15-Minute Realtime (Development)",
+      "description": "Frequent updates for development test subset",
+      "configuration": "Development Test Set",
+      "data_type": "realtime",
+      "enabled": false,
+      "timing": {
+        "type": "interval",
+        "interval_minutes": 15,
+        "description": "Every 15 minutes"
+      },
+      "options": {
+        "retry_on_error": true,
+        "max_retries": 2,
+        "retry_delay_seconds": 60,
+        "timeout_seconds": 20,
+        "max_concurrent_requests": 5
+      },
+      "priority": 2
+    },
+    {
+      "name": "Daily Full Collection",
+      "description": "Complete historical data collection with statistics recalculation",
+      "configuration": "Pacific Northwest Full",
+      "data_type": "both",
+      "enabled": true,
+      "timing": {
+        "type": "cron",
+        "cron_expression": "0 2 * * *",
+        "description": "Daily at 2:00 AM"
+      },
+      "options": {
+        "retry_on_error": true,
+        "max_retries": 5,
+        "retry_delay_seconds": 600,
+        "timeout_seconds": 60,
+        "max_concurrent_requests": 5
+      },
+      "tasks": [
+        "collect_realtime_data",
+        "collect_daily_data",
+        "calculate_statistics",
+        "update_metadata",
+        "cleanup_old_data"
+      ],
+      "priority": 3
+    },
+    {
+      "name": "Weekly Metadata Refresh",
+      "description": "Update station metadata from USGS",
+      "configuration": "Pacific Northwest Full",
+      "data_type": "daily",
+      "enabled": true,
+      "timing": {
+        "type": "cron",
+        "cron_expression": "0 3 * * 0",
+        "description": "Sundays at 3:00 AM"
+      },
+      "options": {
+        "retry_on_error": true,
+        "max_retries": 3,
+        "retry_delay_seconds": 300,
+        "timeout_seconds": 45,
+        "max_concurrent_requests": 5
+      },
+      "tasks": [
+        "enrich_metadata",
+        "verify_active_stations",
+        "update_data_availability"
+      ],
+      "priority": 4
+    }
+  ],
+  
+  "_comments": {
+    "timing_types": [
+      "cron - Use cron expression (more flexible)",
+      "interval - Simple interval in minutes"
+    ],
+    "data_types": [
+      "realtime - 15-minute instantaneous data",
+      "daily - Historical daily average data",
+      "both - Collect both types"
+    ],
+    "cron_format": "minute hour day_of_month month day_of_week",
+    "cron_examples": [
+      "0 * * * * - Every hour",
+      "*/15 * * * * - Every 15 minutes",
+      "0 0 * * * - Daily at midnight",
+      "0 2 * * * - Daily at 2 AM",
+      "0 0 * * 0 - Weekly on Sunday"
+    ]
+  }
+}

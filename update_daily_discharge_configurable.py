@@ -44,7 +44,7 @@ from enrich_station_metadata import calculate_station_statistics
 class ConfigurableDailyUpdater(ConfigurableDataCollector):
     """Daily data updater using configurable station management."""
     
-    def __init__(self, db_path: str = "data/usgs_cache.db"):
+    def __init__(self, db_path: str = "data/usgs_data.db"):
         """Initialize the configurable daily updater."""
         super().__init__(db_path)
         
@@ -384,8 +384,8 @@ def main():
     parser.add_argument('--config-id', type=int, help='Configuration ID number')
     parser.add_argument('--full-refresh', action='store_true',
                       help='Perform full refresh (re-collect all historical data from 1910)')
-    parser.add_argument('--db-path', type=str, default='data/usgs_cache.db',
-                      help='Path to database file (default: data/usgs_cache.db)')
+    parser.add_argument('--db-path', type=str, default='data/usgs_data.db',
+                      help='Path to database file (default: data/usgs_data.db)')
     parser.add_argument('--list-configs', action='store_true',
                       help='List available configurations and exit')
     parser.add_argument('--verbose', '-v', action='store_true',
