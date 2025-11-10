@@ -265,52 +265,179 @@ def create_enhanced_admin_content():
     ], fluid=True)
 
 
+def format_schedule_display(schedule_type, schedule_value, is_enabled):
+    """Format schedule information for display."""
+    if not schedule_type or not schedule_value:
+        return "Not scheduled"
+    
+    if not is_enabled:
+        return f"⏸️ {schedule_value} (disabled)"
+    
+    # Format common cron expressions
+    if schedule_type == 'cron':
+        if schedule_value == '0 * * * *':
+            return "⏰ Hourly"
+        elif schedule_value == '0 2 * * *':
+            return "⏰ Daily at 02:00"
+        elif schedule_value == '0 3 * * 0':
+            return "⏰ Weekly (Sunday 03:00)"
+        elif schedule_value.startswith('*/'):
+            mins = schedule_value.split('/')[1].split()[0]
+            return f"⏰ Every {mins} minutes"
+        else:
+            return f"⏰ {schedule_value}"
+    elif schedule_type == 'interval':
+        return f"⏰ Every {schedule_value}"
+    
+    return schedule_value
+
 def get_configurations_table():
-    """Get configurations as a formatted table."""
+    """Get configurations as a formatted table with scheduling controls."""
     try:
-        with StationConfigurationManager() as manager:
-            configs = manager.get_configurations()
+        import sqlite3
+        
+        # Query configuration_summary to get schedule info
+        conn = sqlite3.connect('data/usgs_data.db')
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT 
+                config_name,
+                description,
+                is_active,
+                is_default,
+                actual_station_count,
+                created_date,
+                schedule_enabled,
+                schedule_type,
+                schedule_value,
+                schedule_id
+            FROM configuration_summary
+            ORDER BY is_default DESC, config_name
+        ''')
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        if not rows:
+            return html.P("No configurations found.", className="text-muted")
+        
+        # Group by config_name to handle multiple schedules
+        config_dict = {}
+        for row in rows:
+            config_name = row['config_name']
+            if config_name not in config_dict:
+                config_dict[config_name] = {
+                    'config_name': config_name,
+                    'description': row['description'],
+                    'is_active': row['is_active'],
+                    'is_default': row['is_default'],
+                    'station_count': row['actual_station_count'],
+                    'created_date': row['created_date'],
+                    'schedules': []
+                }
             
-            if not configs:
-                return html.P("No configurations found.", className="text-muted")
-            
-            # Create table data
-            table_data = []
-            for config in configs:
-                table_data.append({
-                    'Name': config['config_name'],
-                    'Stations': config['actual_station_count'],
-                    'Status': '✅ Active' if config['is_active'] else '❌ Inactive',
-                    'Default': '⭐ Yes' if config['is_default'] else '',
-                    'Created': config['created_date'][:10] if config['created_date'] else '',
-                    'Description': config['description'] or 'No description'
+            if row['schedule_id']:
+                config_dict[config_name]['schedules'].append({
+                    'schedule_id': row['schedule_id'],
+                    'enabled': row['schedule_enabled'],
+                    'type': row['schedule_type'],
+                    'value': row['schedule_value']
                 })
+        
+        # Build table rows
+        table_rows = []
+        for config_name, config in config_dict.items():
+            # Determine primary schedule (first enabled, or first overall)
+            primary_schedule = None
+            has_enabled = False
+            for sched in config['schedules']:
+                if sched['enabled']:
+                    primary_schedule = sched
+                    has_enabled = True
+                    break
+            if not primary_schedule and config['schedules']:
+                primary_schedule = config['schedules'][0]
             
-            return dash_table.DataTable(
-                data=table_data,
-                columns=[
-                    {'name': 'Configuration', 'id': 'Name'},
-                    {'name': 'Stations', 'id': 'Stations', 'type': 'numeric'},
-                    {'name': 'Status', 'id': 'Status'},
-                    {'name': 'Default', 'id': 'Default'},
-                    {'name': 'Created', 'id': 'Created'},
-                    {'name': 'Description', 'id': 'Description'}
-                ],
-                style_cell={'textAlign': 'left', 'padding': '10px'},
-                style_data_conditional=[
-                    {
-                        'if': {'filter_query': '{Status} contains Active'},
-                        'backgroundColor': '#d4edda',
-                        'color': 'black',
-                    }
-                ],
-                style_header={'backgroundColor': '#007bff', 'color': 'white', 'fontWeight': 'bold'},
-                page_size=10,
-                sort_action="native",
-                row_selectable="single"
+            schedule_display = format_schedule_display(
+                primary_schedule['type'] if primary_schedule else None,
+                primary_schedule['value'] if primary_schedule else None,
+                primary_schedule['enabled'] if primary_schedule else False
             )
+            
+            # Show schedule count if multiple
+            if len(config['schedules']) > 1:
+                schedule_display += f" (+{len(config['schedules'])-1} more)"
+            
+            row = html.Tr([
+                # Radio button for selection
+                html.Td(
+                    dcc.RadioItems(
+                        options=[{'label': '', 'value': config_name}],
+                        id={'type': 'config-radio', 'index': config_name},
+                        inline=True
+                    ),
+                    style={'width': '40px'}
+                ),
+                # Configuration name
+                html.Td(html.Strong(config_name)),
+                # Station count
+                html.Td(config['station_count'], style={'text-align': 'center'}),
+                # Status
+                html.Td(
+                    html.Span('✅ Active' if config['is_active'] else '❌ Inactive',
+                              style={'color': 'green' if config['is_active'] else 'red'})
+                ),
+                # Schedule toggle checkbox
+                html.Td(
+                    dbc.Checkbox(
+                        id={'type': 'schedule-toggle', 'index': config_name},
+                        value=has_enabled,
+                        style={'transform': 'scale(1.2)'}
+                    ),
+                    style={'text-align': 'center'}
+                ),
+                # Schedule display
+                html.Td(schedule_display),
+                # Run Now button
+                html.Td(
+                    dbc.Button(
+                        "▶ Run Now",
+                        id={'type': 'run-config', 'index': config_name},
+                        size='sm',
+                        color='success',
+                        outline=True
+                    ),
+                    style={'text-align': 'center'}
+                ),
+                # Default indicator
+                html.Td('⭐' if config['is_default'] else '', style={'text-align': 'center'}),
+                # Description
+                html.Td(config['description'] or 'No description', style={'font-size': '0.9em', 'color': '#666'})
+            ])
+            
+            table_rows.append(row)
+        
+        # Create table
+        return dbc.Table([
+            html.Thead(html.Tr([
+                html.Th('', style={'width': '40px'}),
+                html.Th('Configuration'),
+                html.Th('Stations', style={'text-align': 'center'}),
+                html.Th('Status'),
+                html.Th('Scheduled', style={'text-align': 'center'}),
+                html.Th('Schedule'),
+                html.Th('Actions', style={'text-align': 'center'}),
+                html.Th('Default', style={'text-align': 'center'}),
+                html.Th('Description')
+            ]), style={'backgroundColor': '#007bff', 'color': 'white'}),
+            html.Tbody(table_rows)
+        ], bordered=True, hover=True, responsive=True, striped=True)
     
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return dbc.Alert(f"Error loading configurations: {e}", color="danger")
 
 

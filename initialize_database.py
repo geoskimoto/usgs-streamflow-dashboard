@@ -59,6 +59,7 @@ def create_database_schema(db_path: str):
                 data_completeness REAL,
                 monitoring_status TEXT,
                 priority_level INTEGER,
+                is_default INTEGER DEFAULT 0,
                 date_created TEXT,
                 last_modified TEXT,
                 is_active INTEGER DEFAULT 1,
@@ -166,13 +167,23 @@ def create_database_schema(db_path: str):
                 c.config_name,
                 c.description,
                 c.is_active,
+                c.is_default,
                 COUNT(DISTINCT c.site_id) as actual_station_count,
                 c.date_created as created_date,
-                c.last_modified
+                c.last_modified,
+                -- Include schedule information
+                s.schedule_id,
+                COALESCE(s.is_enabled, 0) as schedule_enabled,
+                s.schedule_type,
+                s.schedule_value,
+                s.last_modified as schedule_last_modified
             FROM configurations c
-            GROUP BY c.config_id, c.config_name, c.description, c.is_active, c.date_created, c.last_modified
+            LEFT JOIN schedules s ON c.config_id = s.config_id
+            GROUP BY c.config_id, c.config_name, c.description, c.is_active, c.is_default, 
+                     c.date_created, c.last_modified, s.schedule_id, s.is_enabled, 
+                     s.schedule_type, s.schedule_value, s.last_modified
         """)
-        print("✓ Created configuration_summary view")
+        print("✓ Created configuration_summary view with schedule information")
         
         conn.commit()
         print(f"\n✓ Database schema created successfully at: {db_path}")
@@ -220,20 +231,90 @@ def import_default_configurations(conn):
             try:
                 cursor.execute('''
                     INSERT OR IGNORE INTO configurations 
-                    (site_id, config_name, description, is_active, date_created, last_modified)
-                    VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
-                ''', ('__placeholder__', config_name, description, 1 if is_active else 0))
+                    (site_id, config_name, description, is_default, is_active, date_created, last_modified)
+                    VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+                ''', ('__placeholder__', config_name, description, 1 if is_default else 0, 1 if is_active else 0))
                 
                 if cursor.rowcount > 0:
-                    print(f"  ✓ Added configuration: {config_name}")
+                    print(f"  ✓ Added configuration: {config_name} (default: {is_default})")
             except Exception as e:
                 print(f"  ⚠ Could not add {config_name}: {e}")
         
         conn.commit()
         print(f"✓ Imported {len(configurations)} configuration entries")
         
+        # Now import default schedules
+        import_default_schedules(conn)
+        
     except Exception as e:
         print(f"⚠ Error importing configurations: {e}")
+        # Non-fatal - continue even if this fails
+
+def import_default_schedules(conn):
+    """Import default schedules from config files."""
+    try:
+        import json
+        from pathlib import Path
+        
+        schedules_file = Path('config/default_schedules.json')
+        
+        if not schedules_file.exists():
+            print("  → No default schedules file found. Skipping.")
+            return
+        
+        print("\nImporting default schedules...")
+        
+        with open(schedules_file, 'r') as f:
+            schedule_data = json.load(f)
+        
+        schedules = schedule_data.get('schedules', [])
+        cursor = conn.cursor()
+        
+        for schedule in schedules:
+            schedule_name = schedule.get('name')
+            config_name = schedule.get('configuration')
+            enabled = schedule.get('enabled', False)
+            timing = schedule.get('timing', {})
+            
+            # Get the config_id for this configuration
+            cursor.execute('SELECT config_id FROM configurations WHERE config_name = ? LIMIT 1', (config_name,))
+            result = cursor.fetchone()
+            
+            if not result:
+                print(f"  ⚠ Configuration '{config_name}' not found for schedule '{schedule_name}'. Skipping.")
+                continue
+            
+            config_id = result[0]
+            
+            # Determine schedule type and value
+            schedule_type = timing.get('type', 'cron')
+            if schedule_type == 'cron':
+                schedule_value = timing.get('cron_expression', '0 2 * * *')
+            elif schedule_type == 'interval':
+                interval_min = timing.get('interval_minutes', 60)
+                schedule_value = f"{interval_min}m"
+            else:
+                schedule_value = timing.get('cron_expression', '0 2 * * *')
+            
+            # Insert schedule
+            try:
+                cursor.execute('''
+                    INSERT OR IGNORE INTO schedules 
+                    (config_id, schedule_type, schedule_value, is_enabled, date_created, last_modified)
+                    VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+                ''', (config_id, schedule_type, schedule_value, 1 if enabled else 0))
+                
+                if cursor.rowcount > 0:
+                    status = "enabled" if enabled else "disabled"
+                    print(f"  ✓ Added schedule: {schedule_name} for '{config_name}' ({schedule_value}) - {status}")
+            except Exception as e:
+                print(f"  ⚠ Could not add schedule {schedule_name}: {e}")
+        
+        conn.commit()
+        print(f"✓ Imported {len(schedules)} schedule entries")
+        
+    except Exception as e:
+        print(f"⚠ Error importing schedules: {e}")
         # Non-fatal - continue even if this fails
 
 def main():

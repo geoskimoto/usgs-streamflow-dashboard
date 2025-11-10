@@ -181,7 +181,7 @@ class StationConfigurationManager:
         query = """
         SELECT s.*, c.config_name
         FROM schedules s
-        JOIN configurations c ON s.config_id = c.id
+        JOIN configurations c ON s.config_id = c.config_id
         WHERE s.config_id = ?
         """
         params = [config_id]
@@ -189,7 +189,7 @@ class StationConfigurationManager:
         if enabled_only:
             query += " AND s.is_enabled = 1"
         
-        query += " ORDER BY s.data_type, s.schedule_name"
+        query += " ORDER BY s.schedule_type, s.schedule_value"
         
         cursor.execute(query, params)
         return [dict(row) for row in cursor.fetchall()]
@@ -200,7 +200,7 @@ class StationConfigurationManager:
         cursor.execute("""
         SELECT s.*, c.config_name
         FROM schedules s
-        JOIN configurations c ON s.config_id = c.id
+        JOIN configurations c ON s.config_id = c.config_id
         WHERE s.is_enabled = 1 AND s.next_run IS NOT NULL
         ORDER BY s.next_run
         LIMIT ?
