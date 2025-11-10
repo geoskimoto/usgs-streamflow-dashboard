@@ -6,7 +6,7 @@ in the Pacific Northwest (Oregon, Washington, Idaho).
 """
 
 import dash
-from dash import dcc, html, Input, Output, State, callback_context, no_update
+from dash import dcc, html, Input, Output, State, callback_context, no_update, ALL
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 import pandas as pd
@@ -1319,7 +1319,13 @@ def update_admin_tab_content(dash_clicks, config_clicks, station_clicks,
         if button_id == 'admin-configs-tab':
             return dbc.Container([
                 html.H4("🎯 Station Configurations", className="mb-4"),
-                get_configurations_table(),
+                
+                # Status message areas for callbacks
+                html.Div(id='config-schedule-status'),
+                html.Div(id='config-run-status'),
+                
+                # Main table container
+                html.Div(get_configurations_table(), id='admin-configurations-content'),
                 
                 dbc.Row([
                     dbc.Col([
@@ -1646,6 +1652,164 @@ def update_admin_system_info(admin_style, pathname):
         return get_system_info()
     
     return None
+
+
+@app.callback(
+    [Output('config-schedule-status', 'children'),
+     Output('admin-configurations-content', 'children')],
+    [Input({'type': 'schedule-toggle', 'index': ALL}, 'value')],
+    [State({'type': 'schedule-toggle', 'index': ALL}, 'id')]
+)
+def toggle_configuration_schedule(checked_values, checkbox_ids):
+    """Enable/disable all schedules for a configuration when checkbox is toggled."""
+    import sqlite3
+    from admin_components import get_configurations_table
+    
+    if not callback_context.triggered or not checkbox_ids:
+        return "", get_configurations_table()
+    
+    # Find which checkbox was toggled
+    triggered_prop = callback_context.triggered[0]['prop_id']
+    
+    try:
+        # Extract config name from triggered prop_id
+        import json
+        if 'schedule-toggle' not in triggered_prop:
+            return "", get_configurations_table()
+        
+        # Parse the triggered ID
+        triggered_id = json.loads(triggered_prop.split('.')[0])
+        config_name = triggered_id['index']
+        
+        # Find the corresponding value
+        checkbox_index = next((i for i, cid in enumerate(checkbox_ids) if cid['index'] == config_name), None)
+        if checkbox_index is None:
+            return "", get_configurations_table()
+        
+        new_value = checked_values[checkbox_index]
+        
+        # Update all schedules for this configuration
+        conn = sqlite3.connect('data/usgs_data.db')
+        cursor = conn.cursor()
+        
+        # Get config_id
+        cursor.execute('SELECT config_id FROM configurations WHERE config_name = ? LIMIT 1', (config_name,))
+        result = cursor.fetchone()
+        
+        if not result:
+            conn.close()
+            return dbc.Alert(f"Configuration '{config_name}' not found", color="warning", duration=3000), get_configurations_table()
+        
+        config_id = result[0]
+        
+        # Update all schedules for this configuration
+        cursor.execute('''
+            UPDATE schedules 
+            SET is_enabled = ?, last_modified = datetime('now')
+            WHERE config_id = ?
+        ''', (1 if new_value else 0, config_id))
+        
+        updated_count = cursor.rowcount
+        conn.commit()
+        conn.close()
+        
+        status_text = "enabled" if new_value else "disabled"
+        message = dbc.Alert(
+            f"✓ {updated_count} schedule(s) {status_text} for '{config_name}'",
+            color="success",
+            duration=3000
+        )
+        
+        return message, get_configurations_table()
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return dbc.Alert(f"Error toggling schedule: {e}", color="danger", duration=5000), get_configurations_table()
+
+
+@app.callback(
+    [Output('config-run-status', 'children'),
+     Output('admin-configurations-content', 'children', allow_duplicate=True)],
+    [Input({'type': 'run-config', 'index': ALL}, 'n_clicks')],
+    [State({'type': 'run-config', 'index': ALL}, 'id')],
+    prevent_initial_call=True
+)
+def run_configuration_now(n_clicks_list, button_ids):
+    """Manually trigger data collection for a configuration."""
+    import subprocess
+    from admin_components import get_configurations_table
+    
+    if not callback_context.triggered or not button_ids:
+        return "", get_configurations_table()
+    
+    # Find which button was clicked
+    triggered_prop = callback_context.triggered[0]['prop_id']
+    
+    try:
+        # Extract config name from triggered prop_id
+        import json
+        if 'run-config' not in triggered_prop:
+            return "", get_configurations_table()
+        
+        # Parse the triggered ID
+        triggered_id = json.loads(triggered_prop.split('.')[0])
+        config_name = triggered_id['index']
+        
+        # Check if button was actually clicked (n_clicks > 0)
+        button_index = next((i for i, bid in enumerate(button_ids) if bid['index'] == config_name), None)
+        if button_index is None or not n_clicks_list[button_index]:
+            return "", get_configurations_table()
+        
+        # Show starting message
+        starting_message = dbc.Alert(
+            [
+                html.H5("🔄 Starting Data Collection", className="alert-heading"),
+                html.P(f"Collecting data for '{config_name}'..."),
+                dbc.Spinner(size="sm")
+            ],
+            color="info"
+        )
+        
+        # Trigger data collection in background
+        # Note: In production, this should use a proper job queue (Celery, RQ, etc.)
+        try:
+            # Run data collector for this configuration
+            result = subprocess.Popen(
+                ['python', 'configurable_data_collector.py', '--config', config_name],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                start_new_session=True
+            )
+            
+            success_message = dbc.Alert(
+                [
+                    html.H5("✓ Data Collection Started", className="alert-heading"),
+                    html.P(f"Collection for '{config_name}' is running in the background."),
+                    html.P("Check the Monitoring tab for progress.", className="mb-0 small")
+                ],
+                color="success",
+                duration=5000
+            )
+            
+            return success_message, get_configurations_table()
+            
+        except Exception as e:
+            error_message = dbc.Alert(
+                [
+                    html.H5("❌ Error Starting Collection", className="alert-heading"),
+                    html.P(f"Error: {str(e)}")
+                ],
+                color="danger",
+                duration=5000
+            )
+            
+            return error_message, get_configurations_table()
+    
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return dbc.Alert(f"Error running configuration: {e}", color="danger", duration=5000), get_configurations_table()
 
 
 if __name__ == '__main__':
