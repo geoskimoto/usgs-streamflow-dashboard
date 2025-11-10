@@ -224,11 +224,17 @@ class StationConfigurationManager:
                            stations_attempted: int, triggered_by: str = 'system') -> int:
         """Start a new collection log entry."""
         cursor = self.connection.cursor()
+        
+        # Get config name from config_id
+        cursor.execute("SELECT config_name FROM configurations WHERE config_id = ?", (config_id,))
+        result = cursor.fetchone()
+        config_name = result[0] if result else f"Config {config_id}"
+        
         cursor.execute("""
         INSERT INTO collection_logs 
-        (config_id, data_type, stations_attempted, start_time, status, triggered_by)
-        VALUES (?, ?, ?, ?, ?, ?)
-        """, (config_id, data_type, stations_attempted, datetime.now(), 'running', triggered_by))
+        (config_id, config_name, data_type, stations_attempted, start_time, status, triggered_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (config_id, config_name, data_type, stations_attempted, datetime.now().isoformat(), 'running', triggered_by))
         
         log_id = cursor.lastrowid
         self.connection.commit()
@@ -238,20 +244,24 @@ class StationConfigurationManager:
                             stations_failed: int, status: str, error_summary: str = None):
         """Update collection log with results."""
         cursor = self.connection.cursor()
-        end_time = datetime.now()
+        end_time = datetime.now().isoformat()
         
         # Calculate duration
-        cursor.execute("SELECT start_time FROM collection_logs WHERE id = ?", (log_id,))
-        start_time_str = cursor.fetchone()[0]
-        start_time = datetime.fromisoformat(start_time_str)
-        duration = int((end_time - start_time).total_seconds())
+        cursor.execute("SELECT start_time FROM collection_logs WHERE log_id = ?", (log_id,))
+        result = cursor.fetchone()
+        if result:
+            start_time_str = result[0]
+            start_time = datetime.fromisoformat(start_time_str)
+            duration = (datetime.now() - start_time).total_seconds()
+        else:
+            duration = 0
         
         cursor.execute("""
         UPDATE collection_logs 
-        SET stations_successful = ?, stations_failed = ?, 
-            end_time = ?, duration_seconds = ?, status = ?, error_summary = ?
-        WHERE id = ?
-        """, (stations_successful, stations_failed, end_time, duration, status, error_summary, log_id))
+        SET stations_successful = ?, 
+            end_time = ?, duration_seconds = ?, status = ?, error_message = ?
+        WHERE log_id = ?
+        """, (stations_successful, end_time, duration, status, error_summary, log_id))
         
         self.connection.commit()
     
@@ -274,7 +284,7 @@ class StationConfigurationManager:
         if config_id:
             cursor.execute("""
             SELECT * FROM recent_collection_activity 
-            WHERE config_name = (SELECT config_name FROM configurations WHERE id = ?)
+            WHERE config_name = (SELECT config_name FROM configurations WHERE config_id = ?)
             LIMIT ?
             """, (config_id, limit))
         else:
@@ -316,7 +326,7 @@ class StationConfigurationManager:
         cursor.execute(f"""
         SELECT error_type, COUNT(*) as error_count
         FROM station_errors se
-        JOIN collection_logs cl ON se.log_id = cl.id
+        JOIN collection_logs cl ON se.log_id = cl.log_id
         WHERE cl.start_time >= ? {config_condition}
         GROUP BY error_type
         ORDER BY error_count DESC
