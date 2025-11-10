@@ -1650,8 +1650,41 @@ def update_admin_system_info(admin_style, pathname):
 
 if __name__ == '__main__':
     import os
+    import subprocess
     
     print(f"Starting {APP_TITLE}...")
+    
+    # Initialize database if it doesn't exist
+    # Check both root and data/ directory for the database
+    db_path = 'data/usgs_data.db'
+    db_dir = os.path.dirname(db_path)
+    
+    # Ensure data directory exists
+    if not os.path.exists(db_dir):
+        os.makedirs(db_dir)
+        print(f"✓ Created directory: {db_dir}")
+    
+    if not os.path.exists(db_path):
+        print(f"\n{'='*60}")
+        print("Database not found - initializing...")
+        print(f"{'='*60}")
+        try:
+            # Run the initialization script with the correct path
+            result = subprocess.run(['python', 'initialize_database.py', '--db-path', db_path], 
+                                  capture_output=False, 
+                                  check=True)
+            print(f"{'='*60}")
+            print("Database initialized successfully!")
+            print(f"{'='*60}\n")
+        except subprocess.CalledProcessError as e:
+            print(f"\n{'='*60}")
+            print("ERROR: Failed to initialize database!")
+            print(f"{'='*60}")
+            print(f"Please run: python initialize_database.py --db-path {db_path}")
+            print(f"{'='*60}\n")
+            raise
+    else:
+        print(f"✓ Database found: {db_path}")
     
     # Get port from environment (Render provides this) or default to 8050
     port = int(os.environ.get('PORT', 8050))
