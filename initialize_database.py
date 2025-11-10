@@ -74,8 +74,10 @@ def create_database_schema(db_path: str):
             CREATE TABLE IF NOT EXISTS schedules (
                 schedule_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 config_id INTEGER NOT NULL,
+                schedule_name TEXT,
                 schedule_type TEXT NOT NULL,
                 schedule_value TEXT NOT NULL,
+                data_type TEXT DEFAULT 'realtime',
                 is_enabled INTEGER DEFAULT 1,
                 date_created TEXT,
                 last_modified TEXT,
@@ -298,6 +300,7 @@ def import_default_schedules(conn):
         for schedule in schedules:
             schedule_name = schedule.get('name')
             config_name = schedule.get('configuration')
+            data_type = schedule.get('data_type', 'realtime')
             enabled = schedule.get('enabled', False)
             timing = schedule.get('timing', {})
             
@@ -325,9 +328,9 @@ def import_default_schedules(conn):
             try:
                 cursor.execute('''
                     INSERT OR IGNORE INTO schedules 
-                    (config_id, schedule_type, schedule_value, is_enabled, date_created, last_modified)
-                    VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
-                ''', (config_id, schedule_type, schedule_value, 1 if enabled else 0))
+                    (config_id, schedule_name, schedule_type, schedule_value, data_type, is_enabled, date_created, last_modified)
+                    VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+                ''', (config_id, schedule_name, schedule_type, schedule_value, data_type, 1 if enabled else 0))
                 
                 if cursor.rowcount > 0:
                     status = "enabled" if enabled else "disabled"

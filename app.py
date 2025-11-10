@@ -1660,8 +1660,8 @@ def update_admin_system_info(admin_style, pathname):
     [Input({'type': 'schedule-toggle', 'index': ALL}, 'value')],
     [State({'type': 'schedule-toggle', 'index': ALL}, 'id')]
 )
-def toggle_configuration_schedule(checked_values, checkbox_ids):
-    """Enable/disable all schedules for a configuration when checkbox is toggled."""
+def toggle_schedule(checked_values, checkbox_ids):
+    """Enable/disable individual schedule when checkbox is toggled."""
     import sqlite3
     from admin_components import get_configurations_table
     
@@ -1672,51 +1672,46 @@ def toggle_configuration_schedule(checked_values, checkbox_ids):
     triggered_prop = callback_context.triggered[0]['prop_id']
     
     try:
-        # Extract config name from triggered prop_id
+        # Extract schedule_id from triggered prop_id
         import json
         if 'schedule-toggle' not in triggered_prop:
             return "", get_configurations_table()
         
         # Parse the triggered ID
         triggered_id = json.loads(triggered_prop.split('.')[0])
-        config_name = triggered_id['index']
+        schedule_id = triggered_id['index']
         
         # Find the corresponding value
-        checkbox_index = next((i for i, cid in enumerate(checkbox_ids) if cid['index'] == config_name), None)
+        checkbox_index = next((i for i, cid in enumerate(checkbox_ids) if cid['index'] == schedule_id), None)
         if checkbox_index is None:
             return "", get_configurations_table()
         
         new_value = checked_values[checkbox_index]
         
-        # Update all schedules for this configuration
+        # Update this specific schedule
         conn = sqlite3.connect('data/usgs_data.db')
         cursor = conn.cursor()
         
-        # Get config_id
-        cursor.execute('SELECT config_id FROM configurations WHERE config_name = ? LIMIT 1', (config_name,))
+        # Get schedule name for feedback
+        cursor.execute('SELECT schedule_name FROM schedules WHERE schedule_id = ?', (schedule_id,))
         result = cursor.fetchone()
+        schedule_name = result[0] if result else f"Schedule {schedule_id}"
         
-        if not result:
-            conn.close()
-            return dbc.Alert(f"Configuration '{config_name}' not found", color="warning", duration=3000), get_configurations_table()
-        
-        config_id = result[0]
-        
-        # Update all schedules for this configuration
+        # Update schedule
         cursor.execute('''
             UPDATE schedules 
             SET is_enabled = ?, last_modified = datetime('now')
-            WHERE config_id = ?
-        ''', (1 if new_value else 0, config_id))
+            WHERE schedule_id = ?
+        ''', (1 if new_value else 0, schedule_id))
         
-        updated_count = cursor.rowcount
         conn.commit()
         conn.close()
         
         status_text = "enabled" if new_value else "disabled"
+        icon = "✓" if new_value else "⏸"
         message = dbc.Alert(
-            f"✓ {updated_count} schedule(s) {status_text} for '{config_name}'",
-            color="success",
+            f"{icon} Schedule '{schedule_name}' {status_text}",
+            color="success" if new_value else "info",
             duration=3000
         )
         
@@ -1731,13 +1726,14 @@ def toggle_configuration_schedule(checked_values, checkbox_ids):
 @app.callback(
     [Output('config-run-status', 'children'),
      Output('admin-configurations-content', 'children', allow_duplicate=True)],
-    [Input({'type': 'run-config', 'index': ALL}, 'n_clicks')],
-    [State({'type': 'run-config', 'index': ALL}, 'id')],
+    [Input({'type': 'run-schedule', 'index': ALL}, 'n_clicks')],
+    [State({'type': 'run-schedule', 'index': ALL}, 'id')],
     prevent_initial_call=True
 )
-def run_configuration_now(n_clicks_list, button_ids):
-    """Manually trigger data collection for a configuration."""
+def run_schedule_now(n_clicks_list, button_ids):
+    """Manually trigger data collection for a specific schedule."""
     import subprocess
+    import sqlite3
     from admin_components import get_configurations_table
     
     if not callback_context.triggered or not button_ids:
@@ -1747,25 +1743,43 @@ def run_configuration_now(n_clicks_list, button_ids):
     triggered_prop = callback_context.triggered[0]['prop_id']
     
     try:
-        # Extract config name from triggered prop_id
+        # Extract schedule_id from triggered prop_id
         import json
-        if 'run-config' not in triggered_prop:
+        if 'run-schedule' not in triggered_prop:
             return "", get_configurations_table()
         
         # Parse the triggered ID
         triggered_id = json.loads(triggered_prop.split('.')[0])
-        config_name = triggered_id['index']
+        schedule_id = triggered_id['index']
         
         # Check if button was actually clicked (n_clicks > 0)
-        button_index = next((i for i, bid in enumerate(button_ids) if bid['index'] == config_name), None)
+        button_index = next((i for i, bid in enumerate(button_ids) if bid['index'] == schedule_id), None)
         if button_index is None or not n_clicks_list[button_index]:
             return "", get_configurations_table()
+        
+        # Get schedule details from database
+        conn = sqlite3.connect('data/usgs_data.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT s.schedule_name, s.data_type, c.config_name
+            FROM schedules s
+            JOIN configurations c ON s.config_id = c.config_id
+            WHERE s.schedule_id = ?
+        ''', (schedule_id,))
+        result = cursor.fetchone()
+        conn.close()
+        
+        if not result:
+            return dbc.Alert(f"Schedule not found", color="danger", duration=3000), get_configurations_table()
+        
+        schedule_name, data_type, config_name = result
         
         # Show starting message
         starting_message = dbc.Alert(
             [
                 html.H5("🔄 Starting Data Collection", className="alert-heading"),
-                html.P(f"Collecting data for '{config_name}'..."),
+                html.P(f"Running '{schedule_name}' for '{config_name}'..."),
+                html.P(f"Data Type: {data_type}", className="small"),
                 dbc.Spinner(size="sm")
             ],
             color="info"
@@ -1774,9 +1788,16 @@ def run_configuration_now(n_clicks_list, button_ids):
         # Trigger data collection in background
         # Note: In production, this should use a proper job queue (Celery, RQ, etc.)
         try:
-            # Run data collector for this configuration
+            # Determine actual data type to run
+            # If 'both', we need to run twice or the collector needs to handle it
+            if data_type == 'both':
+                data_type_arg = 'realtime'  # Run realtime first, collector can handle 'both' if supported
+            else:
+                data_type_arg = data_type
+            
+            # Run data collector for this configuration with specific data type
             result = subprocess.Popen(
-                ['python', 'configurable_data_collector.py', '--config', config_name],
+                ['python', 'configurable_data_collector.py', '--config', config_name, '--data-type', data_type_arg],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 start_new_session=True
@@ -1785,7 +1806,8 @@ def run_configuration_now(n_clicks_list, button_ids):
             success_message = dbc.Alert(
                 [
                     html.H5("✓ Data Collection Started", className="alert-heading"),
-                    html.P(f"Collection for '{config_name}' is running in the background."),
+                    html.P(f"'{schedule_name}' is running in the background."),
+                    html.P(f"Collecting {data_type} data for '{config_name}'", className="small"),
                     html.P("Check the Monitoring tab for progress.", className="mb-0 small")
                 ],
                 color="success",
@@ -1809,7 +1831,7 @@ def run_configuration_now(n_clicks_list, button_ids):
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return dbc.Alert(f"Error running configuration: {e}", color="danger", duration=5000), get_configurations_table()
+        return dbc.Alert(f"Error running schedule: {e}", color="danger", duration=5000), get_configurations_table()
 
 
 if __name__ == '__main__':
