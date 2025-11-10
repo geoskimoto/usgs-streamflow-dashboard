@@ -84,17 +84,22 @@ def create_database_schema(db_path: str):
         ''')
         print("✓ Created schedules table")
         
-        # Create collection_logs table
+        # Create collection_logs table (enhanced for monitoring)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS collection_logs (
                 log_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                site_id TEXT NOT NULL,
-                collection_type TEXT NOT NULL,
-                timestamp TEXT NOT NULL,
-                status TEXT NOT NULL,
-                records_collected INTEGER,
+                config_id INTEGER,
+                config_name TEXT,
+                data_type TEXT,
+                start_time TEXT,
+                end_time TEXT,
+                status TEXT,
+                stations_attempted INTEGER DEFAULT 0,
+                stations_successful INTEGER DEFAULT 0,
+                duration_seconds REAL,
+                triggered_by TEXT DEFAULT 'manual',
                 error_message TEXT,
-                FOREIGN KEY (site_id) REFERENCES stations(site_id)
+                FOREIGN KEY (config_id) REFERENCES configurations(config_id)
             )
         ''')
         print("✓ Created collection_logs table")
@@ -150,8 +155,8 @@ def create_database_schema(db_path: str):
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_configurations_site_id ON configurations(site_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_configurations_active ON configurations(is_active)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_schedules_config_id ON schedules(config_id)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_collection_logs_site_id ON collection_logs(site_id)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_collection_logs_timestamp ON collection_logs(timestamp)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_collection_logs_config_id ON collection_logs(config_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_collection_logs_start_time ON collection_logs(start_time)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_station_errors_site_id ON station_errors(site_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_streamflow_data_site_id ON streamflow_data(site_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_streamflow_data_date ON streamflow_data(start_date)')
@@ -184,6 +189,26 @@ def create_database_schema(db_path: str):
                      s.schedule_type, s.schedule_value, s.last_modified
         """)
         print("✓ Created configuration_summary view with schedule information")
+        
+        # Create recent_collection_activity view for monitoring
+        cursor.execute("""
+            CREATE VIEW IF NOT EXISTS recent_collection_activity AS
+            SELECT 
+                log_id,
+                config_id,
+                config_name,
+                data_type,
+                start_time,
+                end_time,
+                status,
+                stations_attempted,
+                stations_successful,
+                ROUND(duration_seconds / 60.0, 1) as duration_minutes,
+                triggered_by
+            FROM collection_logs
+            ORDER BY start_time DESC
+        """)
+        print("✓ Created recent_collection_activity view for monitoring")
         
         conn.commit()
         print(f"\n✓ Database schema created successfully at: {db_path}")
