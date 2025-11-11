@@ -487,3 +487,6 @@ sqlite3 data/usgs_data.db "VACUUM;"
 - 2025-11-10: Added has_realtime column to stations table
 - 2025-11-10: Populated filters table (1,506 rows)
 - 2025-11-10: Integrated enrichment into daily collection workflow
+- 2025-11-10: Fixed get_filters_table() to query filters table instead of stations
+- 2025-11-10: **DELETED legacy databases** (usgs_cache.db, station_config.db) - now using unified usgs_data.db only
+- 2025-11-10: Backups saved to data/backups/ before deletion
