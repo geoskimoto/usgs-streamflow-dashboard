@@ -586,6 +586,7 @@ def main():
             if args.data_type == 'realtime':
                 # Transform for realtime_discharge table schema
                 df_to_store = df[['site_no', 'datetime_utc', 'discharge_cfs']].copy()
+                df_to_store.rename(columns={'site_no': 'site_id'}, inplace=True)  # Match table schema
                 df_to_store['qualifiers'] = df['data_quality'] if 'data_quality' in df.columns else ''
                 df_to_store['last_updated'] = datetime.now().isoformat()
                 df_to_store.to_sql('realtime_discharge', conn, if_exists='append', index=False)
@@ -603,6 +604,26 @@ def main():
         else:
             error_summary = f"{collector.collection_stats['failed']} stations failed"
             collector.update_collection_logging(status='completed', error_summary=error_summary)
+        
+        # Run metadata enrichment after successful daily data collection
+        if args.data_type == 'daily' and collector.collection_stats['successful'] > 0:
+            print("\n🔍 Running metadata enrichment...")
+            try:
+                import subprocess
+                enrichment_result = subprocess.run(
+                    ['python', 'enrich_station_metadata.py'],
+                    capture_output=True,
+                    text=True,
+                    timeout=300  # 5 minute timeout
+                )
+                if enrichment_result.returncode == 0:
+                    print("✅ Metadata enrichment completed successfully")
+                else:
+                    print(f"⚠️ Metadata enrichment had issues: {enrichment_result.stderr}")
+            except subprocess.TimeoutExpired:
+                print("⚠️ Metadata enrichment timed out (continuing anyway)")
+            except Exception as e:
+                print(f"⚠️ Could not run metadata enrichment: {e}")
         
         # Display results
         print(f"\n📊 Collection Results:")

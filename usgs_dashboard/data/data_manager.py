@@ -1164,7 +1164,7 @@ class USGSDataManager:
             query = '''
                 SELECT datetime_utc, discharge_cfs, data_quality
                 FROM realtime_discharge 
-                WHERE site_no = ? 
+                WHERE site_id = ? 
                 AND datetime_utc >= ? 
                 AND datetime_utc <= ? 
                 ORDER BY datetime_utc
@@ -1213,9 +1213,9 @@ class USGSDataManager:
             cursor = conn.cursor()
             
             cursor.execute('''
-                SELECT DISTINCT site_no 
+                SELECT DISTINCT site_id 
                 FROM realtime_discharge 
-                ORDER BY site_no
+                ORDER BY site_id
             ''')
             
             sites = [row[0] for row in cursor.fetchall()]

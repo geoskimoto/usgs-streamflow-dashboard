@@ -41,6 +41,7 @@ def create_database_schema(db_path: str):
                 drainage_area REAL,
                 data_source TEXT,
                 is_active INTEGER DEFAULT 1,
+                has_realtime INTEGER DEFAULT 0,
                 date_added TEXT,
                 last_updated TEXT
             )
@@ -142,12 +143,13 @@ def create_database_schema(db_path: str):
         # Create realtime_discharge table (15-minute values)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS realtime_discharge (
-                site_no TEXT NOT NULL,
+                site_id TEXT NOT NULL,
                 datetime_utc TEXT NOT NULL,
                 discharge_cfs REAL,
                 qualifiers TEXT,
                 last_updated TEXT,
-                PRIMARY KEY (site_no, datetime_utc)
+                PRIMARY KEY (site_id, datetime_utc),
+                FOREIGN KEY (site_id) REFERENCES stations(site_id)
             )
         ''')
         print("✓ Created realtime_discharge table")
@@ -162,7 +164,7 @@ def create_database_schema(db_path: str):
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_station_errors_site_id ON station_errors(site_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_streamflow_data_site_id ON streamflow_data(site_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_streamflow_data_date ON streamflow_data(start_date)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_realtime_discharge_site_no ON realtime_discharge(site_no)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_realtime_discharge_site_id ON realtime_discharge(site_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_realtime_discharge_datetime ON realtime_discharge(datetime_utc)')
         print("✓ Created indexes")
         

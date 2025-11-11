@@ -254,7 +254,7 @@ def create_enhanced_admin_content():
         # Interval component for auto-refresh
         dcc.Interval(
             id='admin-refresh-interval',
-            interval=30*1000,  # 30 seconds
+            interval=10*1000,  # 10 seconds for monitoring progress updates
             n_intervals=0
         ),
         
@@ -738,7 +738,7 @@ def get_system_info():
         
         # Get realtime data info
         cursor.execute("""
-            SELECT MIN(datetime_utc), MAX(datetime_utc), COUNT(DISTINCT site_no)
+            SELECT MIN(datetime_utc), MAX(datetime_utc), COUNT(DISTINCT site_id)
             FROM realtime_discharge
         """)
         realtime_info = cursor.fetchone()

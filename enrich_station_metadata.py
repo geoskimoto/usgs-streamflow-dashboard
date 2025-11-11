@@ -147,7 +147,7 @@ def calculate_site_stats(conn, site_id):
         realtime_query = """
             SELECT datetime_utc 
             FROM realtime_discharge 
-            WHERE site_no = ?
+            WHERE site_id = ?
             ORDER BY datetime_utc DESC
         """
         realtime_df = pd.read_sql(realtime_query, conn, params=(site_id,))
@@ -278,10 +278,10 @@ def enrich_from_usgs_api(cache_db_path: str, sample_size: int = None):
 def main():
     """Main execution function."""
     
-    cache_db = Path('data/usgs_cache.db')
+    cache_db = Path('data/usgs_data.db')
     
     if not cache_db.exists():
-        print(f"❌ Cache database not found: {cache_db}")
+        print(f"❌ Database not found: {cache_db}")
         return False
     
     print("=" * 60)
