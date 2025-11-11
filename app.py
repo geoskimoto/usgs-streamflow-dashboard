@@ -1796,10 +1796,18 @@ def run_schedule_now(n_clicks_list, button_ids):
                 data_type_arg = data_type
             
             # Run data collector for this configuration with specific data type
+            # Output goes to terminal where app.py is running (not captured)
+            print(f"\n{'='*80}")
+            print(f"🚀 TRIGGERING DATA COLLECTION FROM ADMIN PANEL")
+            print(f"   Schedule: {schedule_name}")
+            print(f"   Configuration: {config_name}")
+            print(f"   Data Type: {data_type_arg}")
+            print(f"{'='*80}\n")
+            
             result = subprocess.Popen(
                 ['python', 'configurable_data_collector.py', '--config', config_name, '--data-type', data_type_arg],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stdout=None,  # Output goes to parent's stdout (terminal)
+                stderr=None,  # Errors go to parent's stderr (terminal)
                 start_new_session=True
             )
             
