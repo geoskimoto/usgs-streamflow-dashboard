@@ -34,7 +34,7 @@ def check_system_status():
         print(f"📊 Real-time records: {rt_count:,}")
         
         if rt_count > 0:
-            cursor.execute('SELECT COUNT(DISTINCT site_no) FROM realtime_discharge')
+            cursor.execute('SELECT COUNT(DISTINCT site_id) FROM realtime_discharge')
             rt_sites = cursor.fetchone()[0]
             print(f"📍 Sites with real-time data: {rt_sites}")
             

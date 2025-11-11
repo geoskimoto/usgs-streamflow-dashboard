@@ -186,7 +186,7 @@ class USGSDataManager:
         validation_years = SUBSET_CONFIG.get('validation_years', 2)
         
         for idx, gauge in candidate_gauges.iterrows():
-            site_id = gauge.get('site_no')
+            site_id = gauge.get('site_id')
             
             # Single operation: attempt data download for validation
             validation_data = self._download_validation_data(site_id, validation_years)
@@ -612,8 +612,8 @@ class USGSDataManager:
             for idx, gauge in enumerate(gauges):
                 try:
                     # Ensure 'site_id' is present for dashboard compatibility
-                    if 'site_no' in gauge:
-                        gauge['site_id'] = gauge['site_no']
+                    if 'site_id' in gauge:
+                        gauge['site_id'] = gauge['site_id']
                     # Ensure 'station_name' is present for dashboard compatibility
                     if 'station_nm' in gauge:
                         gauge['station_name'] = gauge['station_nm']
@@ -648,7 +648,7 @@ class USGSDataManager:
                         gauge_data['status'] = 'inactive'
                     processed_gauges.append(gauge_data)
                 except Exception as e:
-                    print(f"[{idx+1}/{len(gauges_df)}] Error processing site {gauge.get('site_no', 'UNKNOWN')}: {e}")
+                    print(f"[{idx+1}/{len(gauges_df)}] Error processing site {gauge.get('site_id', 'UNKNOWN')}: {e}")
                     continue
             print(f"Successfully processed {len(processed_gauges)} gauges with valid coordinates")
             print(f"Activity checked for {activity_sample_count} sample sites")

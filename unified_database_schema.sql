@@ -213,25 +213,25 @@ CREATE INDEX idx_streamflow_updated ON streamflow_data(last_updated);
 -- realtime_discharge: Real-time (15-minute) discharge data
 CREATE TABLE realtime_discharge (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    site_no TEXT NOT NULL,                      -- References stations.usgs_id
+    site_id TEXT NOT NULL,                      -- References stations.usgs_id
     datetime_utc TIMESTAMP NOT NULL,            -- UTC timestamp
     discharge_cfs REAL NOT NULL,                -- Discharge in cubic feet per second
     data_quality TEXT DEFAULT 'A',              -- USGS quality code: A=Approved, P=Provisional
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
     -- Foreign Keys (enforced!)
-    FOREIGN KEY (site_no) REFERENCES stations(usgs_id) ON DELETE CASCADE,
+    FOREIGN KEY (site_id) REFERENCES stations(usgs_id) ON DELETE CASCADE,
     
     -- Constraints
-    UNIQUE(site_no, datetime_utc),
+    UNIQUE(site_id, datetime_utc),
     CHECK (discharge_cfs >= 0),
     CHECK (data_quality IN ('A', 'P', 'E', 'R', 'U'))  -- USGS quality codes
 );
 
 -- Indexes for performance
-CREATE INDEX idx_realtime_site_datetime ON realtime_discharge(site_no, datetime_utc);
+CREATE INDEX idx_realtime_site_datetime ON realtime_discharge(site_id, datetime_utc);
 CREATE INDEX idx_realtime_datetime ON realtime_discharge(datetime_utc);
-CREATE INDEX idx_realtime_site ON realtime_discharge(site_no);
+CREATE INDEX idx_realtime_site ON realtime_discharge(site_id);
 CREATE INDEX idx_realtime_quality ON realtime_discharge(data_quality);
 
 -- data_statistics: Cached statistics per station
@@ -414,7 +414,7 @@ SELECT DISTINCT
     s.longitude,
     MAX(rd.datetime_utc) as last_realtime_update
 FROM stations s
-JOIN realtime_discharge rd ON s.usgs_id = rd.site_no
+JOIN realtime_discharge rd ON s.usgs_id = rd.site_id
 WHERE rd.datetime_utc > datetime('now', '-24 hours')
 GROUP BY s.id, s.usgs_id, s.station_name, s.state, s.latitude, s.longitude;
 
@@ -433,14 +433,14 @@ SELECT
     CASE 
         WHEN EXISTS (
             SELECT 1 FROM realtime_discharge rd2 
-            WHERE rd2.site_no = s.usgs_id 
+            WHERE rd2.site_id = s.usgs_id 
             AND rd2.datetime_utc > datetime('now', '-24 hours')
         ) THEN 1 
         ELSE 0 
     END as has_recent_realtime
 FROM stations s
 LEFT JOIN streamflow_data sd ON s.usgs_id = sd.site_id
-LEFT JOIN realtime_discharge rd ON s.usgs_id = rd.site_no
+LEFT JOIN realtime_discharge rd ON s.usgs_id = rd.site_id
 GROUP BY s.id, s.usgs_id, s.station_name, s.state, s.years_of_record, 
          s.num_water_years, s.last_data_date;
 

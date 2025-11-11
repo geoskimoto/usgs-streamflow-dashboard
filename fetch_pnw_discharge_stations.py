@@ -92,7 +92,7 @@ def get_state_discharge_stations():
                     # Create dictionary from headers and fields
                     site_info = dict(zip(headers, fields))
                     
-                    site_code = site_info.get('site_no', '')
+                    site_code = site_info.get('site_id', '')
                     if not site_code:
                         continue
                     
@@ -148,7 +148,7 @@ def get_state_discharge_stations():
                         basin = basin_map.get(huc_prefix, f'HUC {huc_prefix}')
                     
                     site_data = {
-                        'site_no': site_code,
+                        'site_id': site_code,
                         'station_nm': station_name,
                         'latitude': lat,
                         'longitude': lon,
@@ -202,7 +202,7 @@ def get_state_discharge_stations():
     
     # Remove duplicates (same site might appear in multiple queries)
     original_count = len(df)
-    df = df.drop_duplicates(subset=['site_no']).reset_index(drop=True)
+    df = df.drop_duplicates(subset=['site_id']).reset_index(drop=True)
     
     print(f"\n🎯 SUMMARY:")
     print(f"   Total stations found: {len(df)} (removed {original_count - len(df)} duplicates)")
@@ -334,7 +334,7 @@ def main():
             huc17_sample = stations_df[stations_df['is_huc17'] == True].head(5)
             if not huc17_sample.empty:
                 print(f"\n📋 Sample HUC 17 stations:")
-                print(huc17_sample[['site_no', 'station_nm', 'state_cd', 'huc_cd', 'active']].to_string(index=False))
+                print(huc17_sample[['site_id', 'station_nm', 'state_cd', 'huc_cd', 'active']].to_string(index=False))
         
     else:
         print("❌ No stations retrieved. Check your internet connection and try again.")

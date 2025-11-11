@@ -397,7 +397,9 @@ station_errors.site_id → stations.site_id (many-to-one)
 - ✅ configurations.site_id (comma-separated list)
 - ✅ station_errors.site_id
 
-**Never use:** `site_no`, `usgs_id`, `station_id`, `id`
+**Never use:** `site_no` (deprecated), `usgs_id`, `station_id`, `id`
+
+**ALL active code now uses `site_id` exclusively.**
 
 ### Denormalized Design
 The `configurations.site_id` column stores comma-separated station ID lists:
@@ -490,3 +492,4 @@ sqlite3 data/usgs_data.db "VACUUM;"
 - 2025-11-10: Fixed get_filters_table() to query filters table instead of stations
 - 2025-11-10: **DELETED legacy databases** (usgs_cache.db, station_config.db) - now using unified usgs_data.db only
 - 2025-11-10: Backups saved to data/backups/ before deletion
+- 2025-11-10: **GLOBAL FIX**: Replaced ALL site_no → site_id in 8 active Python files (configurable_data_collector.py, update_daily_discharge_configurable.py, update_realtime_discharge_configurable.py, data_manager.py, config_loader.py, check_status.py, cross_reference_huc17.py, migrate_to_unified_db.py) + unified_database_schema.sql documentation

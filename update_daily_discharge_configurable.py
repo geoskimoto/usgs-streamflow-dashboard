@@ -110,12 +110,12 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
             last_dates = {}
             
             # Check streamflow_data table for each station's latest end_date
-            for site_no in station_ids:
+            for site_id in station_ids:
                 cursor.execute("""
                     SELECT MAX(end_date) 
                     FROM streamflow_data 
                     WHERE site_id = ?
-                """, (site_no,))
+                """, (site_id,))
                 
                 result = cursor.fetchone()
                 end_date = result[0] if result and result[0] else None
@@ -125,13 +125,13 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
                     last_date = pd.to_datetime(end_date).date()
                     # Add one day to avoid duplicate
                     next_date = last_date + timedelta(days=1)
-                    last_dates[site_no] = next_date
-                    self.logger.debug(f"Station {site_no}: incremental from {next_date}")
+                    last_dates[site_id] = next_date
+                    self.logger.debug(f"Station {site_id}: incremental from {next_date}")
                 else:
                     # New station - collect full historical record from 1910
                     historical_start = datetime(1910, 10, 1).date()
-                    last_dates[site_no] = historical_start
-                    self.logger.info(f"Station {site_no}: NEW - collecting full history from {historical_start}")
+                    last_dates[site_id] = historical_start
+                    self.logger.info(f"Station {site_id}: NEW - collecting full history from {historical_start}")
             
             conn.close()
             
@@ -146,7 +146,7 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
             self.logger.error(f"Error getting last update dates: {e}")
             # Return historical start date (1910) for all stations on error
             historical_start = datetime(1910, 10, 1).date()
-            return {site_no: historical_start for site_no in station_ids}
+            return {site_id: historical_start for site_id in station_ids}
     
     def update_daily_data(self, df: pd.DataFrame) -> Tuple[int, int]:
         """
@@ -156,7 +156,7 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
         Parameters:
         -----------
         df : pd.DataFrame
-            DataFrame with columns: site_no, datetime_utc, discharge_cfs, data_quality
+            DataFrame with columns: site_id, datetime_utc, discharge_cfs, data_quality
             
         Returns:
         --------
@@ -176,7 +176,7 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
             total_records = 0
             
             # Group by station for efficient processing
-            for site_no, site_df in df.groupby('site_no'):
+            for site_id, site_df in df.groupby('site_id'):
                 # Sort by date
                 site_df = site_df.sort_values('date')
                 
@@ -202,7 +202,7 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
                     (site_id, data_json, start_date, end_date, last_updated)
                     VALUES (?, ?, ?, ?, ?)
                 """, (
-                    site_no,
+                    site_id,
                     data_json,
                     start_date,
                     end_date,
@@ -363,7 +363,7 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
             
             if not df.empty:
                 self.logger.info(f"   📈 Total data points: {len(df)}")
-                self.logger.info(f"   🏞️ Stations with data: {df['site_no'].nunique()}")
+                self.logger.info(f"   🏞️ Stations with data: {df['site_id'].nunique()}")
                 date_range = df['datetime_utc']
                 self.logger.info(f"   📅 Data date range: {date_range.min().date()} to {date_range.max().date()}")
             

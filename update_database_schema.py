@@ -32,19 +32,19 @@ def update_database_schema():
         print("📊 Creating realtime_discharge table...")
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS realtime_discharge (
-                site_no TEXT,
+                site_id TEXT,
                 datetime_utc TIMESTAMP,
                 discharge_cfs REAL,
                 data_quality TEXT,        -- 'P' (provisional), 'A' (approved), etc.
                 last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (site_no, datetime_utc)
+                PRIMARY KEY (site_id, datetime_utc)
             )
         ''')
         
-        # Create index for faster queries on site_no
+        # Create index for faster queries on site_id
         cursor.execute('''
             CREATE INDEX IF NOT EXISTS idx_realtime_site_datetime 
-            ON realtime_discharge(site_no, datetime_utc DESC)
+            ON realtime_discharge(site_id, datetime_utc DESC)
         ''')
         
         print("✅ realtime_discharge table created")
@@ -158,7 +158,7 @@ def verify_schema():
         
         # Check each new table
         required_tables = {
-            'realtime_discharge': ['site_no', 'datetime_utc', 'discharge_cfs', 'data_quality'],
+            'realtime_discharge': ['site_id', 'datetime_utc', 'discharge_cfs', 'data_quality'],
             'update_schedules': ['job_name', 'frequency_hours', 'enabled', 'retention_days'],
             'job_execution_log': ['job_name', 'start_time', 'status', 'sites_processed']
         }

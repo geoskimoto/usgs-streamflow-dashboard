@@ -259,7 +259,7 @@ class ConfigurableDataCollector:
                     for ts in data['value']['timeSeries']:
                         try:
                             site_info = ts['sourceInfo']
-                            site_no = site_info['siteCode'][0]['value']
+                            site_id = site_info['siteCode'][0]['value']
                             
                             if 'values' in ts and len(ts['values']) > 0:
                                 values = ts['values'][0]['value']
@@ -290,7 +290,7 @@ class ConfigurableDataCollector:
                                             quality = 'E'  # Estimated
                                     
                                     all_data.append({
-                                        'site_no': site_no,
+                                        'site_id': site_id,
                                         'datetime_utc': dt,
                                         'discharge_cfs': discharge,
                                         'data_quality': quality
@@ -362,7 +362,7 @@ class ConfigurableDataCollector:
                 
                 if not df.empty:
                     all_data.append(df)
-                    successful_count = len(set(df['site_no'].unique()))
+                    successful_count = len(set(df['site_id'].unique()))
                     self.collection_stats['successful'] += successful_count
                     
                     self.logger.info(f"Batch successful: {successful_count} stations returned data")
@@ -585,8 +585,8 @@ def main():
             
             if args.data_type == 'realtime':
                 # Transform for realtime_discharge table schema
-                df_to_store = df[['site_no', 'datetime_utc', 'discharge_cfs']].copy()
-                df_to_store.rename(columns={'site_no': 'site_id'}, inplace=True)  # Match table schema
+                df_to_store = df[['site_id', 'datetime_utc', 'discharge_cfs']].copy()
+                df_to_store.rename(columns={'site_id': 'site_id'}, inplace=True)  # Match table schema
                 df_to_store['qualifiers'] = df['data_quality'] if 'data_quality' in df.columns else ''
                 df_to_store['last_updated'] = datetime.now().isoformat()
                 df_to_store.to_sql('realtime_discharge', conn, if_exists='append', index=False)
@@ -633,7 +633,7 @@ def main():
         
         if not df.empty:
             print(f"   📅 Date Range: {df['datetime_utc'].min()} to {df['datetime_utc'].max()}")
-            print(f"   🏞️ Stations with Data: {df['site_no'].nunique()}")
+            print(f"   🏞️ Stations with Data: {df['site_id'].nunique()}")
         
         return 0 if collector.collection_stats['failed'] == 0 else 1
         

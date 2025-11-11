@@ -53,19 +53,19 @@ class ConfigurableRealtimeUpdater(ConfigurableDataCollector):
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS realtime_discharge (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    site_no TEXT NOT NULL,
+                    site_id TEXT NOT NULL,
                     datetime_utc TIMESTAMP NOT NULL,
                     discharge_cfs REAL NOT NULL,
                     data_quality TEXT DEFAULT 'A',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(site_no, datetime_utc)
+                    UNIQUE(site_id, datetime_utc)
                 )
             """)
             
             # Create indexes for performance
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_realtime_site_datetime 
-                ON realtime_discharge(site_no, datetime_utc)
+                ON realtime_discharge(site_id, datetime_utc)
             """)
             
             cursor.execute("""
@@ -115,7 +115,7 @@ class ConfigurableRealtimeUpdater(ConfigurableDataCollector):
         Parameters:
         -----------
         df : pd.DataFrame
-            DataFrame with columns: site_no, datetime_utc, discharge_cfs, data_quality
+            DataFrame with columns: site_id, datetime_utc, discharge_cfs, data_quality
             
         Returns:
         --------
@@ -146,10 +146,10 @@ class ConfigurableRealtimeUpdater(ConfigurableDataCollector):
                         
                         cursor.execute("""
                             INSERT INTO realtime_discharge 
-                            (site_no, datetime_utc, discharge_cfs, data_quality)
+                            (site_id, datetime_utc, discharge_cfs, data_quality)
                             VALUES (?, ?, ?, ?)
                         """, (
-                            row['site_no'],
+                            row['site_id'],
                             datetime_str,
                             row['discharge_cfs'],
                             row['data_quality']
@@ -163,11 +163,11 @@ class ConfigurableRealtimeUpdater(ConfigurableDataCollector):
                         cursor.execute("""
                             UPDATE realtime_discharge 
                             SET discharge_cfs = ?, data_quality = ?, created_at = CURRENT_TIMESTAMP
-                            WHERE site_no = ? AND datetime_utc = ?
+                            WHERE site_id = ? AND datetime_utc = ?
                         """, (
                             row['discharge_cfs'],
                             row['data_quality'],
-                            row['site_no'],
+                            row['site_id'],
                             datetime_str
                         ))
                         
@@ -296,7 +296,7 @@ class ConfigurableRealtimeUpdater(ConfigurableDataCollector):
             
             if not df.empty:
                 self.logger.info(f"   📈 Total data points: {len(df)}")
-                self.logger.info(f"   🏞️ Stations with data: {df['site_no'].nunique()}")
+                self.logger.info(f"   🏞️ Stations with data: {df['site_id'].nunique()}")
             
             return success
             

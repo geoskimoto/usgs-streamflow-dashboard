@@ -27,13 +27,13 @@ def create_huc17_hads_stations():
     huc17_df = pd.read_csv('huc17_discharge_stations.csv')
     print(f"📊 Existing HUC17 stations: {len(huc17_df)}")
     
-    # Convert site_no columns to strings for matching
+    # Convert site_id columns to strings for matching
     hads_df['usgs_id'] = hads_df['usgs_id'].astype(str)
-    huc17_df['site_no'] = huc17_df['site_no'].astype(str)
+    huc17_df['site_id'] = huc17_df['site_id'].astype(str)
     
     # Find stations that are in both lists (intersection)
     hads_site_ids = set(hads_df['usgs_id'])
-    huc17_site_ids = set(huc17_df['site_no'])
+    huc17_site_ids = set(huc17_df['site_id'])
     
     common_sites = hads_site_ids.intersection(huc17_site_ids)
     print(f"🎯 Stations in both HADS and HUC17: {len(common_sites)}")
@@ -43,14 +43,14 @@ def create_huc17_hads_stations():
     
     # Merge with HUC17 data to get HUC codes and other metadata
     huc17_hads_merged = huc17_hads_df.merge(
-        huc17_df[['site_no', 'huc_cd', 'drainage_area', 'huc_code', 'huc_region']],
+        huc17_df[['site_id', 'huc_cd', 'drainage_area', 'huc_code', 'huc_region']],
         left_on='usgs_id',
-        right_on='site_no',
+        right_on='site_id',
         how='left'
     )
     
     # Clean up the merged data
-    huc17_hads_merged = huc17_hads_merged.drop('site_no', axis=1)
+    huc17_hads_merged = huc17_hads_merged.drop('site_id', axis=1)
     
     # Reorder columns for clarity
     column_order = [

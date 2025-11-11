@@ -338,7 +338,7 @@ class ConfigLoader:
             reader = csv.DictReader(f)
             for row in reader:
                 # Try different possible column names
-                usgs_id = row.get('usgs_id') or row.get('site_id') or row.get('site_no')
+                usgs_id = row.get('usgs_id') or row.get('site_id') or row.get('site_id')
                 if usgs_id:
                     usgs_ids.append(usgs_id)
         
