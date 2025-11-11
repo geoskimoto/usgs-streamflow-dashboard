@@ -346,14 +346,28 @@ class ConfigurableDataCollector:
             Combined data from all successful stations
         """
         all_data = []
+        total_batches = (len(stations) + self.batch_size - 1) // self.batch_size
+        
+        print(f"\n{'='*80}")
+        print(f"🚀 STARTING DATA COLLECTION")
+        print(f"   Total stations: {len(stations)}")
+        print(f"   Batch size: {self.batch_size}")
+        print(f"   Total batches: {total_batches}")
+        print(f"   Data type: {data_type}")
+        print(f"{'='*80}\n")
         
         # Process in batches
         for i in range(0, len(stations), self.batch_size):
             batch = stations[i:i + self.batch_size]
             batch_ids = [station['site_id'] for station in batch]
+            batch_num = i//self.batch_size + 1
             
-            self.logger.info(f"Processing batch {i//self.batch_size + 1}: "
-                           f"stations {i+1}-{min(i+self.batch_size, len(stations))} of {len(stations)}")
+            print(f"\n{'─'*80}")
+            print(f"📦 BATCH {batch_num}/{total_batches}")
+            print(f"   Stations: {i+1}-{min(i+self.batch_size, len(stations))} of {len(stations)}")
+            print(f"   Station IDs: {', '.join(batch_ids[:5])}{'...' if len(batch_ids) > 5 else ''}")
+            print(f"   Progress: {self.collection_stats['successful']}/{self.collection_stats['attempted']} successful so far")
+            print(f"{'─'*80}")
             
             self.collection_stats['attempted'] += len(batch)
             
@@ -365,10 +379,12 @@ class ConfigurableDataCollector:
                     successful_count = len(set(df['site_id'].unique()))
                     self.collection_stats['successful'] += successful_count
                     
+                    print(f"✅ Batch {batch_num} SUCCESS: {successful_count} stations returned data ({len(df)} records)")
                     self.logger.info(f"Batch successful: {successful_count} stations returned data")
                 
                 # Log failures
                 if failed_ids:
+                    print(f"⚠️  Batch {batch_num} PARTIAL: {len(failed_ids)} stations failed")
                     for station in batch:
                         if station['site_id'] in failed_ids:
                             self.log_station_error(
@@ -376,8 +392,12 @@ class ConfigurableDataCollector:
                                 error_type='api_failure',
                                 error_message='Failed to fetch data from USGS API'
                             )
+                else:
+                    if df.empty:
+                        print(f"⚠️  Batch {batch_num}: No data returned from USGS API")
                 
             except Exception as e:
+                print(f"❌ Batch {batch_num} FAILED: {str(e)}")
                 # Log all stations in batch as failed
                 for station in batch:
                     self.log_station_error(
@@ -388,13 +408,24 @@ class ConfigurableDataCollector:
                 
                 self.logger.error(f"Batch {i//self.batch_size + 1} failed: {e}")
         
+        # Print summary
+        print(f"\n{'='*80}")
+        print(f"📊 COLLECTION SUMMARY")
+        print(f"   Total stations attempted: {self.collection_stats['attempted']}")
+        print(f"   Successful: {self.collection_stats['successful']}")
+        print(f"   Failed: {self.collection_stats['failed']}")
+        print(f"   Success rate: {(self.collection_stats['successful']/self.collection_stats['attempted']*100):.1f}%")
+        print(f"{'='*80}\n")
+        
         # Combine all successful data
         if all_data:
             combined_df = pd.concat(all_data, ignore_index=True)
+            print(f"✅ Combined data: {len(combined_df)} total records from {combined_df['site_id'].nunique()} unique stations\n")
             self.logger.info(f"Total data collection: {len(combined_df)} records from "
                            f"{self.collection_stats['successful']} stations")
             return combined_df
         else:
+            print(f"⚠️  No data collected from any station\n")
             return pd.DataFrame()
     
     def sync_metadata_to_filters(self, stations: List[Dict]) -> int:
@@ -581,20 +612,77 @@ def main():
         
         # Store data in database
         if not df.empty:
+            print(f"\n{'='*80}")
+            print(f"💾 STORING DATA TO DATABASE")
+            print(f"   Total records to store: {len(df)}")
+            print(f"   Unique stations: {df['site_id'].nunique()}")
+            print(f"{'='*80}\n")
+            
             conn = sqlite3.connect(collector.db_path)
+            cursor = conn.cursor()
             
             if args.data_type == 'realtime':
                 # Transform for realtime_discharge table schema
                 df_to_store = df[['site_id', 'datetime_utc', 'discharge_cfs']].copy()
-                df_to_store.rename(columns={'site_id': 'site_id'}, inplace=True)  # Match table schema
                 df_to_store['qualifiers'] = df['data_quality'] if 'data_quality' in df.columns else ''
                 df_to_store['last_updated'] = datetime.now().isoformat()
-                df_to_store.to_sql('realtime_discharge', conn, if_exists='append', index=False)
-                print(f"✅ Stored {len(df_to_store)} records in realtime_discharge table")
+                
+                # Use INSERT OR REPLACE to handle duplicates gracefully
+                records_inserted = 0
+                records_updated = 0
+                
+                print("   Inserting records (handling duplicates)...")
+                for idx, row in df_to_store.iterrows():
+                    try:
+                        # Check if record exists
+                        cursor.execute("""
+                            SELECT COUNT(*) FROM realtime_discharge 
+                            WHERE site_id = ? AND datetime_utc = ?
+                        """, (row['site_id'], row['datetime_utc']))
+                        
+                        exists = cursor.fetchone()[0] > 0
+                        
+                        # Insert or replace
+                        cursor.execute("""
+                            INSERT OR REPLACE INTO realtime_discharge 
+                            (site_id, datetime_utc, discharge_cfs, qualifiers, last_updated)
+                            VALUES (?, ?, ?, ?, ?)
+                        """, (row['site_id'], row['datetime_utc'], row['discharge_cfs'], 
+                              row['qualifiers'], row['last_updated']))
+                        
+                        if exists:
+                            records_updated += 1
+                        else:
+                            records_inserted += 1
+                            
+                    except Exception as e:
+                        print(f"   ⚠️  Error inserting record for {row['site_id']}: {e}")
+                        continue
+                
+                conn.commit()
+                print(f"✅ Stored in realtime_discharge table:")
+                print(f"   - New records: {records_inserted}")
+                print(f"   - Updated records: {records_updated}")
+                print(f"   - Total processed: {records_inserted + records_updated}")
             else:
                 # Transform for streamflow_data table schema
-                df.to_sql('streamflow_data', conn, if_exists='append', index=False)
-                print(f"✅ Stored {len(df)} records in streamflow_data table")
+                # For daily data, use INSERT OR REPLACE as well
+                records_stored = 0
+                for idx, row in df.iterrows():
+                    try:
+                        cursor.execute("""
+                            INSERT OR REPLACE INTO streamflow_data 
+                            (site_id, datetime_utc, discharge_cfs, qualifiers, last_updated)
+                            VALUES (?, ?, ?, ?, ?)
+                        """, (row['site_id'], row['datetime_utc'], row['discharge_cfs'],
+                              row.get('data_quality', ''), datetime.now().isoformat()))
+                        records_stored += 1
+                    except Exception as e:
+                        print(f"   ⚠️  Error inserting record for {row['site_id']}: {e}")
+                        continue
+                
+                conn.commit()
+                print(f"✅ Stored {records_stored} records in streamflow_data table")
             
             conn.close()
         
