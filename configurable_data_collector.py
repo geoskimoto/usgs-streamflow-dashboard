@@ -254,15 +254,23 @@ class ConfigurableDataCollector:
                 
                 data = response.json()
                 
+                # Track which stations returned data in this batch
+                stations_with_data = set()
+                stations_without_data = set(station_ids)
+                
                 # Parse USGS JSON response
                 if 'value' in data and 'timeSeries' in data['value']:
-                    for ts in data['value']['timeSeries']:
+                    print(f"   📥 Parsing response... found {len(data['value']['timeSeries'])} time series")
+                    
+                    for ts_idx, ts in enumerate(data['value']['timeSeries']):
                         try:
                             site_info = ts['sourceInfo']
                             site_id = site_info['siteCode'][0]['value']
+                            site_name = site_info.get('siteName', 'Unknown')
                             
                             if 'values' in ts and len(ts['values']) > 0:
                                 values = ts['values'][0]['value']
+                                records_before = len(all_data)
                                 
                                 for value in values:
                                     datetime_str = value['dateTime']
@@ -295,22 +303,55 @@ class ConfigurableDataCollector:
                                         'discharge_cfs': discharge,
                                         'data_quality': quality
                                     })
+                                
+                                records_added = len(all_data) - records_before
+                                stations_with_data.add(site_id)
+                                stations_without_data.discard(site_id)
+                                
+                                # Show per-station progress
+                                print(f"      ✓ {site_id}: {records_added} records ({site_name[:50]})")
+                            else:
+                                print(f"      ⊘ {site_id}: No values returned ({site_name[:50]})")
+                                stations_without_data.discard(site_id)  # Queried but no data
                             
                         except Exception as e:
                             self.logger.warning(f"Error parsing data for station: {e}")
+                            print(f"      ✗ Error parsing station data: {str(e)[:60]}")
                             continue
+                    
+                    # Summary for this batch
+                    if stations_without_data:
+                        print(f"   ⚠️  {len(stations_without_data)} stations not in response: {', '.join(list(stations_without_data)[:5])}{'...' if len(stations_without_data) > 5 else ''}")
+                else:
+                    print(f"   ⚠️  No timeSeries data in API response")
                 
                 break  # Success, exit retry loop
                 
             except requests.exceptions.RequestException as e:
+                error_msg = str(e)
+                # Extract HTTP error code if available
+                if hasattr(e, 'response') and e.response is not None:
+                    status_code = e.response.status_code
+                    print(f"   ❌ HTTP {status_code} Error (attempt {retry + 1}/{self.max_retries})")
+                    if status_code == 400:
+                        print(f"      Possible reasons: Invalid station IDs, no data available for date range")
+                    elif status_code == 503:
+                        print(f"      USGS service temporarily unavailable")
+                else:
+                    print(f"   ❌ Request failed (attempt {retry + 1}/{self.max_retries}): {error_msg[:100]}")
+                
                 self.logger.warning(f"Request failed (attempt {retry + 1}): {e}")
                 if retry == self.max_retries - 1:
                     failed_stations.extend(station_ids)
+                    print(f"   ⛔ All {len(station_ids)} stations in batch marked as failed after {self.max_retries} attempts")
                 else:
-                    time.sleep(2 ** retry)  # Exponential backoff
+                    wait_time = 2 ** retry
+                    print(f"   ⏳ Retrying in {wait_time} seconds...")
+                    time.sleep(wait_time)  # Exponential backoff
             
             except Exception as e:
                 self.logger.error(f"Unexpected error fetching data: {e}")
+                print(f"   💥 Unexpected error: {str(e)[:100]}")
                 failed_stations.extend(station_ids)
                 break
         
@@ -630,8 +671,12 @@ def main():
                 # Use INSERT OR REPLACE to handle duplicates gracefully
                 records_inserted = 0
                 records_updated = 0
+                stations_processed = set()
                 
                 print("   Inserting records (handling duplicates)...")
+                total_rows = len(df_to_store)
+                last_progress = 0
+                
                 for idx, row in df_to_store.iterrows():
                     try:
                         # Check if record exists
@@ -654,6 +699,14 @@ def main():
                             records_updated += 1
                         else:
                             records_inserted += 1
+                        
+                        stations_processed.add(row['site_id'])
+                        
+                        # Show progress every 10%
+                        progress = int((idx + 1) / total_rows * 100)
+                        if progress >= last_progress + 10:
+                            print(f"      Progress: {progress}% ({idx + 1}/{total_rows} records, {len(stations_processed)} stations)")
+                            last_progress = progress
                             
                     except Exception as e:
                         print(f"   ⚠️  Error inserting record for {row['site_id']}: {e}")
