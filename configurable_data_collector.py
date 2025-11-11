@@ -104,7 +104,7 @@ class ConfigurableDataCollector:
                     config = manager.get_configuration_by_name(config_name)
                     if not config:
                         raise ValueError(f"Configuration '{config_name}' not found")
-                    config_id = config['id']
+                    config_id = config['config_id']
                 elif config_id:
                     pass  # Use provided config_id
                 else:
@@ -112,7 +112,7 @@ class ConfigurableDataCollector:
                     config = manager.get_default_configuration()
                     if not config:
                         raise ValueError("No default configuration found")
-                    config_id = config['id']
+                    config_id = config['config_id']
                 
                 stations = manager.get_stations_for_configuration(config_id)
                 self.logger.info(f"Retrieved {len(stations)} stations from configuration ID {config_id}")
@@ -350,7 +350,7 @@ class ConfigurableDataCollector:
         # Process in batches
         for i in range(0, len(stations), self.batch_size):
             batch = stations[i:i + self.batch_size]
-            batch_ids = [station['usgs_id'] for station in batch]
+            batch_ids = [station['site_id'] for station in batch]
             
             self.logger.info(f"Processing batch {i//self.batch_size + 1}: "
                            f"stations {i+1}-{min(i+self.batch_size, len(stations))} of {len(stations)}")
@@ -370,7 +370,7 @@ class ConfigurableDataCollector:
                 # Log failures
                 if failed_ids:
                     for station in batch:
-                        if station['usgs_id'] in failed_ids:
+                        if station['site_id'] in failed_ids:
                             self.log_station_error(
                                 station=station,
                                 error_type='api_failure',
@@ -419,7 +419,7 @@ class ConfigurableDataCollector:
             synced_count = 0
             
             for station in stations:
-                usgs_id = station['usgs_id']
+                usgs_id = station['site_id']
                 station_name = station['station_name']
                 state = station.get('state', '')
                 lat = station.get('latitude')
@@ -543,7 +543,7 @@ def main():
         if args.dry_run:
             print("\n🔍 DRY RUN - Would process these stations:")
             for i, station in enumerate(stations[:10], 1):
-                print(f"   {i}. {station['usgs_id']} - {station['station_name'][:60]}...")
+                print(f"   {i}. {station['site_id']} - {station['station_name'][:60]}...")
             if len(stations) > 10:
                 print(f"   ... and {len(stations) - 10} more stations")
             return 0
@@ -565,7 +565,7 @@ def main():
                 config = manager.get_default_configuration()
             
             collector.start_collection_logging(
-                config_id=config['id'],
+                config_id=config['config_id'],
                 data_type=args.data_type,
                 stations_count=len(stations),
                 triggered_by='command_line'
@@ -578,6 +578,24 @@ def main():
             start_date=start_date,
             end_date=end_date
         )
+        
+        # Store data in database
+        if not df.empty:
+            conn = sqlite3.connect(collector.db_path)
+            
+            if args.data_type == 'realtime':
+                # Transform for realtime_discharge table schema
+                df_to_store = df[['site_no', 'datetime_utc', 'discharge_cfs']].copy()
+                df_to_store['qualifiers'] = df['data_quality'] if 'data_quality' in df.columns else ''
+                df_to_store['last_updated'] = datetime.now().isoformat()
+                df_to_store.to_sql('realtime_discharge', conn, if_exists='append', index=False)
+                print(f"✅ Stored {len(df_to_store)} records in realtime_discharge table")
+            else:
+                # Transform for streamflow_data table schema
+                df.to_sql('streamflow_data', conn, if_exists='append', index=False)
+                print(f"✅ Stored {len(df)} records in streamflow_data table")
+            
+            conn.close()
         
         # Update collection logging
         if collector.collection_stats['failed'] == 0:

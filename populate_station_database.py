@@ -15,7 +15,7 @@ from datetime import datetime
 class StationDataPopulator:
     """Populates the configuration database with HADS station data."""
     
-    def __init__(self, db_path="data/station_config.db"):
+    def __init__(self, db_path="data/usgs_data.db"):
         """Initialize with database path."""
         self.db_path = Path(db_path)
         self.connection = None

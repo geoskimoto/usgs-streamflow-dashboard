@@ -117,14 +117,24 @@ class StationConfigurationManager:
     def get_stations_for_configuration(self, config_id: int) -> List[Dict]:
         """Get all stations for a specific configuration."""
         cursor = self.connection.cursor()
-        cursor.execute("""
-        SELECT s.*, cs.priority
-        FROM stations s
-        JOIN configuration_stations cs ON s.id = cs.station_id
-        WHERE cs.config_id = ? AND s.is_active = 1
-        ORDER BY cs.priority, s.usgs_id
-        """, (config_id,))
         
+        # Get the comma-separated site_id list from configurations
+        cursor.execute("SELECT site_id FROM configurations WHERE config_id = ?", (config_id,))
+        result = cursor.fetchone()
+        if not result or not result[0]:
+            return []
+        
+        site_ids = result[0].split(',')
+        
+        # Build query with placeholders for each site_id
+        placeholders = ','.join('?' * len(site_ids))
+        query = f"""
+        SELECT * FROM stations 
+        WHERE site_id IN ({placeholders}) AND is_active = 1
+        ORDER BY state, site_id
+        """
+        
+        cursor.execute(query, site_ids)
         return [dict(row) for row in cursor.fetchall()]
     
     def get_stations_by_criteria(self, states: List[str] = None, 
@@ -160,7 +170,7 @@ class StationConfigurationManager:
         query = "SELECT * FROM stations"
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
-        query += " ORDER BY state, usgs_id"
+        query += " ORDER BY state, site_id"
         
         cursor.execute(query, params)
         return [dict(row) for row in cursor.fetchall()]
@@ -168,7 +178,7 @@ class StationConfigurationManager:
     def get_station_by_usgs_id(self, usgs_id: str) -> Optional[Dict]:
         """Get station by USGS ID."""
         cursor = self.connection.cursor()
-        cursor.execute("SELECT * FROM stations WHERE usgs_id = ?", (usgs_id,))
+        cursor.execute("SELECT * FROM stations WHERE site_id = ?", (usgs_id,))
         
         row = cursor.fetchone()
         return dict(row) if row else None
@@ -384,15 +394,15 @@ def get_station_list(config_name: str = None) -> List[str]:
             config = manager.get_configuration_by_name(config_name)
             if not config:
                 raise ValueError(f"Configuration '{config_name}' not found")
-            config_id = config['id']
+            config_id = config['config_id']
         else:
             config = manager.get_default_configuration()
             if not config:
                 raise ValueError("No default configuration found")
-            config_id = config['id']
+            config_id = config['config_id']
         
         stations = manager.get_stations_for_configuration(config_id)
-        return [station['usgs_id'] for station in stations]
+        return [station['site_id'] for station in stations]
 
 
 def get_configuration_info(config_name: str = None) -> Dict:
@@ -406,8 +416,8 @@ def get_configuration_info(config_name: str = None) -> Dict:
         if not config:
             raise ValueError(f"Configuration '{config_name}' not found")
         
-        stations = manager.get_stations_for_configuration(config['id'])
-        schedules = manager.get_schedules_for_configuration(config['id'])
+        stations = manager.get_stations_for_configuration(config['config_id'])
+        schedules = manager.get_schedules_for_configuration(config['config_id'])
         
         return {
             'configuration': config,
