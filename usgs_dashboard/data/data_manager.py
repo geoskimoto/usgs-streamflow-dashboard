@@ -1424,21 +1424,36 @@ class USGSDataManager:
 
     def get_filters_table(self) -> pd.DataFrame:
         """
-        Get the stations table from the unified database.
+        Get the filters table from the unified database with enriched metadata.
         
         Returns:
         --------
         pd.DataFrame
-            DataFrame containing all station data
+            DataFrame containing all station data with enriched metadata
+            (drainage_area, years_of_record, etc.)
         """
         try:
             conn = sqlite3.connect(self.cache_db)
-            filters_df = pd.read_sql_query('SELECT * FROM stations', conn)
+            # Try filters table first (has enriched metadata)
+            filters_df = pd.read_sql_query('SELECT * FROM filters', conn)
+            
+            # If filters table is empty or missing critical columns, fall back to stations
+            if filters_df.empty or 'drainage_area' not in filters_df.columns:
+                print("Warning: filters table empty or missing columns, falling back to stations table")
+                filters_df = pd.read_sql_query('SELECT * FROM stations', conn)
+            
             conn.close()
             return filters_df
         except Exception as e:
-            print(f"Error getting stations table: {e}")
-            return pd.DataFrame()
+            print(f"Error getting filters table: {e}")
+            # Try stations table as fallback
+            try:
+                conn = sqlite3.connect(self.cache_db)
+                filters_df = pd.read_sql_query('SELECT * FROM stations', conn)
+                conn.close()
+                return filters_df
+            except:
+                return pd.DataFrame()
 
     def get_available_counties(self, selected_states: List[str]) -> List[str]:
         """
