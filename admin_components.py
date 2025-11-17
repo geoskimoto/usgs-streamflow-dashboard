@@ -15,7 +15,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import json
 
-from station_config_manager import StationConfigurationManager
+from json_config_manager import JSONConfigManager
 
 
 class StationAdminPanel:
@@ -23,7 +23,7 @@ class StationAdminPanel:
     
     def __init__(self):
         """Initialize the admin panel."""
-        self.config_manager = StationConfigurationManager()
+        self.config_manager = JSONConfigManager(db_path='data/usgs_data.db')
     
     def create_configuration_overview(self):
         """Create the configuration overview section."""
@@ -237,7 +237,6 @@ def create_enhanced_admin_content():
                         html.H4("🔧 Station Configuration Admin", className="mb-0"),
                         dbc.ButtonGroup([
                             dbc.Button("📊 Dashboard", id="admin-dashboard-tab", color="primary", size="sm"),
-                            dbc.Button("🎯 Configurations", id="admin-configs-tab", color="outline-primary", size="sm"),
                             dbc.Button("🗺️ Stations", id="admin-stations-tab", color="outline-primary", size="sm"),
                             dbc.Button("⏰ Schedules", id="admin-schedules-tab", color="outline-primary", size="sm"),
                             dbc.Button("📊 Monitoring", id="admin-monitoring-tab", color="outline-primary", size="sm")
@@ -254,7 +253,7 @@ def create_enhanced_admin_content():
         # Interval component for auto-refresh
         dcc.Interval(
             id='admin-refresh-interval',
-            interval=30*1000,  # 30 seconds
+            interval=10*1000,  # 10 seconds for monitoring progress updates
             n_intervals=0
         ),
         
@@ -265,62 +264,40 @@ def create_enhanced_admin_content():
     ], fluid=True)
 
 
-def get_configurations_table():
-    """Get configurations as a formatted table."""
-    try:
-        with StationConfigurationManager() as manager:
-            configs = manager.get_configurations()
-            
-            if not configs:
-                return html.P("No configurations found.", className="text-muted")
-            
-            # Create table data
-            table_data = []
-            for config in configs:
-                table_data.append({
-                    'Name': config['config_name'],
-                    'Stations': config['actual_station_count'],
-                    'Status': '✅ Active' if config['is_active'] else '❌ Inactive',
-                    'Default': '⭐ Yes' if config['is_default'] else '',
-                    'Created': config['created_date'][:10] if config['created_date'] else '',
-                    'Description': config['description'] or 'No description'
-                })
-            
-            return dash_table.DataTable(
-                data=table_data,
-                columns=[
-                    {'name': 'Configuration', 'id': 'Name'},
-                    {'name': 'Stations', 'id': 'Stations', 'type': 'numeric'},
-                    {'name': 'Status', 'id': 'Status'},
-                    {'name': 'Default', 'id': 'Default'},
-                    {'name': 'Created', 'id': 'Created'},
-                    {'name': 'Description', 'id': 'Description'}
-                ],
-                style_cell={'textAlign': 'left', 'padding': '10px'},
-                style_data_conditional=[
-                    {
-                        'if': {'filter_query': '{Status} contains Active'},
-                        'backgroundColor': '#d4edda',
-                        'color': 'black',
-                    }
-                ],
-                style_header={'backgroundColor': '#007bff', 'color': 'white', 'fontWeight': 'bold'},
-                page_size=10,
-                sort_action="native",
-                row_selectable="single"
-            )
+def format_schedule_display(schedule_type, schedule_value, is_enabled):
+    """Format schedule information for display."""
+    if not schedule_type or not schedule_value:
+        return "Not scheduled"
     
-    except Exception as e:
-        return dbc.Alert(f"Error loading configurations: {e}", color="danger")
+    if not is_enabled:
+        return f"⏸️ {schedule_value} (disabled)"
+    
+    # Format common cron expressions
+    if schedule_type == 'cron':
+        if schedule_value == '0 * * * *':
+            return "⏰ Hourly"
+        elif schedule_value == '0 2 * * *':
+            return "⏰ Daily at 02:00"
+        elif schedule_value == '0 3 * * 0':
+            return "⏰ Weekly (Sunday 03:00)"
+        elif schedule_value.startswith('*/'):
+            mins = schedule_value.split('/')[1].split()[0]
+            return f"⏰ Every {mins} minutes"
+        else:
+            return f"⏰ {schedule_value}"
+    elif schedule_type == 'interval':
+        return f"⏰ Every {schedule_value}"
+    
+    return schedule_value
 
 
 def get_system_health_display():
     """Get system health indicators."""
     try:
-        with StationConfigurationManager() as manager:
-            health = manager.get_system_health()
-            
-            return dbc.Row([
+        manager = JSONConfigManager(db_path='data/usgs_data.db')
+        health = manager.get_system_health()
+        
+        return dbc.Row([
                 dbc.Col([
                     html.H4(health['active_configurations'], className="text-primary mb-0"),
                     html.Small("Active Configs", className="text-muted")
@@ -344,43 +321,85 @@ def get_system_health_display():
 
 
 def get_recent_activity_table():
-    """Get recent collection activity table."""
+    """Get recent collection activity table with progress indicators."""
     try:
-        with StationConfigurationManager() as manager:
-            activities = manager.get_recent_collection_logs(limit=10)
+        manager = JSONConfigManager(db_path='data/usgs_data.db')
+        activities = manager.get_recent_collection_logs(limit=10)
+        
+        if not activities:
+            return html.P("No recent activity.", className="text-muted")
+        
+        # Build table rows with enhanced status display
+        table_rows = []
+        for activity in activities:
+            status = activity['status']
+            status_icon = "✅" if status == 'completed' else "❌" if status == 'failed' else "🔄"
             
-            if not activities:
-                return html.P("No recent activity.", className="text-muted")
+            # Calculate progress
+            total = activity['stations_attempted']
+            successful = activity['stations_successful']
+            failed = activity['stations_failed']
+            processed = successful + failed
+            progress_pct = (processed / total * 100) if total > 0 else 0
             
-            table_data = []
-            for activity in activities:
-                status_icon = "✅" if activity['status'] == 'completed' else "❌" if activity['status'] == 'failed' else "🔄"
-                
-                table_data.append({
-                    'Status': f"{status_icon} {activity['status'].title()}",
-                    'Configuration': activity['config_name'],
-                    'Type': activity['data_type'].title(),
-                    'Success Rate': f"{activity['stations_successful']}/{activity['stations_attempted']}",
-                    'Duration': f"{activity['duration_minutes'] or 0:.1f} min",
-                    'Started': activity['start_time'][-8:-3] if activity['start_time'] else '',  # Show time only
-                    'Triggered By': activity['triggered_by']
-                })
+            # Status column with progress bar for running jobs
+            if status == 'running':
+                status_cell = html.Div([
+                    html.Div(f"{status_icon} Running", style={'marginBottom': '5px'}),
+                    dbc.Progress(
+                        value=progress_pct,
+                        label=f"{processed}/{total}",
+                        color="info",
+                        striped=True,
+                        animated=True,
+                        style={'height': '20px'}
+                    )
+                ])
+            else:
+                status_cell = f"{status_icon} {status.title()}"
             
-            return dash_table.DataTable(
-                data=table_data,
-                columns=[
-                    {'name': 'Status', 'id': 'Status'},
-                    {'name': 'Configuration', 'id': 'Configuration'},
-                    {'name': 'Type', 'id': 'Type'},
-                    {'name': 'Success', 'id': 'Success Rate'},
-                    {'name': 'Duration', 'id': 'Duration'},
-                    {'name': 'Time', 'id': 'Started'},
-                    {'name': 'Triggered', 'id': 'Triggered By'}
-                ],
-                style_cell={'textAlign': 'left', 'padding': '8px', 'fontSize': '12px'},
-                style_header={'backgroundColor': '#007bff', 'color': 'white', 'fontWeight': 'bold'},
-                page_size=5
-            )
+            # Duration or elapsed time
+            if activity['duration_minutes']:
+                duration_display = f"{activity['duration_minutes']:.1f} min"
+            elif status == 'running' and activity['start_time']:
+                # Calculate elapsed time for running jobs
+                from datetime import datetime
+                try:
+                    start = datetime.fromisoformat(activity['start_time'])
+                    elapsed = (datetime.now() - start).total_seconds() / 60
+                    duration_display = f"{elapsed:.1f} min (running)"
+                except:
+                    duration_display = "Running..."
+            else:
+                duration_display = "0.0 min"
+            
+            table_rows.append(html.Tr([
+                html.Td(status_cell),
+                html.Td(activity['config_name']),
+                html.Td(activity['data_type'].title()),
+                html.Td(f"{successful}/{total}" if total > 0 else "0/0"),
+                html.Td(duration_display),
+                html.Td(activity['start_time'][-8:-3] if activity['start_time'] else ''),
+                html.Td(activity['triggered_by'])
+            ]))
+        
+        # Build HTML table with custom styling
+        table = dbc.Table([
+            html.Thead([
+                html.Tr([
+                    html.Th('Status'),
+                    html.Th('Configuration'),
+                    html.Th('Type'),
+                    html.Th('Progress'),
+                    html.Th('Duration'),
+                    html.Th('Started'),
+                    html.Th('Triggered By')
+                ])
+            ], style={'backgroundColor': '#007bff', 'color': 'white'}),
+            html.Tbody(table_rows)
+        ], bordered=True, hover=True, responsive=True, striped=True, size='sm')
+        
+        return table
             
     except Exception as e:
         return dbc.Alert(f"Error loading recent activity: {e}", color="danger")
@@ -389,43 +408,44 @@ def get_recent_activity_table():
 def get_stations_table(states=None, huc_code=None, source_datasets=None, search_text=None, limit=100):
     """Get stations table with filtering."""
     try:
-        with StationConfigurationManager() as manager:
-            # Get filtered stations
-            stations = manager.get_stations_by_criteria(
-                states=states,
-                huc_codes=[huc_code] if huc_code else None,
-                source_datasets=source_datasets,
-                active_only=True
-            )
-            
-            # Apply search filter
-            if search_text:
-                search_text = search_text.lower()
-                stations = [s for s in stations if 
-                           search_text in s['station_name'].lower() or 
-                           search_text in s['usgs_id'].lower()]
-            
-            # Limit results
-            stations = stations[:limit]
-            
-            if not stations:
-                return html.P("No stations found matching criteria.", className="text-muted")
-            
-            # Create table data
-            table_data = []
-            for station in stations:
-                table_data.append({
-                    'USGS_ID': station['usgs_id'],
-                    'Name': station['station_name'][:60] + '...' if len(station['station_name']) > 60 else station['station_name'],
-                    'State': station['state'],
-                    'HUC': station['huc_code'] or 'N/A',
-                    'Source': station['source_dataset'].replace('HADS_', ''),
-                    'Lat': f"{station['latitude']:.4f}",
-                    'Lon': f"{station['longitude']:.4f}",
-                    'Drainage': f"{station['drainage_area']:.1f}" if station['drainage_area'] else 'N/A'
-                })
-            
-            return dbc.Container([
+        manager = JSONConfigManager(db_path='data/usgs_data.db')
+        # Get filtered stations
+        stations = manager.get_stations_by_criteria(
+            states=states,
+            huc_codes=[huc_code] if huc_code else None,
+            source_datasets=source_datasets,
+            active_only=True
+        )
+        
+        # Apply search filter
+        if search_text:
+            search_text = search_text.lower()
+            stations = [s for s in stations if 
+                       search_text in s['station_name'].lower() or 
+                       search_text in s.get('site_id', s.get('usgs_id', '')).lower()]
+        
+        # Limit results
+        stations = stations[:limit]
+        
+        if not stations:
+            return html.P("No stations found matching criteria.", className="text-muted")
+        
+        # Create table data
+        table_data = []
+        for station in stations:
+            site_id = station.get('site_id') or station.get('usgs_id', 'N/A')
+            table_data.append({
+                'USGS_ID': site_id,
+                'Name': station['station_name'][:60] + '...' if len(station['station_name']) > 60 else station['station_name'],
+                'State': station['state'],
+                'HUC': station.get('huc_code') or 'N/A',
+                'Source': station.get('source_dataset', 'N/A').replace('HADS_', ''),
+                'Lat': f"{station['latitude']:.4f}",
+                'Lon': f"{station['longitude']:.4f}",
+                'Drainage': f"{station.get('drainage_area'):.1f}" if station.get('drainage_area') else 'N/A'
+            })
+        
+        return dbc.Container([
                 dbc.Alert(f"Showing {len(table_data)} stations (limited to {limit})", color="info", className="mb-3"),
                 
                 dash_table.DataTable(
@@ -461,51 +481,82 @@ def get_stations_table(states=None, huc_code=None, source_datasets=None, search_
 
 def get_schedules_table():
     """Get schedules management table."""
+    import sqlite3
+    from datetime import datetime
+    
     try:
-        with StationConfigurationManager() as manager:
-            configs = manager.get_configurations()
+        manager = JSONConfigManager(db_path='data/usgs_data.db')
+        schedules = manager.get_schedules()
+        
+        if not schedules:
+            return html.P("No schedules configured.", className="text-muted")
+        
+        # Get collection log data for last run and run count
+        conn = sqlite3.connect('data/usgs_data.db')
+        cursor = conn.cursor()
+        
+        table_data = []
+        for schedule in schedules:
+            # Get enabled status (check both 'enabled' and 'is_enabled' fields)
+            is_enabled = schedule.get('enabled', schedule.get('is_enabled', True))
+            status_icon = "✅" if is_enabled else "❌"
+            name = schedule.get('schedule_name') or schedule.get('name', 'Unnamed')
+            config_name = schedule.get('config_name') or schedule.get('configuration', 'N/A')
             
-            all_schedules = []
-            for config in configs:
-                schedules = manager.get_schedules_for_configuration(config['id'], enabled_only=False)
-                all_schedules.extend(schedules)
+            # Extract cron expression from timing object
+            timing = schedule.get('timing', {})
+            if isinstance(timing, dict):
+                cron_expr = timing.get('cron_expression', timing.get('description', 'N/A'))
+            else:
+                cron_expr = schedule.get('cron_expression', 'N/A')
             
-            if not all_schedules:
-                return html.P("No schedules configured.", className="text-muted")
+            # Get last run and run count from collection_logs
+            cursor.execute("""
+                SELECT 
+                    MAX(end_time) as last_run,
+                    COUNT(*) as run_count
+                FROM collection_logs
+                WHERE config_name = ? AND status = 'completed'
+            """, (config_name,))
             
-            table_data = []
-            for schedule in all_schedules:
-                status_icon = "✅" if schedule['is_enabled'] else "❌"
-                
-                table_data.append({
-                    'schedule_id': schedule['id'],  # Hidden ID for reference
-                    'config_id': schedule['config_id'],  # Hidden config ID
-                    'Status': f"{status_icon} {'Enabled' if schedule['is_enabled'] else 'Disabled'}",
-                    'Schedule': schedule['schedule_name'],
-                    'Configuration': schedule['config_name'],
-                    'Data Type': schedule['data_type'].title(),
-                    'Frequency': schedule['cron_expression'],
-                    'Last Run': schedule['last_run'][:16] if schedule['last_run'] else 'Never',
-                    'Next Run': schedule['next_run'][:16] if schedule['next_run'] else 'Not scheduled',
-                    'Run Count': schedule['run_count'] or 0
-                })
+            log_data = cursor.fetchone()
+            last_run = log_data[0] if log_data and log_data[0] else 'Never'
+            run_count = log_data[1] if log_data and log_data[1] else 0
             
-            return dash_table.DataTable(
+            # Format last run time
+            if last_run != 'Never':
+                try:
+                    last_run_dt = datetime.fromisoformat(last_run.replace('Z', '+00:00'))
+                    last_run = last_run_dt.strftime('%Y-%m-%d %H:%M')
+                except:
+                    pass
+            
+            table_data.append({
+                'Status': f"{status_icon} {'Enabled' if is_enabled else 'Disabled'}",
+                'Schedule': name,
+                'Configuration': config_name,
+                'Data Type': schedule.get('data_type', 'both').title(),
+                'Frequency': cron_expr,
+                'Last Run': last_run,
+                'Runs': str(run_count),
+                'enabled': is_enabled  # Store for toggling
+            })
+        
+        conn.close()
+        
+        return dash_table.DataTable(
                 id='schedules-table',
                 data=table_data,
                 columns=[
-                    {'name': 'schedule_id', 'id': 'schedule_id'},  # Hidden
-                    {'name': 'config_id', 'id': 'config_id'},  # Hidden
                     {'name': 'Status', 'id': 'Status'},
                     {'name': 'Schedule Name', 'id': 'Schedule'},
                     {'name': 'Configuration', 'id': 'Configuration'},
                     {'name': 'Type', 'id': 'Data Type'},
                     {'name': 'Cron Expression', 'id': 'Frequency'},
                     {'name': 'Last Run', 'id': 'Last Run'},
-                    {'name': 'Next Run', 'id': 'Next Run'},
-                    {'name': 'Runs', 'id': 'Run Count'}
+                    {'name': 'Runs', 'id': 'Runs'}
                 ],
-                hidden_columns=['schedule_id', 'config_id'],  # Hide ID columns
+                hidden_columns=['enabled'],  # Hide enabled flag (used for toggle logic)
                 style_cell={'textAlign': 'left', 'padding': '8px', 'fontSize': '12px'},
                 style_header={'backgroundColor': '#007bff', 'color': 'white', 'fontWeight': 'bold'},
                 style_data_conditional=[
@@ -568,7 +619,7 @@ def get_system_info():
         
         # Get row counts for main tables
         table_stats = []
-        main_tables = ['stations', 'configurations', 'schedules', 'collection_logs', 
+        main_tables = ['stations', 'collection_logs', 
                       'station_errors', 'streamflow_data', 'realtime_discharge']
         
         for table in main_tables:
@@ -585,9 +636,11 @@ def get_system_info():
         cursor.execute("SELECT COUNT(*) FROM stations")
         total_stations = cursor.fetchone()[0]
         
-        # Get active configurations
-        cursor.execute("SELECT COUNT(*) FROM configurations WHERE is_active = 1")
-        active_configs = cursor.fetchone()[0]
+        # Get active configurations from JSON
+        from json_config_manager import JSONConfigManager
+        manager = JSONConfigManager(db_path=db_path)
+        configs = manager.get_configurations()
+        active_configs = len([c for c in configs if c.get('is_active', True)])
         
         # Get date range for streamflow data
         cursor.execute("""
@@ -600,7 +653,7 @@ def get_system_info():
         
         # Get realtime data info
         cursor.execute("""
-            SELECT MIN(datetime_utc), MAX(datetime_utc), COUNT(DISTINCT site_no)
+            SELECT MIN(datetime_utc), MAX(datetime_utc), COUNT(DISTINCT site_id)
             FROM realtime_discharge
         """)
         realtime_info = cursor.fetchone()

@@ -31,7 +31,7 @@ project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(project_root)
 
 from configurable_data_collector import ConfigurableDataCollector
-from station_config_manager import StationConfigurationManager
+from json_config_manager import JSONConfigManager
 
 
 class ConfigurableRealtimeUpdater(ConfigurableDataCollector):
@@ -53,19 +53,19 @@ class ConfigurableRealtimeUpdater(ConfigurableDataCollector):
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS realtime_discharge (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    site_no TEXT NOT NULL,
+                    site_id TEXT NOT NULL,
                     datetime_utc TIMESTAMP NOT NULL,
                     discharge_cfs REAL NOT NULL,
                     data_quality TEXT DEFAULT 'A',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(site_no, datetime_utc)
+                    UNIQUE(site_id, datetime_utc)
                 )
             """)
             
             # Create indexes for performance
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_realtime_site_datetime 
-                ON realtime_discharge(site_no, datetime_utc)
+                ON realtime_discharge(site_id, datetime_utc)
             """)
             
             cursor.execute("""
@@ -115,7 +115,7 @@ class ConfigurableRealtimeUpdater(ConfigurableDataCollector):
         Parameters:
         -----------
         df : pd.DataFrame
-            DataFrame with columns: site_no, datetime_utc, discharge_cfs, data_quality
+            DataFrame with columns: site_id, datetime_utc, discharge_cfs, data_quality
             
         Returns:
         --------
@@ -146,10 +146,10 @@ class ConfigurableRealtimeUpdater(ConfigurableDataCollector):
                         
                         cursor.execute("""
                             INSERT INTO realtime_discharge 
-                            (site_no, datetime_utc, discharge_cfs, data_quality)
+                            (site_id, datetime_utc, discharge_cfs, data_quality)
                             VALUES (?, ?, ?, ?)
                         """, (
-                            row['site_no'],
+                            row['site_id'],
                             datetime_str,
                             row['discharge_cfs'],
                             row['data_quality']
@@ -163,11 +163,11 @@ class ConfigurableRealtimeUpdater(ConfigurableDataCollector):
                         cursor.execute("""
                             UPDATE realtime_discharge 
                             SET discharge_cfs = ?, data_quality = ?, created_at = CURRENT_TIMESTAMP
-                            WHERE site_no = ? AND datetime_utc = ?
+                            WHERE site_id = ? AND datetime_utc = ?
                         """, (
                             row['discharge_cfs'],
                             row['data_quality'],
-                            row['site_no'],
+                            row['site_id'],
                             datetime_str
                         ))
                         
@@ -224,24 +224,19 @@ class ConfigurableRealtimeUpdater(ConfigurableDataCollector):
                 return False
             
             # Get configuration for logging
-            with self.config_manager as manager:
-                if config_name:
-                    config = manager.get_configuration_by_name(config_name)
-                elif config_id:
-                    # Get config info
-                    configs = manager.get_configurations(active_only=False)
-                    config = next((c for c in configs if c['id'] == config_id), None)
-                    if not config:
-                        config = {'id': config_id, 'config_name': f'Config {config_id}'}
-                else:
-                    config = manager.get_default_configuration()
+            if config_name:
+                config = self.config_manager.get_configuration_by_name(config_name)
+            else:
+                config = self.config_manager.get_default_configuration()
             
-            self.logger.info(f"🎯 Starting real-time collection: {config['config_name']}")
+            actual_config_name = config.get('config_name') or config.get('name')
+            
+            self.logger.info(f"🎯 Starting real-time collection: {actual_config_name}")
             self.logger.info(f"📊 Processing {len(stations)} stations")
             
             # Start collection logging
             self.start_collection_logging(
-                config_id=config['id'],
+                config_name=actual_config_name,
                 data_type='realtime',
                 stations_count=len(stations),
                 triggered_by='realtime_updater'
@@ -296,7 +291,7 @@ class ConfigurableRealtimeUpdater(ConfigurableDataCollector):
             
             if not df.empty:
                 self.logger.info(f"   📈 Total data points: {len(df)}")
-                self.logger.info(f"   🏞️ Stations with data: {df['site_no'].nunique()}")
+                self.logger.info(f"   🏞️ Stations with data: {df['site_id'].nunique()}")
             
             return success
             
@@ -331,23 +326,23 @@ def main():
     # List configurations if requested
     if args.list_configs:
         try:
-            with StationConfigurationManager() as manager:
-                configs = manager.get_configurations()
-                
-                print("📋 Available Configurations:")
-                print("=" * 50)
-                
-                for config in configs:
-                    status = "✅ Active" if config['is_active'] else "❌ Inactive"
-                    default = " ⭐ (Default)" if config['is_default'] else ""
-                    print(f"ID: {config['id']} - {config['config_name']}")
-                    print(f"   Stations: {config['actual_station_count']}")
-                    print(f"   Status: {status}{default}")
-                    print(f"   Description: {config['description'] or 'No description'}")
-                    print()
-                
-                return 0
-                
+            manager = JSONConfigManager(db_path=args.db_path)
+            configs = manager.get_configurations()
+            
+            print("📋 Available Configurations:")
+            print("=" * 50)
+            
+            for config in configs:
+                name = config.get('config_name') or config.get('name')
+                status = "✅ Active" if config.get('is_active', True) else "❌ Inactive"
+                default = " ⭐ (Default)" if config.get('is_default', False) else ""
+                print(f"{name}")
+                print(f"   Status: {status}{default}")
+                print(f"   Description: {config.get('description', 'No description')}")
+                print()
+            
+            return 0
+            
         except Exception as e:
             print(f"❌ Error listing configurations: {e}")
             return 1

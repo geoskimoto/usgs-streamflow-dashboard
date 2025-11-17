@@ -3,7 +3,7 @@ services:
     name: usgs-streamflow-dashboard
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python initialize_database.py && gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 120 app:server
+    startCommand: python initialize_database.py --db-path data/usgs_data.db && gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 120 app:server
     plan: free
     envVars:
       - key: PORT

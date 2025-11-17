@@ -6,7 +6,7 @@ in the Pacific Northwest (Oregon, Washington, Idaho).
 """
 
 import dash
-from dash import dcc, html, Input, Output, State, callback_context, no_update
+from dash import dcc, html, Input, Output, State, callback_context, no_update, ALL
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 import pandas as pd
@@ -1293,16 +1293,15 @@ def toggle_sidebar(n_clicks):
 @app.callback(
     Output('admin-tab-content', 'children'),
     [Input('admin-dashboard-tab', 'n_clicks'),
-     Input('admin-configs-tab', 'n_clicks'),
      Input('admin-stations-tab', 'n_clicks'),
      Input('admin-schedules-tab', 'n_clicks'),
      Input('admin-monitoring-tab', 'n_clicks')],
     [State('admin-tab-content', 'children')]
 )
-def update_admin_tab_content(dash_clicks, config_clicks, station_clicks, 
+def update_admin_tab_content(dash_clicks, station_clicks, 
                            schedule_clicks, monitor_clicks, current_content):
     """Update admin tab content based on selected tab."""
-    from admin_components import (get_configurations_table, get_system_health_display, 
+    from admin_components import (get_system_health_display, 
                                 get_recent_activity_table, StationAdminPanel)
     
     ctx = callback_context
@@ -1312,25 +1311,11 @@ def update_admin_tab_content(dash_clicks, config_clicks, station_clicks,
         button_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
     # If no button was actually clicked, return current content (prevents refresh interval from resetting tabs)
-    if not any([dash_clicks, config_clicks, station_clicks, schedule_clicks, monitor_clicks]):
+    if not any([dash_clicks, station_clicks, schedule_clicks, monitor_clicks]):
         return current_content or no_update
     
     try:
-        if button_id == 'admin-configs-tab':
-            return dbc.Container([
-                html.H4("🎯 Station Configurations", className="mb-4"),
-                get_configurations_table(),
-                
-                dbc.Row([
-                    dbc.Col([
-                        dbc.Button("➕ New Configuration", color="success", className="me-2"),
-                        dbc.Button("📥 Import Stations", color="info", className="me-2"),
-                        dbc.Button("📤 Export Configuration", color="secondary")
-                    ])
-                ], className="mt-3")
-            ])
-        
-        elif button_id == 'admin-stations-tab':
+        if button_id == 'admin-stations-tab':
             from admin_components import get_stations_table
             return dbc.Container([
                 html.H4("🗺️ Station Browser", className="mb-4"),
@@ -1402,7 +1387,7 @@ def update_admin_tab_content(dash_clicks, config_clicks, station_clicks,
                     dbc.Col([
                         dbc.Button("➕ New Schedule", id="new-schedule-btn", color="success", className="me-2", disabled=True),
                         dbc.Button("▶️ Run Selected", id="run-selected-schedule-btn", color="primary", className="me-2"),
-                        dbc.Button("⏸️ Disable Selected", id="disable-schedule-btn", color="warning", className="me-2", disabled=True),
+                        dbc.Button("🔄 Toggle Selected", id="toggle-schedule-btn", color="warning", className="me-2"),
                         dbc.Button("🔄 Refresh", id="refresh-schedules-btn", color="info")
                     ])
                 ], className="mb-4"),
@@ -1443,17 +1428,15 @@ def update_admin_tab_content(dash_clicks, config_clicks, station_clicks,
 
 @app.callback(
     [Output('admin-dashboard-tab', 'color'),
-     Output('admin-configs-tab', 'color'),
      Output('admin-stations-tab', 'color'),
      Output('admin-schedules-tab', 'color'),
      Output('admin-monitoring-tab', 'color')],
     [Input('admin-dashboard-tab', 'n_clicks'),
-     Input('admin-configs-tab', 'n_clicks'),
      Input('admin-stations-tab', 'n_clicks'),
      Input('admin-schedules-tab', 'n_clicks'),
      Input('admin-monitoring-tab', 'n_clicks')]
 )
-def update_admin_tab_styles(dash_clicks, config_clicks, station_clicks, 
+def update_admin_tab_styles(dash_clicks, station_clicks, 
                           schedule_clicks, monitor_clicks):
     """Update tab button colors based on active tab."""
     ctx = callback_context
@@ -1462,8 +1445,8 @@ def update_admin_tab_styles(dash_clicks, config_clicks, station_clicks,
     else:
         active_tab = ctx.triggered[0]['prop_id'].split('.')[0]
     
-    colors = ['outline-primary'] * 5
-    tab_ids = ['admin-dashboard-tab', 'admin-configs-tab', 'admin-stations-tab', 
+    colors = ['outline-primary'] * 4
+    tab_ids = ['admin-dashboard-tab', 'admin-stations-tab', 
                'admin-schedules-tab', 'admin-monitoring-tab']
     
     if active_tab in tab_ids:
@@ -1499,15 +1482,17 @@ def update_monitoring_displays(n_intervals, refresh_clicks):
      Output('schedules-table-container', 'children'),
      Output('toast-container', 'children')],
     [Input('run-selected-schedule-btn', 'n_clicks'),
+     Input('toggle-schedule-btn', 'n_clicks'),
      Input('refresh-schedules-btn', 'n_clicks')],
     [State('schedules-table', 'selected_rows'),
      State('schedules-table', 'data')]
 )
-def handle_schedule_actions(run_clicks, refresh_clicks, selected_rows, table_data):
-    """Handle schedule management actions (run, refresh)."""
+def handle_schedule_actions(run_clicks, toggle_clicks, refresh_clicks, selected_rows, table_data):
+    """Handle schedule management actions (run, toggle, refresh)."""
     import subprocess
     import os
     from admin_components import get_schedules_table
+    from json_config_manager import JSONConfigManager
     
     ctx = callback_context
     if not ctx.triggered:
@@ -1518,6 +1503,42 @@ def handle_schedule_actions(run_clicks, refresh_clicks, selected_rows, table_dat
     # Handle refresh
     if button_id == 'refresh-schedules-btn':
         return "", get_schedules_table(), None
+    
+    # Handle toggle enabled/disabled
+    if button_id == 'toggle-schedule-btn':
+        if not toggle_clicks:
+            return "", get_schedules_table(), None
+        
+        if not selected_rows or len(selected_rows) == 0:
+            return dbc.Alert("⚠️ Please select a schedule to toggle", color="warning", dismissable=True), get_schedules_table(), None
+        
+        # Get the selected schedule data
+        selected_idx = selected_rows[0]
+        if selected_idx >= len(table_data):
+            return dbc.Alert("❌ Invalid selection", color="danger", dismissable=True), get_schedules_table(), None
+        
+        schedule_row = table_data[selected_idx]
+        schedule_name = schedule_row['Schedule']
+        
+        try:
+            manager = JSONConfigManager(db_path='data/usgs_data.db')
+            new_status = manager.toggle_schedule_enabled(schedule_name)
+            
+            status_text = "enabled" if new_status else "disabled"
+            status_icon = "✅" if new_status else "❌"
+            
+            success_msg = dbc.Alert(
+                f"{status_icon} Schedule '{schedule_name}' {status_text}",
+                color="success" if new_status else "info",
+                dismissable=True,
+                duration=3000
+            )
+            
+            return success_msg, get_schedules_table(), None
+            
+        except Exception as e:
+            error_msg = dbc.Alert(f"❌ Error toggling schedule: {e}", color="danger", dismissable=True)
+            return error_msg, get_schedules_table(), None
     
     # Handle run selected
     if button_id == 'run-selected-schedule-btn':
@@ -1650,8 +1671,41 @@ def update_admin_system_info(admin_style, pathname):
 
 if __name__ == '__main__':
     import os
+    import subprocess
     
     print(f"Starting {APP_TITLE}...")
+    
+    # Initialize database if it doesn't exist
+    # Check both root and data/ directory for the database
+    db_path = 'data/usgs_data.db'
+    db_dir = os.path.dirname(db_path)
+    
+    # Ensure data directory exists
+    if not os.path.exists(db_dir):
+        os.makedirs(db_dir)
+        print(f"✓ Created directory: {db_dir}")
+    
+    if not os.path.exists(db_path):
+        print(f"\n{'='*60}")
+        print("Database not found - initializing...")
+        print(f"{'='*60}")
+        try:
+            # Run the initialization script with the correct path
+            result = subprocess.run(['python', 'initialize_database.py', '--db-path', db_path], 
+                                  capture_output=False, 
+                                  check=True)
+            print(f"{'='*60}")
+            print("Database initialized successfully!")
+            print(f"{'='*60}\n")
+        except subprocess.CalledProcessError as e:
+            print(f"\n{'='*60}")
+            print("ERROR: Failed to initialize database!")
+            print(f"{'='*60}")
+            print(f"Please run: python initialize_database.py --db-path {db_path}")
+            print(f"{'='*60}\n")
+            raise
+    else:
+        print(f"✓ Database found: {db_path}")
     
     # Get port from environment (Render provides this) or default to 8050
     port = int(os.environ.get('PORT', 8050))

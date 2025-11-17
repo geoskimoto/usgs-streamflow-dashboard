@@ -60,7 +60,7 @@ class HUC17Filter:
             data_start = 0
             
             for i, line in enumerate(lines):
-                if line.startswith('#') and 'site_no' in line.lower():
+                if line.startswith('#') and 'site_id' in line.lower():
                     header_line = line[1:].strip()  # Remove leading #
                     # Next line should be data format indicators, skip it
                     data_start = i + 2
@@ -75,7 +75,7 @@ class HUC17Filter:
             
             # Find relevant column indices
             try:
-                site_no_idx = headers.index('site_no')
+                site_id_idx = headers.index('site_id')
                 huc_cd_idx = headers.index('huc_cd') if 'huc_cd' in headers else None
                 station_nm_idx = headers.index('station_nm') if 'station_nm' in headers else None
                 dec_lat_idx = headers.index('dec_lat_va') if 'dec_lat_va' in headers else None
@@ -89,11 +89,11 @@ class HUC17Filter:
             for line in lines[data_start:]:
                 if line.strip() and not line.startswith('#'):
                     parts = line.split('\t')
-                    if len(parts) > site_no_idx:
-                        site_id = parts[site_no_idx].strip()
+                    if len(parts) > site_id_idx:
+                        site_id = parts[site_id_idx].strip()
                         
                         site_data = {
-                            'site_no': site_id,
+                            'site_id': site_id,
                             'huc_cd': parts[huc_cd_idx].strip() if huc_cd_idx and len(parts) > huc_cd_idx else None,
                             'station_nm': parts[station_nm_idx].strip() if station_nm_idx and len(parts) > station_nm_idx else None,
                             'dec_lat_va': parts[dec_lat_idx].strip() if dec_lat_idx and len(parts) > dec_lat_idx else None,

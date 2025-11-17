@@ -29,7 +29,7 @@ CREATE TABLE stations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     
     -- Identifiers (from station_lists)
-    usgs_id TEXT UNIQUE NOT NULL,              -- USGS site number (8-15 digits)
+    site_id TEXT UNIQUE NOT NULL,              -- USGS site number (8-15 digits)
     nws_id TEXT,                                -- NOAA/NWS identifier
     goes_id TEXT,                               -- GOES satellite ID
     
@@ -88,7 +88,7 @@ CREATE TABLE stations (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_stations_usgs_id ON stations(usgs_id);
+CREATE INDEX idx_stations_site_id ON stations(site_id);
 CREATE INDEX idx_stations_state ON stations(state);
 CREATE INDEX idx_stations_basin ON stations(basin);
 CREATE INDEX idx_stations_huc ON stations(huc_code);
@@ -99,91 +99,13 @@ CREATE INDEX idx_stations_location ON stations(latitude, longitude);  -- For spa
 CREATE INDEX idx_stations_source ON stations(source_dataset);
 
 -- ============================================================================
--- CONFIGURATION TABLES
+-- CONFIGURATION NOTE
 -- ============================================================================
-
--- configurations: Station collection configurations/subsets
-CREATE TABLE configurations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    config_name TEXT UNIQUE NOT NULL,
-    description TEXT,
-    station_count INTEGER DEFAULT 0,            -- Cached count for performance
-    is_default BOOLEAN DEFAULT FALSE,           -- Default configuration
-    is_active BOOLEAN DEFAULT TRUE,             -- Whether available for use
-    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by TEXT DEFAULT 'system',           -- 'system', 'admin', username
-    
-    -- Constraints
-    CHECK (station_count >= 0),
-    UNIQUE(config_name)
-);
-
--- Indexes
-CREATE INDEX idx_config_name ON configurations(config_name);
-CREATE INDEX idx_config_active ON configurations(is_active);
-CREATE INDEX idx_config_default ON configurations(is_default);
-
--- configuration_stations: Many-to-many mapping
-CREATE TABLE configuration_stations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    config_id INTEGER NOT NULL,
-    station_id INTEGER NOT NULL,                -- References stations.id
-    priority INTEGER DEFAULT 1,                 -- Collection order priority
-    added_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    added_by TEXT DEFAULT 'system',
-    
-    -- Foreign Keys
-    FOREIGN KEY (config_id) REFERENCES configurations(id) ON DELETE CASCADE,
-    FOREIGN KEY (station_id) REFERENCES stations(id) ON DELETE CASCADE,
-    
-    -- Constraints
-    UNIQUE(config_id, station_id)               -- No duplicates
-);
-
--- Indexes
-CREATE INDEX idx_config_stations_config ON configuration_stations(config_id);
-CREATE INDEX idx_config_stations_station ON configuration_stations(station_id);
-CREATE INDEX idx_config_stations_priority ON configuration_stations(priority);
-
--- ============================================================================
--- SCHEDULING TABLES
--- ============================================================================
-
--- schedules: Data collection schedules
-CREATE TABLE schedules (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    config_id INTEGER NOT NULL,                 -- Which configuration to run
-    schedule_name TEXT NOT NULL,
-    data_type TEXT NOT NULL DEFAULT 'both',     -- 'realtime', 'daily', 'both'
-    
-    -- Schedule Timing
-    cron_expression TEXT NOT NULL,              -- Cron format: "0 * * * *" (hourly)
-    interval_minutes INTEGER,                   -- Alternative: simple interval
-    is_enabled BOOLEAN DEFAULT TRUE,
-    
-    -- Execution Tracking
-    last_run TIMESTAMP,                         -- When last executed
-    next_run TIMESTAMP,                         -- When next scheduled
-    run_count INTEGER DEFAULT 0,                -- Total executions
-    
-    -- Metadata
-    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    -- Foreign Keys
-    FOREIGN KEY (config_id) REFERENCES configurations(id) ON DELETE CASCADE,
-    
-    -- Constraints
-    CHECK (data_type IN ('realtime', 'daily', 'both')),
-    CHECK (run_count >= 0),
-    CHECK (interval_minutes IS NULL OR interval_minutes > 0)
-);
-
--- Indexes
-CREATE INDEX idx_schedule_config ON schedules(config_id);
-CREATE INDEX idx_schedule_enabled ON schedules(is_enabled);
-CREATE INDEX idx_schedule_next_run ON schedules(next_run);
-CREATE INDEX idx_schedule_data_type ON schedules(data_type);
+-- Station configurations and schedules are now managed via JSON files:
+--   - config/default_configurations.json
+--   - config/default_schedules.json
+-- These are loaded at runtime with in-memory caching for performance.
+-- No database tables needed for configuration management.
 
 -- ============================================================================
 -- DATA TABLES
@@ -192,14 +114,14 @@ CREATE INDEX idx_schedule_data_type ON schedules(data_type);
 -- streamflow_data: Historical daily streamflow data
 CREATE TABLE streamflow_data (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    site_id TEXT NOT NULL,                      -- References stations.usgs_id
+    site_id TEXT NOT NULL,                      -- References stations.site_id
     data_json TEXT,                             -- JSON blob of daily data
     start_date TEXT NOT NULL,                   -- YYYY-MM-DD
     end_date TEXT NOT NULL,                     -- YYYY-MM-DD
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
     -- Foreign Keys (enforced!)
-    FOREIGN KEY (site_id) REFERENCES stations(usgs_id) ON DELETE CASCADE,
+    FOREIGN KEY (site_id) REFERENCES stations(site_id) ON DELETE CASCADE,
     
     -- Constraints
     UNIQUE(site_id, start_date, end_date)
@@ -213,36 +135,36 @@ CREATE INDEX idx_streamflow_updated ON streamflow_data(last_updated);
 -- realtime_discharge: Real-time (15-minute) discharge data
 CREATE TABLE realtime_discharge (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    site_no TEXT NOT NULL,                      -- References stations.usgs_id
+    site_id TEXT NOT NULL,                      -- References stations.site_id
     datetime_utc TIMESTAMP NOT NULL,            -- UTC timestamp
     discharge_cfs REAL NOT NULL,                -- Discharge in cubic feet per second
     data_quality TEXT DEFAULT 'A',              -- USGS quality code: A=Approved, P=Provisional
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
     -- Foreign Keys (enforced!)
-    FOREIGN KEY (site_no) REFERENCES stations(usgs_id) ON DELETE CASCADE,
+    FOREIGN KEY (site_id) REFERENCES stations(site_id) ON DELETE CASCADE,
     
     -- Constraints
-    UNIQUE(site_no, datetime_utc),
+    UNIQUE(site_id, datetime_utc),
     CHECK (discharge_cfs >= 0),
     CHECK (data_quality IN ('A', 'P', 'E', 'R', 'U'))  -- USGS quality codes
 );
 
 -- Indexes for performance
-CREATE INDEX idx_realtime_site_datetime ON realtime_discharge(site_no, datetime_utc);
+CREATE INDEX idx_realtime_site_datetime ON realtime_discharge(site_id, datetime_utc);
 CREATE INDEX idx_realtime_datetime ON realtime_discharge(datetime_utc);
-CREATE INDEX idx_realtime_site ON realtime_discharge(site_no);
+CREATE INDEX idx_realtime_site ON realtime_discharge(site_id);
 CREATE INDEX idx_realtime_quality ON realtime_discharge(data_quality);
 
 -- data_statistics: Cached statistics per station
 CREATE TABLE data_statistics (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    site_id TEXT NOT NULL,                      -- References stations.usgs_id
+    site_id TEXT NOT NULL,                      -- References stations.site_id
     stats_json TEXT,                            -- JSON blob with mean, median, percentiles
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
     -- Foreign Keys (enforced!)
-    FOREIGN KEY (site_id) REFERENCES stations(usgs_id) ON DELETE CASCADE,
+    FOREIGN KEY (site_id) REFERENCES stations(site_id) ON DELETE CASCADE,
     
     -- Constraints
     UNIQUE(site_id)
@@ -278,8 +200,7 @@ CREATE INDEX idx_subset_date ON subset_cache(selection_date);
 -- collection_logs: Data collection execution logs
 CREATE TABLE collection_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    config_id INTEGER NOT NULL,                 -- Which configuration was run
-    schedule_id INTEGER,                        -- NULL if manual run
+    config_name TEXT NOT NULL,                  -- Which configuration was run (from JSON)
     data_type TEXT NOT NULL,                    -- 'realtime', 'daily', 'manual'
     
     -- Execution Statistics
@@ -297,9 +218,7 @@ CREATE TABLE collection_logs (
     status TEXT NOT NULL,                       -- 'running', 'completed', 'failed', 'cancelled'
     triggered_by TEXT DEFAULT 'system',         -- 'system', 'manual', 'api', username
     
-    -- Foreign Keys
-    FOREIGN KEY (config_id) REFERENCES configurations(id),
-    FOREIGN KEY (schedule_id) REFERENCES schedules(id),
+    -- Note: No foreign keys since configs are in JSON files
     
     -- Constraints
     CHECK (data_type IN ('realtime', 'daily', 'manual', 'both')),
@@ -312,8 +231,7 @@ CREATE TABLE collection_logs (
 );
 
 -- Indexes
-CREATE INDEX idx_logs_config ON collection_logs(config_id);
-CREATE INDEX idx_logs_schedule ON collection_logs(schedule_id);
+CREATE INDEX idx_logs_config_name ON collection_logs(config_name);
 CREATE INDEX idx_logs_status ON collection_logs(status);
 CREATE INDEX idx_logs_start_time ON collection_logs(start_time);
 CREATE INDEX idx_logs_data_type ON collection_logs(data_type);
@@ -349,24 +267,6 @@ CREATE INDEX idx_errors_occurred ON station_errors(occurred_at);
 -- VIEWS (Backward Compatibility)
 -- ============================================================================
 
--- configuration_summary: Overview of configurations
-CREATE VIEW configuration_summary AS
-SELECT 
-    c.id,
-    c.config_name,
-    c.description,
-    c.is_default,
-    c.is_active,
-    COUNT(cs.station_id) as actual_station_count,
-    c.station_count as recorded_count,
-    c.created_date,
-    c.last_modified,
-    c.created_by
-FROM configurations c
-LEFT JOIN configuration_stations cs ON c.id = cs.config_id
-GROUP BY c.id, c.config_name, c.description, c.is_default, c.is_active, 
-         c.station_count, c.created_date, c.last_modified, c.created_by;
-
 -- stations_by_state: Station counts grouped by state
 CREATE VIEW stations_by_state AS
 SELECT 
@@ -386,7 +286,7 @@ ORDER BY state, source_dataset;
 CREATE VIEW recent_collection_activity AS
 SELECT 
     cl.id,
-    c.config_name,
+    cl.config_name,
     cl.data_type,
     cl.status,
     cl.stations_attempted,
@@ -395,11 +295,8 @@ SELECT
     ROUND(cl.duration_seconds / 60.0, 2) as duration_minutes,
     cl.start_time,
     cl.end_time,
-    cl.triggered_by,
-    s.schedule_name
+    cl.triggered_by
 FROM collection_logs cl
-JOIN configurations c ON cl.config_id = c.id
-LEFT JOIN schedules s ON cl.schedule_id = s.id
 ORDER BY cl.start_time DESC
 LIMIT 100;
 
@@ -407,22 +304,22 @@ LIMIT 100;
 CREATE VIEW stations_with_realtime AS
 SELECT DISTINCT
     s.id,
-    s.usgs_id,
+    s.site_id,
     s.station_name,
     s.state,
     s.latitude,
     s.longitude,
     MAX(rd.datetime_utc) as last_realtime_update
 FROM stations s
-JOIN realtime_discharge rd ON s.usgs_id = rd.site_no
+JOIN realtime_discharge rd ON s.site_id = rd.site_id
 WHERE rd.datetime_utc > datetime('now', '-24 hours')
-GROUP BY s.id, s.usgs_id, s.station_name, s.state, s.latitude, s.longitude;
+GROUP BY s.id, s.site_id, s.station_name, s.state, s.latitude, s.longitude;
 
 -- station_data_availability: Data availability summary per station
 CREATE VIEW station_data_availability AS
 SELECT 
     s.id,
-    s.usgs_id,
+    s.site_id,
     s.station_name,
     s.state,
     s.years_of_record,
@@ -433,15 +330,15 @@ SELECT
     CASE 
         WHEN EXISTS (
             SELECT 1 FROM realtime_discharge rd2 
-            WHERE rd2.site_no = s.usgs_id 
+            WHERE rd2.site_id = s.site_id 
             AND rd2.datetime_utc > datetime('now', '-24 hours')
         ) THEN 1 
         ELSE 0 
     END as has_recent_realtime
 FROM stations s
-LEFT JOIN streamflow_data sd ON s.usgs_id = sd.site_id
-LEFT JOIN realtime_discharge rd ON s.usgs_id = rd.site_no
-GROUP BY s.id, s.usgs_id, s.station_name, s.state, s.years_of_record, 
+LEFT JOIN streamflow_data sd ON s.site_id = sd.site_id
+LEFT JOIN realtime_discharge rd ON s.site_id = rd.site_id
+GROUP BY s.id, s.site_id, s.station_name, s.state, s.years_of_record, 
          s.num_water_years, s.last_data_date;
 
 -- error_summary: Error statistics by type
@@ -459,47 +356,6 @@ ORDER BY error_count DESC;
 -- ============================================================================
 -- TRIGGERS (Data Integrity & Automation)
 -- ============================================================================
-
--- Update configuration station count when stations added/removed
-CREATE TRIGGER update_config_count_insert
-AFTER INSERT ON configuration_stations
-BEGIN
-    UPDATE configurations 
-    SET station_count = (
-        SELECT COUNT(*) FROM configuration_stations WHERE config_id = NEW.config_id
-    )
-    WHERE id = NEW.config_id;
-END;
-
-CREATE TRIGGER update_config_count_delete
-AFTER DELETE ON configuration_stations
-BEGIN
-    UPDATE configurations 
-    SET station_count = (
-        SELECT COUNT(*) FROM configuration_stations WHERE config_id = OLD.config_id
-    )
-    WHERE id = OLD.config_id;
-END;
-
--- Update last_modified timestamp on configuration changes
-CREATE TRIGGER update_config_modified
-AFTER UPDATE ON configurations
-BEGIN
-    UPDATE configurations 
-    SET last_modified = CURRENT_TIMESTAMP 
-    WHERE id = NEW.id;
-END;
-
--- Increment schedule run count
-CREATE TRIGGER increment_schedule_count
-AFTER INSERT ON collection_logs
-WHEN NEW.schedule_id IS NOT NULL AND NEW.status = 'completed'
-BEGIN
-    UPDATE schedules 
-    SET run_count = run_count + 1,
-        last_run = NEW.start_time
-    WHERE id = NEW.schedule_id;
-END;
 
 -- Update station last_updated timestamp
 CREATE TRIGGER update_station_timestamp
@@ -519,6 +375,7 @@ CREATE INDEX idx_stations_state_active ON stations(state, is_active);
 CREATE INDEX idx_stations_basin_active ON stations(basin, is_active);
 CREATE INDEX idx_stations_state_drainage ON stations(state, drainage_area);
 CREATE INDEX idx_stations_active_status ON stations(is_active, status);
+CREATE INDEX idx_stations_source_active ON stations(source_dataset, is_active);
 
 -- ============================================================================
 -- SCHEMA VALIDATION QUERIES

@@ -560,7 +560,7 @@ class DatabaseMigration:
                 
                 target_conn.executemany("""
                 INSERT INTO realtime_discharge 
-                (site_no, datetime_utc, discharge_cfs, data_quality, created_at)
+                (site_id, datetime_utc, discharge_cfs, data_quality, created_at)
                 VALUES (?, ?, ?, ?, ?)
                 """, cleaned_rows)
                 

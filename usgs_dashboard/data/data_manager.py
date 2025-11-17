@@ -186,7 +186,7 @@ class USGSDataManager:
         validation_years = SUBSET_CONFIG.get('validation_years', 2)
         
         for idx, gauge in candidate_gauges.iterrows():
-            site_id = gauge.get('site_no')
+            site_id = gauge.get('site_id')
             
             # Single operation: attempt data download for validation
             validation_data = self._download_validation_data(site_id, validation_years)
@@ -612,8 +612,8 @@ class USGSDataManager:
             for idx, gauge in enumerate(gauges):
                 try:
                     # Ensure 'site_id' is present for dashboard compatibility
-                    if 'site_no' in gauge:
-                        gauge['site_id'] = gauge['site_no']
+                    if 'site_id' in gauge:
+                        gauge['site_id'] = gauge['site_id']
                     # Ensure 'station_name' is present for dashboard compatibility
                     if 'station_nm' in gauge:
                         gauge['station_name'] = gauge['station_nm']
@@ -648,7 +648,7 @@ class USGSDataManager:
                         gauge_data['status'] = 'inactive'
                     processed_gauges.append(gauge_data)
                 except Exception as e:
-                    print(f"[{idx+1}/{len(gauges_df)}] Error processing site {gauge.get('site_no', 'UNKNOWN')}: {e}")
+                    print(f"[{idx+1}/{len(gauges_df)}] Error processing site {gauge.get('site_id', 'UNKNOWN')}: {e}")
                     continue
             print(f"Successfully processed {len(processed_gauges)} gauges with valid coordinates")
             print(f"Activity checked for {activity_sample_count} sample sites")
@@ -1162,9 +1162,9 @@ class USGSDataManager:
             conn = sqlite3.connect(self.cache_db)
             
             query = '''
-                SELECT datetime_utc, discharge_cfs, data_quality
+                SELECT datetime_utc, discharge_cfs, data_quality as qualifiers
                 FROM realtime_discharge 
-                WHERE site_no = ? 
+                WHERE site_id = ? 
                 AND datetime_utc >= ? 
                 AND datetime_utc <= ? 
                 ORDER BY datetime_utc
@@ -1213,9 +1213,9 @@ class USGSDataManager:
             cursor = conn.cursor()
             
             cursor.execute('''
-                SELECT DISTINCT site_no 
+                SELECT DISTINCT site_id 
                 FROM realtime_discharge 
-                ORDER BY site_no
+                ORDER BY site_id
             ''')
             
             sites = [row[0] for row in cursor.fetchall()]
@@ -1424,21 +1424,36 @@ class USGSDataManager:
 
     def get_filters_table(self) -> pd.DataFrame:
         """
-        Get the stations table from the unified database.
+        Get the filters table from the unified database with enriched metadata.
         
         Returns:
         --------
         pd.DataFrame
-            DataFrame containing all station data
+            DataFrame containing all station data with enriched metadata
+            (drainage_area, years_of_record, etc.)
         """
         try:
             conn = sqlite3.connect(self.cache_db)
-            filters_df = pd.read_sql_query('SELECT * FROM stations', conn)
+            # Try filters table first (has enriched metadata)
+            filters_df = pd.read_sql_query('SELECT * FROM filters', conn)
+            
+            # If filters table is empty or missing critical columns, fall back to stations
+            if filters_df.empty or 'drainage_area' not in filters_df.columns:
+                print("Warning: filters table empty or missing columns, falling back to stations table")
+                filters_df = pd.read_sql_query('SELECT * FROM stations', conn)
+            
             conn.close()
             return filters_df
         except Exception as e:
-            print(f"Error getting stations table: {e}")
-            return pd.DataFrame()
+            print(f"Error getting filters table: {e}")
+            # Try stations table as fallback
+            try:
+                conn = sqlite3.connect(self.cache_db)
+                filters_df = pd.read_sql_query('SELECT * FROM stations', conn)
+                conn.close()
+                return filters_df
+            except:
+                return pd.DataFrame()
 
     def get_available_counties(self, selected_states: List[str]) -> List[str]:
         """

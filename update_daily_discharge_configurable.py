@@ -37,7 +37,7 @@ project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(project_root)
 
 from configurable_data_collector import ConfigurableDataCollector
-from station_config_manager import StationConfigurationManager
+from json_config_manager import JSONConfigManager
 from enrich_station_metadata import calculate_station_statistics
 
 
@@ -110,12 +110,12 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
             last_dates = {}
             
             # Check streamflow_data table for each station's latest end_date
-            for site_no in station_ids:
+            for site_id in station_ids:
                 cursor.execute("""
                     SELECT MAX(end_date) 
                     FROM streamflow_data 
                     WHERE site_id = ?
-                """, (site_no,))
+                """, (site_id,))
                 
                 result = cursor.fetchone()
                 end_date = result[0] if result and result[0] else None
@@ -125,13 +125,13 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
                     last_date = pd.to_datetime(end_date).date()
                     # Add one day to avoid duplicate
                     next_date = last_date + timedelta(days=1)
-                    last_dates[site_no] = next_date
-                    self.logger.debug(f"Station {site_no}: incremental from {next_date}")
+                    last_dates[site_id] = next_date
+                    self.logger.debug(f"Station {site_id}: incremental from {next_date}")
                 else:
                     # New station - collect full historical record from 1910
                     historical_start = datetime(1910, 10, 1).date()
-                    last_dates[site_no] = historical_start
-                    self.logger.info(f"Station {site_no}: NEW - collecting full history from {historical_start}")
+                    last_dates[site_id] = historical_start
+                    self.logger.info(f"Station {site_id}: NEW - collecting full history from {historical_start}")
             
             conn.close()
             
@@ -146,7 +146,7 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
             self.logger.error(f"Error getting last update dates: {e}")
             # Return historical start date (1910) for all stations on error
             historical_start = datetime(1910, 10, 1).date()
-            return {site_no: historical_start for site_no in station_ids}
+            return {site_id: historical_start for site_id in station_ids}
     
     def update_daily_data(self, df: pd.DataFrame) -> Tuple[int, int]:
         """
@@ -156,7 +156,7 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
         Parameters:
         -----------
         df : pd.DataFrame
-            DataFrame with columns: site_no, datetime_utc, discharge_cfs, data_quality
+            DataFrame with columns: site_id, datetime_utc, discharge_cfs, data_quality
             
         Returns:
         --------
@@ -176,7 +176,7 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
             total_records = 0
             
             # Group by station for efficient processing
-            for site_no, site_df in df.groupby('site_no'):
+            for site_id, site_df in df.groupby('site_id'):
                 # Sort by date
                 site_df = site_df.sort_values('date')
                 
@@ -202,7 +202,7 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
                     (site_id, data_json, start_date, end_date, last_updated)
                     VALUES (?, ?, ?, ?, ?)
                 """, (
-                    site_no,
+                    site_id,
                     data_json,
                     start_date,
                     end_date,
@@ -258,31 +258,26 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
                 return False
             
             # Get configuration for logging
-            with self.config_manager as manager:
-                if config_name:
-                    config = manager.get_configuration_by_name(config_name)
-                elif config_id:
-                    # Get config info
-                    configs = manager.get_configurations(active_only=False)
-                    config = next((c for c in configs if c['id'] == config_id), None)
-                    if not config:
-                        config = {'id': config_id, 'config_name': f'Config {config_id}'}
-                else:
-                    config = manager.get_default_configuration()
+            if config_name:
+                config = self.config_manager.get_configuration_by_name(config_name)
+            else:
+                config = self.config_manager.get_default_configuration()
             
-            self.logger.info(f"🎯 Starting daily collection: {config['config_name']}")
+            actual_config_name = config.get('config_name') or config.get('name')
+            
+            self.logger.info(f"🎯 Starting daily collection: {actual_config_name}")
             self.logger.info(f"📊 Processing {len(stations)} stations")
             
             # Start collection logging
             self.start_collection_logging(
-                config_id=config['id'],
+                config_name=actual_config_name,
                 data_type='daily',
                 stations_count=len(stations),
                 triggered_by='daily_updater'
             )
             
             # Determine collection strategy
-            station_ids = [station['usgs_id'] for station in stations]
+            station_ids = [station.get('site_id') or station.get('usgs_id') for station in stations]
             last_dates = self.get_last_update_dates(station_ids)
             
             if full_refresh:
@@ -363,7 +358,7 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
             
             if not df.empty:
                 self.logger.info(f"   📈 Total data points: {len(df)}")
-                self.logger.info(f"   🏞️ Stations with data: {df['site_no'].nunique()}")
+                self.logger.info(f"   🏞️ Stations with data: {df['site_id'].nunique()}")
                 date_range = df['datetime_utc']
                 self.logger.info(f"   📅 Data date range: {date_range.min().date()} to {date_range.max().date()}")
             
@@ -400,23 +395,23 @@ def main():
     # List configurations if requested
     if args.list_configs:
         try:
-            with StationConfigurationManager() as manager:
-                configs = manager.get_configurations()
-                
-                print("📋 Available Configurations:")
-                print("=" * 50)
-                
-                for config in configs:
-                    status = "✅ Active" if config['is_active'] else "❌ Inactive"
-                    default = " ⭐ (Default)" if config['is_default'] else ""
-                    print(f"ID: {config['id']} - {config['config_name']}")
-                    print(f"   Stations: {config['actual_station_count']}")
-                    print(f"   Status: {status}{default}")
-                    print(f"   Description: {config['description'] or 'No description'}")
-                    print()
-                
-                return 0
-                
+            manager = JSONConfigManager(db_path=args.db_path)
+            configs = manager.get_configurations()
+            
+            print("📋 Available Configurations:")
+            print("=" * 50)
+            
+            for config in configs:
+                name = config.get('config_name') or config.get('name')
+                status = "✅ Active" if config.get('is_active', True) else "❌ Inactive"
+                default = " ⭐ (Default)" if config.get('is_default', False) else ""
+                print(f"{name}")
+                print(f"   Status: {status}{default}")
+                print(f"   Description: {config.get('description', 'No description')}")
+                print()
+            
+            return 0
+            
         except Exception as e:
             print(f"❌ Error listing configurations: {e}")
             return 1
