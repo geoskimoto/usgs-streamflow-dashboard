@@ -82,6 +82,7 @@ def main():
     huc_levels = [
         ("huc2_national.geojson", "huc2", "huc2"),
         ("huc4_national.geojson", "huc4", "huc4"),
+        ("huc6_national.geojson", "huc6", "huc6"),
         ("huc8_national.geojson", "huc8", "huc8")
     ]
     

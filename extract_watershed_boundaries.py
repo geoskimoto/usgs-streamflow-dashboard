@@ -19,7 +19,8 @@ GDB_DIR = EXTRACT_DIR / "WBD_National_GDB.gdb"
 # HUC levels to extract
 HUC_LEVELS = {
     "WBDHU2": "huc2_national",
-    "WBDHU4": "huc4_national", 
+    "WBDHU4": "huc4_national",
+    "WBDHU6": "huc6_national",
     "WBDHU8": "huc8_national"
 }
 
@@ -187,6 +188,7 @@ def main():
             simplify = {
                 "WBDHU2": 0.005,  # ~500m
                 "WBDHU4": 0.002,  # ~200m
+                "WBDHU6": 0.0015, # ~150m
                 "WBDHU8": 0.001   # ~100m
             }.get(layer_name, 0.001)
             
@@ -201,7 +203,7 @@ def main():
     
     # Extract Pacific Northwest region (HUC 17)
     print("\n🌲 Extracting Pacific Northwest (HUC 17)...")
-    for layer in ["WBDHU2", "WBDHU4", "WBDHU8"]:
+    for layer in ["WBDHU2", "WBDHU4", "WBDHU6", "WBDHU8"]:
         if layer in layers:
             huc_field = layer.replace("WBD", "")
             output_name = f"{layer.lower()}_pnw"
