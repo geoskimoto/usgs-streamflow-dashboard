@@ -150,6 +150,13 @@ data/*.db
 # Uncomment if these become too large:
 # *.csv
 
+# Large basemap files (exclude national HUC8, keep smaller PNW files)
+data/basemaps/*_national.geojson
+data/basemaps/WBD_*.zip
+data/basemaps/WBD_*.gdb
+data/basemaps/wbd_extract/
+data/basemaps/wbdhu*.geojson
+
 # Backup files
 *.bak
 *.backup
