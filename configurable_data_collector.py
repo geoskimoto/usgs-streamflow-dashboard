@@ -24,7 +24,7 @@ from pathlib import Path
 project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(project_root)
 
-from station_config_manager import StationConfigurationManager
+from json_config_manager import JSONConfigManager
 
 
 class ConfigurableDataCollector:
@@ -40,7 +40,7 @@ class ConfigurableDataCollector:
             Path to the main USGS cache database
         """
         self.db_path = db_path
-        self.config_manager = StationConfigurationManager()
+        self.config_manager = JSONConfigManager(db_path=db_path)
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'USGS-Streamflow-Dashboard/1.0 (Educational Use)'
@@ -99,38 +99,34 @@ class ConfigurableDataCollector:
             List of station dictionaries with metadata
         """
         try:
-            with self.config_manager as manager:
-                if config_name:
-                    config = manager.get_configuration_by_name(config_name)
-                    if not config:
-                        raise ValueError(f"Configuration '{config_name}' not found")
-                    config_id = config['config_id']
-                elif config_id:
-                    pass  # Use provided config_id
-                else:
-                    # Use default configuration
-                    config = manager.get_default_configuration()
-                    if not config:
-                        raise ValueError("No default configuration found")
-                    config_id = config['config_id']
-                
-                stations = manager.get_stations_for_configuration(config_id)
-                self.logger.info(f"Retrieved {len(stations)} stations from configuration ID {config_id}")
-                return stations
+            if config_name:
+                config = self.config_manager.get_configuration_by_name(config_name)
+                if not config:
+                    raise ValueError(f"Configuration '{config_name}' not found")
+            else:
+                # Use default configuration
+                config = self.config_manager.get_default_configuration()
+                if not config:
+                    raise ValueError("No default configuration found")
+                config_name = config.get('config_name') or config.get('name')
+            
+            stations = self.config_manager.get_stations_for_configuration(config_name)
+            self.logger.info(f"Retrieved {len(stations)} stations from configuration '{config_name}'")
+            return stations
                 
         except Exception as e:
             self.logger.error(f"Error retrieving configuration stations: {e}")
             raise
     
-    def start_collection_logging(self, config_id: int, data_type: str, 
+    def start_collection_logging(self, config_name: str, data_type: str, 
                                stations_count: int, triggered_by: str = 'manual') -> int:
         """
         Start collection logging in the database.
         
         Parameters:
         -----------
-        config_id : int
-            Configuration ID being processed
+        config_name : str
+            Configuration name being processed
         data_type : str
             Type of data collection ('realtime' or 'daily')
         stations_count : int
@@ -144,16 +140,15 @@ class ConfigurableDataCollector:
             Collection log ID for tracking
         """
         try:
-            with self.config_manager as manager:
-                log_id = manager.start_collection_log(
-                    config_id=config_id,
-                    data_type=data_type,
-                    stations_attempted=stations_count,
-                    triggered_by=triggered_by
-                )
-                self.current_log_id = log_id
-                self.logger.info(f"Started collection log {log_id} for {stations_count} stations")
-                return log_id
+            log_id = self.config_manager.start_collection_log(
+                config_name=config_name,
+                data_type=data_type,
+                stations_attempted=stations_count,
+                triggered_by=triggered_by
+            )
+            self.current_log_id = log_id
+            self.logger.info(f"Started collection log {log_id} for {stations_count} stations")
+            return log_id
                 
         except Exception as e:
             self.logger.error(f"Error starting collection log: {e}")
@@ -165,28 +160,27 @@ class ConfigurableDataCollector:
             return
         
         try:
-            with self.config_manager as manager:
-                manager.update_collection_log(
+            self.config_manager.update_collection_log(
+                log_id=self.current_log_id,
+                stations_successful=self.collection_stats['successful'],
+                stations_failed=self.collection_stats['failed'],
+                status=status,
+                error_summary=error_summary
+            )
+            
+            # Log individual station errors
+            for error in self.collection_stats['errors']:
+                self.config_manager.log_station_error(
                     log_id=self.current_log_id,
-                    stations_successful=self.collection_stats['successful'],
-                    stations_failed=self.collection_stats['failed'],
-                    status=status,
-                    error_summary=error_summary
+                    station_id=error.get('station_id'),
+                    error_type=error.get('error_type'),
+                    error_message=error.get('error_message'),
+                    http_status_code=error.get('http_status_code')
                 )
-                
-                # Log individual station errors
-                for error in self.collection_stats['errors']:
-                    manager.log_station_error(
-                        log_id=self.current_log_id,
-                        station_id=error.get('station_id'),
-                        error_type=error.get('error_type'),
-                        error_message=error.get('error_message'),
-                        http_status_code=error.get('http_status_code')
-                    )
-                
-                self.logger.info(f"Updated collection log {self.current_log_id}: "
-                               f"{self.collection_stats['successful']} successful, "
-                               f"{self.collection_stats['failed']} failed")
+            
+            self.logger.info(f"Updated collection log {self.current_log_id}: "
+                           f"{self.collection_stats['successful']} successful, "
+                           f"{self.collection_stats['failed']} failed")
                 
         except Exception as e:
             self.logger.error(f"Error updating collection log: {e}")
@@ -627,21 +621,20 @@ def main():
         print(f"📅 Data range: {start_date} to {end_date}")
         print(f"🔄 Starting {args.data_type} data collection...")
         
-        # Start collection logging (get config ID from first station's association)
-        with collector.config_manager as manager:
-            if args.config:
-                config = manager.get_configuration_by_name(args.config)
-            elif args.config_id:
-                config = {'id': args.config_id}
-            else:
-                config = manager.get_default_configuration()
-            
-            collector.start_collection_logging(
-                config_id=config['config_id'],
-                data_type=args.data_type,
-                stations_count=len(stations),
-                triggered_by='command_line'
-            )
+        # Start collection logging
+        if args.config:
+            config = collector.config_manager.get_configuration_by_name(args.config)
+            config_name = args.config
+        else:
+            config = collector.config_manager.get_default_configuration()
+            config_name = config.get('config_name') or config.get('name')
+        
+        collector.start_collection_logging(
+            config_name=config_name,
+            data_type=args.data_type,
+            stations_count=len(stations),
+            triggered_by='command_line'
+        )
         
         # Process stations
         df = collector.process_stations_in_batches(

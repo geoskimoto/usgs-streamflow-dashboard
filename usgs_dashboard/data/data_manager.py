@@ -1162,7 +1162,7 @@ class USGSDataManager:
             conn = sqlite3.connect(self.cache_db)
             
             query = '''
-                SELECT datetime_utc, discharge_cfs, qualifiers
+                SELECT datetime_utc, discharge_cfs, data_quality as qualifiers
                 FROM realtime_discharge 
                 WHERE site_id = ? 
                 AND datetime_utc >= ? 

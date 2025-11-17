@@ -1,6 +1,6 @@
 """
 Simple script to import stations from CSV files into the unified database.
-Works with the new usgs_data.db schema.
+Works with the new usgs_data.db schema with site_id column.
 """
 
 import sqlite3
@@ -41,8 +41,8 @@ def import_stations_from_csv(db_path="data/usgs_data.db"):
         
         for _, row in df.iterrows():
             try:
-                # Prepare station data
-                usgs_id = str(row['usgs_id']).strip()
+                # Prepare station data (use site_id consistently)
+                site_id = str(row['usgs_id']).strip()
                 station_name = str(row['station_name']).strip()
                 state = str(row['state_code']).strip()
                 latitude = float(row['latitude_decimal'])
@@ -53,7 +53,7 @@ def import_stations_from_csv(db_path="data/usgs_data.db"):
                 goes_id = str(row.get('goes_id', '')).strip() if pd.notna(row.get('goes_id')) else None
                 
                 # Check if station exists
-                cursor.execute("SELECT site_id FROM stations WHERE site_id = ?", (usgs_id,))
+                cursor.execute("SELECT site_id FROM stations WHERE site_id = ?", (site_id,))
                 exists = cursor.fetchone()
                 
                 if exists:
@@ -66,7 +66,7 @@ def import_stations_from_csv(db_path="data/usgs_data.db"):
                     WHERE site_id = ?
                     """, (station_name, state, latitude, longitude, huc_code, 
                           drainage_area, source_dataset, nws_id, goes_id,
-                          datetime.now().isoformat(), usgs_id))
+                          datetime.now().isoformat(), site_id))
                     updated += 1
                 else:
                     # Insert new station
@@ -76,7 +76,7 @@ def import_stations_from_csv(db_path="data/usgs_data.db"):
                      drainage_area, source_dataset, nws_id, goes_id, is_active,
                      date_added, last_updated)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-                    """, (usgs_id, station_name, state, latitude, longitude, huc_code,
+                    """, (site_id, station_name, state, latitude, longitude, huc_code,
                           drainage_area, source_dataset, nws_id, goes_id,
                           datetime.now().isoformat(), datetime.now().isoformat()))
                     added += 1
@@ -90,23 +90,6 @@ def import_stations_from_csv(db_path="data/usgs_data.db"):
         total_added += added
         total_updated += updated
     
-    # Configuration linking is now handled by config_loader.py
-    # The configurations table uses a many-to-many relationship via configuration_stations
-    print(f"\n✓ Station import complete!")
-    print(f"   Total stations in database: {total_added + total_updated}")
-    print(f"\n📝 Next steps:")
-    print(f"   1. Run: python config_loader.py")
-    print(f"   2. This will link stations to configurations based on config/default_configurations.json")
-    
-    # Update Development Test Set with first 25 stations
-    cursor.execute("""
-    UPDATE configurations
-    SET site_id = (SELECT GROUP_CONCAT(site_id) FROM (SELECT site_id FROM stations LIMIT 25))
-    WHERE config_name = 'Development Test Set'
-    """)
-    
-    conn.commit()
-    
     # Print summary
     print(f"\n📊 Import Summary")
     print("=" * 60)
@@ -116,13 +99,18 @@ def import_stations_from_csv(db_path="data/usgs_data.db"):
     print(f"  • Added: {total_added}")
     print(f"  • Updated: {total_updated}")
     
-    cursor.execute("SELECT state, COUNT(*) FROM stations GROUP BY state")
+    cursor.execute("SELECT state, COUNT(*) FROM stations GROUP BY state ORDER BY state")
     print(f"\nStations by state:")
     for state, count in cursor.fetchall():
         print(f"  • {state}: {count} stations")
     
     conn.close()
-    print(f"\n✅ Import completed successfully!")
+    
+    print(f"\n✅ Station import completed successfully!")
+    print(f"\n📝 Next Steps:")
+    print(f"   1. Run: python config_loader.py")
+    print(f"   2. This will link stations to configurations")
+    print(f"   3. Then you can run data collection or start the dashboard")
 
 
 if __name__ == "__main__":

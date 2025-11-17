@@ -25,200 +25,29 @@ def create_database_schema(db_path: str):
     """Create the complete database schema for the unified database."""
     print(f"Creating database schema at: {db_path}")
     
+    # Use the unified schema SQL file
+    schema_file = 'unified_database_schema.sql'
+    
+    if not os.path.exists(schema_file):
+        print(f"✗ Schema file not found: {schema_file}")
+        print("  Using inline schema instead...")
+        return create_inline_schema(db_path)
+    
+    print(f"✓ Loading schema from: {schema_file}")
+    
+    with open(schema_file, 'r') as f:
+        schema_sql = f.read()
+    
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
     try:
-        # Create stations table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS stations (
-                site_id TEXT PRIMARY KEY,
-                station_name TEXT,
-                state TEXT,
-                latitude REAL,
-                longitude REAL,
-                huc_code TEXT,
-                drainage_area REAL,
-                data_source TEXT,
-                is_active INTEGER DEFAULT 1,
-                has_realtime INTEGER DEFAULT 0,
-                date_added TEXT,
-                last_updated TEXT
-            )
-        ''')
-        print("✓ Created stations table")
-        
-        # Create configurations table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS configurations (
-                config_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                site_id TEXT NOT NULL,
-                config_name TEXT NOT NULL,
-                description TEXT,
-                period_of_record_start TEXT,
-                period_of_record_end TEXT,
-                data_completeness REAL,
-                monitoring_status TEXT,
-                priority_level INTEGER,
-                is_default INTEGER DEFAULT 0,
-                date_created TEXT,
-                last_modified TEXT,
-                is_active INTEGER DEFAULT 1,
-                FOREIGN KEY (site_id) REFERENCES stations(site_id),
-                UNIQUE(site_id, config_name)
-            )
-        ''')
-        print("✓ Created configurations table")
-        
-        # Create schedules table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS schedules (
-                schedule_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                config_id INTEGER NOT NULL,
-                schedule_name TEXT,
-                schedule_type TEXT NOT NULL,
-                schedule_value TEXT NOT NULL,
-                data_type TEXT DEFAULT 'realtime',
-                is_enabled INTEGER DEFAULT 1,
-                date_created TEXT,
-                last_modified TEXT,
-                FOREIGN KEY (config_id) REFERENCES configurations(config_id)
-            )
-        ''')
-        print("✓ Created schedules table")
-        
-        # Create collection_logs table (enhanced for monitoring)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS collection_logs (
-                log_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                config_id INTEGER,
-                config_name TEXT,
-                data_type TEXT,
-                start_time TEXT,
-                end_time TEXT,
-                status TEXT,
-                stations_attempted INTEGER DEFAULT 0,
-                stations_successful INTEGER DEFAULT 0,
-                duration_seconds REAL,
-                triggered_by TEXT DEFAULT 'manual',
-                error_message TEXT,
-                FOREIGN KEY (config_id) REFERENCES configurations(config_id)
-            )
-        ''')
-        print("✓ Created collection_logs table")
-        
-        # Create station_errors table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS station_errors (
-                error_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                site_id TEXT NOT NULL,
-                error_type TEXT NOT NULL,
-                error_message TEXT,
-                first_occurred TEXT,
-                last_occurred TEXT,
-                occurrence_count INTEGER DEFAULT 1,
-                is_resolved INTEGER DEFAULT 0,
-                FOREIGN KEY (site_id) REFERENCES stations(site_id)
-            )
-        ''')
-        print("✓ Created station_errors table")
-        
-        # Create streamflow_data table (daily values)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS streamflow_data (
-                site_id TEXT NOT NULL,
-                start_date TEXT NOT NULL,
-                end_date TEXT,
-                mean_discharge REAL,
-                min_discharge REAL,
-                max_discharge REAL,
-                data_quality TEXT,
-                last_updated TEXT,
-                PRIMARY KEY (site_id, start_date),
-                FOREIGN KEY (site_id) REFERENCES stations(site_id)
-            )
-        ''')
-        print("✓ Created streamflow_data table")
-        
-        # Create realtime_discharge table (15-minute values)
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS realtime_discharge (
-                site_id TEXT NOT NULL,
-                datetime_utc TEXT NOT NULL,
-                discharge_cfs REAL,
-                qualifiers TEXT,
-                last_updated TEXT,
-                PRIMARY KEY (site_id, datetime_utc),
-                FOREIGN KEY (site_id) REFERENCES stations(site_id)
-            )
-        ''')
-        print("✓ Created realtime_discharge table")
-        
-        # Create indexes for better query performance
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_stations_state ON stations(state)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_configurations_site_id ON configurations(site_id)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_configurations_active ON configurations(is_active)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_schedules_config_id ON schedules(config_id)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_collection_logs_config_id ON collection_logs(config_id)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_collection_logs_start_time ON collection_logs(start_time)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_station_errors_site_id ON station_errors(site_id)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_streamflow_data_site_id ON streamflow_data(site_id)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_streamflow_data_date ON streamflow_data(start_date)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_realtime_discharge_site_id ON realtime_discharge(site_id)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_realtime_discharge_datetime ON realtime_discharge(datetime_utc)')
-        print("✓ Created indexes")
-        
-        # Create views for admin panel compatibility
-        cursor.execute("""
-            CREATE VIEW IF NOT EXISTS configuration_summary AS
-            SELECT 
-                c.config_id as id,
-                c.config_name,
-                c.description,
-                c.is_active,
-                c.is_default,
-                COUNT(DISTINCT c.site_id) as actual_station_count,
-                c.date_created as created_date,
-                c.last_modified,
-                -- Include schedule information
-                s.schedule_id,
-                COALESCE(s.is_enabled, 0) as schedule_enabled,
-                s.schedule_type,
-                s.schedule_value,
-                s.last_modified as schedule_last_modified
-            FROM configurations c
-            LEFT JOIN schedules s ON c.config_id = s.config_id
-            GROUP BY c.config_id, c.config_name, c.description, c.is_active, c.is_default, 
-                     c.date_created, c.last_modified, s.schedule_id, s.is_enabled, 
-                     s.schedule_type, s.schedule_value, s.last_modified
-        """)
-        print("✓ Created configuration_summary view with schedule information")
-        
-        # Create recent_collection_activity view for monitoring
-        cursor.execute("""
-            CREATE VIEW IF NOT EXISTS recent_collection_activity AS
-            SELECT 
-                log_id,
-                config_id,
-                config_name,
-                data_type,
-                start_time,
-                end_time,
-                status,
-                stations_attempted,
-                stations_successful,
-                ROUND(duration_seconds / 60.0, 1) as duration_minutes,
-                triggered_by
-            FROM collection_logs
-            ORDER BY start_time DESC
-        """)
-        print("✓ Created recent_collection_activity view for monitoring")
+        # Execute the complete schema
+        cursor.executescript(schema_sql)
+        print("✓ Database schema created from unified_database_schema.sql")
         
         conn.commit()
         print(f"\n✓ Database schema created successfully at: {db_path}")
-        
-        # Import default configuration metadata (not stations, just config info)
-        import_default_configurations(conn)
         
         return True
         
@@ -229,123 +58,214 @@ def create_database_schema(db_path: str):
     finally:
         conn.close()
 
-def import_default_configurations(conn):
-    """Import default configuration metadata from config files."""
-    try:
-        import json
-        from pathlib import Path
-        
-        config_file = Path('config/default_configurations.json')
-        
-        if not config_file.exists():
-            print("  → No default configurations file found. Skipping.")
-            return
-        
-        print("\nImporting default configuration metadata...")
-        
-        with open(config_file, 'r') as f:
-            config_data = json.load(f)
-        
-        configurations = config_data.get('configurations', [])
-        cursor = conn.cursor()
-        
-        for config in configurations:
-            config_name = config.get('name')
-            description = config.get('description', '')
-            is_default = config.get('is_default', False)
-            is_active = config.get('is_active', True)
-            
-            # Insert a placeholder configuration record
-            # This will be populated with actual stations when data collection runs
-            try:
-                cursor.execute('''
-                    INSERT OR IGNORE INTO configurations 
-                    (site_id, config_name, description, is_default, is_active, date_created, last_modified)
-                    VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                ''', ('__placeholder__', config_name, description, 1 if is_default else 0, 1 if is_active else 0))
-                
-                if cursor.rowcount > 0:
-                    print(f"  ✓ Added configuration: {config_name} (default: {is_default})")
-            except Exception as e:
-                print(f"  ⚠ Could not add {config_name}: {e}")
-        
-        conn.commit()
-        print(f"✓ Imported {len(configurations)} configuration entries")
-        
-        # Now import default schedules
-        import_default_schedules(conn)
-        
-    except Exception as e:
-        print(f"⚠ Error importing configurations: {e}")
-        # Non-fatal - continue even if this fails
 
-def import_default_schedules(conn):
-    """Import default schedules from config files."""
+def create_inline_schema(db_path: str):
+    """Fallback: Create schema inline if SQL file is not found."""
+    print(f"Creating inline database schema at: {db_path}")
+    
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
     try:
-        import json
-        from pathlib import Path
+        # Enable foreign keys
+        cursor.execute("PRAGMA foreign_keys = ON")
         
-        schedules_file = Path('config/default_schedules.json')
+        # Create stations table (unified schema)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS stations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                site_id TEXT UNIQUE NOT NULL,
+                nws_id TEXT,
+                goes_id TEXT,
+                station_name TEXT NOT NULL,
+                state TEXT NOT NULL,
+                county TEXT,
+                latitude REAL NOT NULL,
+                longitude REAL NOT NULL,
+                drainage_area REAL,
+                huc_code TEXT,
+                basin TEXT,
+                site_type TEXT,
+                agency TEXT DEFAULT 'USGS',
+                years_of_record INTEGER,
+                num_water_years INTEGER,
+                last_data_date TEXT,
+                is_active BOOLEAN DEFAULT TRUE,
+                status TEXT DEFAULT 'active',
+                source_dataset TEXT NOT NULL,
+                date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_verified TIMESTAMP,
+                color TEXT,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                notes TEXT
+            )
+        ''')
+        print("✓ Created stations table")
         
-        if not schedules_file.exists():
-            print("  → No default schedules file found. Skipping.")
-            return
+        # Create collection_logs table (unified schema - config tables removed, uses config_name string)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS collection_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                config_name TEXT NOT NULL,
+                data_type TEXT NOT NULL,
+                stations_attempted INTEGER DEFAULT 0,
+                stations_successful INTEGER DEFAULT 0,
+                stations_failed INTEGER DEFAULT 0,
+                start_time TIMESTAMP,
+                end_time TIMESTAMP,
+                duration_seconds INTEGER,
+                error_summary TEXT,
+                status TEXT NOT NULL,
+                triggered_by TEXT DEFAULT 'system'
+            )
+        ''')
+        print("✓ Created collection_logs table")
         
-        print("\nImporting default schedules...")
+        # Create station_errors table (unified schema)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS station_errors (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                log_id INTEGER NOT NULL,
+                station_id INTEGER NOT NULL,
+                error_type TEXT NOT NULL,
+                error_message TEXT,
+                http_status_code INTEGER,
+                retry_count INTEGER DEFAULT 0,
+                occurred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (log_id) REFERENCES collection_logs(id) ON DELETE CASCADE,
+                FOREIGN KEY (station_id) REFERENCES stations(id)
+            )
+        ''')
+        print("✓ Created station_errors table")
         
-        with open(schedules_file, 'r') as f:
-            schedule_data = json.load(f)
+        # Create streamflow_data table (unified schema - daily values)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS streamflow_data (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                site_id TEXT NOT NULL,
+                data_json TEXT,
+                start_date TEXT NOT NULL,
+                end_date TEXT NOT NULL,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (site_id) REFERENCES stations(usgs_id) ON DELETE CASCADE,
+                UNIQUE(site_id, start_date, end_date)
+            )
+        ''')
+        print("✓ Created streamflow_data table")
         
-        schedules = schedule_data.get('schedules', [])
-        cursor = conn.cursor()
+        # Create realtime_discharge table (unified schema - 15-minute values)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS realtime_discharge (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                site_id TEXT NOT NULL,
+                datetime_utc TIMESTAMP NOT NULL,
+                discharge_cfs REAL NOT NULL,
+                data_quality TEXT DEFAULT 'A',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (site_id) REFERENCES stations(usgs_id) ON DELETE CASCADE,
+                UNIQUE(site_id, datetime_utc)
+            )
+        ''')
+        print("✓ Created realtime_discharge table")
         
-        for schedule in schedules:
-            schedule_name = schedule.get('name')
-            config_name = schedule.get('configuration')
-            data_type = schedule.get('data_type', 'realtime')
-            enabled = schedule.get('enabled', False)
-            timing = schedule.get('timing', {})
-            
-            # Get the config_id for this configuration
-            cursor.execute('SELECT config_id FROM configurations WHERE config_name = ? LIMIT 1', (config_name,))
-            result = cursor.fetchone()
-            
-            if not result:
-                print(f"  ⚠ Configuration '{config_name}' not found for schedule '{schedule_name}'. Skipping.")
-                continue
-            
-            config_id = result[0]
-            
-            # Determine schedule type and value
-            schedule_type = timing.get('type', 'cron')
-            if schedule_type == 'cron':
-                schedule_value = timing.get('cron_expression', '0 2 * * *')
-            elif schedule_type == 'interval':
-                interval_min = timing.get('interval_minutes', 60)
-                schedule_value = f"{interval_min}m"
-            else:
-                schedule_value = timing.get('cron_expression', '0 2 * * *')
-            
-            # Insert schedule
-            try:
-                cursor.execute('''
-                    INSERT OR IGNORE INTO schedules 
-                    (config_id, schedule_name, schedule_type, schedule_value, data_type, is_enabled, date_created, last_modified)
-                    VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                ''', (config_id, schedule_name, schedule_type, schedule_value, data_type, 1 if enabled else 0))
-                
-                if cursor.rowcount > 0:
-                    status = "enabled" if enabled else "disabled"
-                    print(f"  ✓ Added schedule: {schedule_name} for '{config_name}' ({schedule_value}) - {status}")
-            except Exception as e:
-                print(f"  ⚠ Could not add schedule {schedule_name}: {e}")
+        # Create data_statistics table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS data_statistics (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                site_id TEXT NOT NULL,
+                stats_json TEXT,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (site_id) REFERENCES stations(usgs_id) ON DELETE CASCADE,
+                UNIQUE(site_id)
+            )
+        ''')
+        print("✓ Created data_statistics table")
+        
+        # Create subset_cache table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS subset_cache (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                subset_config TEXT NOT NULL,
+                site_ids TEXT NOT NULL,
+                selection_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                total_available INTEGER,
+                subset_size INTEGER
+            )
+        ''')
+        print("✓ Created subset_cache table")
+        
+        # Create indexes for better query performance (unified schema)
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_stations_site_id ON stations(site_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_stations_state ON stations(state)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_stations_basin ON stations(basin)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_stations_huc ON stations(huc_code)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_stations_active ON stations(is_active)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_stations_source ON stations(source_dataset)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_logs_config_name ON collection_logs(config_name)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_logs_start_time ON collection_logs(start_time)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_errors_log ON station_errors(log_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_errors_station ON station_errors(station_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_streamflow_site ON streamflow_data(site_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_streamflow_dates ON streamflow_data(start_date, end_date)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_realtime_site_datetime ON realtime_discharge(site_id, datetime_utc)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_realtime_datetime ON realtime_discharge(datetime_utc)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_statistics_site ON data_statistics(site_id)')
+        print("✓ Created indexes")
+        
+        # Create views for admin panel monitoring (unified schema - config tables removed)
+        cursor.execute("""
+            CREATE VIEW IF NOT EXISTS recent_collection_activity AS
+            SELECT 
+                cl.id,
+                cl.config_name,
+                cl.data_type,
+                cl.status,
+                cl.stations_attempted,
+                cl.stations_successful,
+                cl.stations_failed,
+                ROUND(cl.duration_seconds / 60.0, 2) as duration_minutes,
+                cl.start_time,
+                cl.end_time,
+                cl.triggered_by
+            FROM collection_logs cl
+            ORDER BY cl.start_time DESC
+            LIMIT 100
+        """)
+        print("✓ Created recent_collection_activity view")
+        
+        # Create stations_with_realtime view
+        cursor.execute("""
+            CREATE VIEW IF NOT EXISTS stations_with_realtime AS
+            SELECT DISTINCT
+                s.id,
+                s.site_id,
+                s.station_name,
+                s.state,
+                s.latitude,
+                s.longitude,
+                MAX(rd.datetime_utc) as last_realtime_update
+            FROM stations s
+            JOIN realtime_discharge rd ON s.site_id = rd.site_id
+            WHERE rd.datetime_utc > datetime('now', '-24 hours')
+            GROUP BY s.id, s.site_id, s.station_name, s.state, s.latitude, s.longitude
+        """)
+        print("✓ Created stations_with_realtime view")
         
         conn.commit()
-        print(f"✓ Imported {len(schedules)} schedule entries")
+        print(f"\n✓ Inline database schema created successfully at: {db_path}")
+        
+        return True
         
     except Exception as e:
-        print(f"⚠ Error importing schedules: {e}")
-        # Non-fatal - continue even if this fails
+        print(f"✗ Error creating inline database schema: {e}")
+        import traceback
+        traceback.print_exc()
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
 
 def main():
     """Main initialization function."""

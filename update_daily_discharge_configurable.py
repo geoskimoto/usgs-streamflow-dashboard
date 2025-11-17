@@ -37,7 +37,7 @@ project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(project_root)
 
 from configurable_data_collector import ConfigurableDataCollector
-from station_config_manager import StationConfigurationManager
+from json_config_manager import JSONConfigManager
 from enrich_station_metadata import calculate_station_statistics
 
 
@@ -258,31 +258,26 @@ class ConfigurableDailyUpdater(ConfigurableDataCollector):
                 return False
             
             # Get configuration for logging
-            with self.config_manager as manager:
-                if config_name:
-                    config = manager.get_configuration_by_name(config_name)
-                elif config_id:
-                    # Get config info
-                    configs = manager.get_configurations(active_only=False)
-                    config = next((c for c in configs if c['id'] == config_id), None)
-                    if not config:
-                        config = {'id': config_id, 'config_name': f'Config {config_id}'}
-                else:
-                    config = manager.get_default_configuration()
+            if config_name:
+                config = self.config_manager.get_configuration_by_name(config_name)
+            else:
+                config = self.config_manager.get_default_configuration()
             
-            self.logger.info(f"🎯 Starting daily collection: {config['config_name']}")
+            actual_config_name = config.get('config_name') or config.get('name')
+            
+            self.logger.info(f"🎯 Starting daily collection: {actual_config_name}")
             self.logger.info(f"📊 Processing {len(stations)} stations")
             
             # Start collection logging
             self.start_collection_logging(
-                config_id=config['id'],
+                config_name=actual_config_name,
                 data_type='daily',
                 stations_count=len(stations),
                 triggered_by='daily_updater'
             )
             
             # Determine collection strategy
-            station_ids = [station['usgs_id'] for station in stations]
+            station_ids = [station.get('site_id') or station.get('usgs_id') for station in stations]
             last_dates = self.get_last_update_dates(station_ids)
             
             if full_refresh:
@@ -400,23 +395,23 @@ def main():
     # List configurations if requested
     if args.list_configs:
         try:
-            with StationConfigurationManager() as manager:
-                configs = manager.get_configurations()
-                
-                print("📋 Available Configurations:")
-                print("=" * 50)
-                
-                for config in configs:
-                    status = "✅ Active" if config['is_active'] else "❌ Inactive"
-                    default = " ⭐ (Default)" if config['is_default'] else ""
-                    print(f"ID: {config['id']} - {config['config_name']}")
-                    print(f"   Stations: {config['actual_station_count']}")
-                    print(f"   Status: {status}{default}")
-                    print(f"   Description: {config['description'] or 'No description'}")
-                    print()
-                
-                return 0
-                
+            manager = JSONConfigManager(db_path=args.db_path)
+            configs = manager.get_configurations()
+            
+            print("📋 Available Configurations:")
+            print("=" * 50)
+            
+            for config in configs:
+                name = config.get('config_name') or config.get('name')
+                status = "✅ Active" if config.get('is_active', True) else "❌ Inactive"
+                default = " ⭐ (Default)" if config.get('is_default', False) else ""
+                print(f"{name}")
+                print(f"   Status: {status}{default}")
+                print(f"   Description: {config.get('description', 'No description')}")
+                print()
+            
+            return 0
+            
         except Exception as e:
             print(f"❌ Error listing configurations: {e}")
             return 1
