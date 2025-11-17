@@ -481,6 +481,9 @@ def get_stations_table(states=None, huc_code=None, source_datasets=None, search_
 
 def get_schedules_table():
     """Get schedules management table."""
+    import sqlite3
+    from datetime import datetime
+    
     try:
         manager = JSONConfigManager(db_path='data/usgs_data.db')
         schedules = manager.get_schedules()
@@ -488,36 +491,72 @@ def get_schedules_table():
         if not schedules:
             return html.P("No schedules configured.", className="text-muted")
         
+        # Get collection log data for last run and run count
+        conn = sqlite3.connect('data/usgs_data.db')
+        cursor = conn.cursor()
+        
         table_data = []
         for schedule in schedules:
-            status_icon = "✅" if schedule.get('is_enabled', True) else "❌"
+            # Get enabled status (check both 'enabled' and 'is_enabled' fields)
+            is_enabled = schedule.get('enabled', schedule.get('is_enabled', True))
+            status_icon = "✅" if is_enabled else "❌"
             name = schedule.get('schedule_name') or schedule.get('name', 'Unnamed')
+            config_name = schedule.get('config_name') or schedule.get('configuration', 'N/A')
+            
+            # Extract cron expression from timing object
+            timing = schedule.get('timing', {})
+            if isinstance(timing, dict):
+                cron_expr = timing.get('cron_expression', timing.get('description', 'N/A'))
+            else:
+                cron_expr = schedule.get('cron_expression', 'N/A')
+            
+            # Get last run and run count from collection_logs
+            cursor.execute("""
+                SELECT 
+                    MAX(end_time) as last_run,
+                    COUNT(*) as run_count
+                FROM collection_logs
+                WHERE config_name = ? AND status = 'completed'
+            """, (config_name,))
+            
+            log_data = cursor.fetchone()
+            last_run = log_data[0] if log_data and log_data[0] else 'Never'
+            run_count = log_data[1] if log_data and log_data[1] else 0
+            
+            # Format last run time
+            if last_run != 'Never':
+                try:
+                    last_run_dt = datetime.fromisoformat(last_run.replace('Z', '+00:00'))
+                    last_run = last_run_dt.strftime('%Y-%m-%d %H:%M')
+                except:
+                    pass
             
             table_data.append({
-                'Status': f"{status_icon} {'Enabled' if schedule.get('is_enabled', True) else 'Disabled'}",
+                'Status': f"{status_icon} {'Enabled' if is_enabled else 'Disabled'}",
                 'Schedule': name,
-                'Configuration': schedule.get('config_name', 'N/A'),
+                'Configuration': config_name,
                 'Data Type': schedule.get('data_type', 'both').title(),
-                'Frequency': schedule.get('cron_expression', 'N/A'),
-                'Description': schedule.get('description', '')
+                'Frequency': cron_expr,
+                'Last Run': last_run,
+                'Runs': str(run_count),
+                'enabled': is_enabled  # Store for toggling
             })
+        
+        conn.close()
         
         return dash_table.DataTable(
                 id='schedules-table',
                 data=table_data,
                 columns=[
-                    {'name': 'schedule_id', 'id': 'schedule_id'},  # Hidden
-                    {'name': 'config_id', 'id': 'config_id'},  # Hidden
                     {'name': 'Status', 'id': 'Status'},
                     {'name': 'Schedule Name', 'id': 'Schedule'},
                     {'name': 'Configuration', 'id': 'Configuration'},
                     {'name': 'Type', 'id': 'Data Type'},
                     {'name': 'Cron Expression', 'id': 'Frequency'},
                     {'name': 'Last Run', 'id': 'Last Run'},
-                    {'name': 'Next Run', 'id': 'Next Run'},
-                    {'name': 'Runs', 'id': 'Run Count'}
+                    {'name': 'Runs', 'id': 'Runs'}
                 ],
-                hidden_columns=['schedule_id', 'config_id'],  # Hide ID columns
+                hidden_columns=['enabled'],  # Hide enabled flag (used for toggle logic)
                 style_cell={'textAlign': 'left', 'padding': '8px', 'fontSize': '12px'},
                 style_header={'backgroundColor': '#007bff', 'color': 'white', 'fontWeight': 'bold'},
                 style_data_conditional=[

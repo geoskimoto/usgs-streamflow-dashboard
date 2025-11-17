@@ -1387,7 +1387,7 @@ def update_admin_tab_content(dash_clicks, station_clicks,
                     dbc.Col([
                         dbc.Button("➕ New Schedule", id="new-schedule-btn", color="success", className="me-2", disabled=True),
                         dbc.Button("▶️ Run Selected", id="run-selected-schedule-btn", color="primary", className="me-2"),
-                        dbc.Button("⏸️ Disable Selected", id="disable-schedule-btn", color="warning", className="me-2", disabled=True),
+                        dbc.Button("🔄 Toggle Selected", id="toggle-schedule-btn", color="warning", className="me-2"),
                         dbc.Button("🔄 Refresh", id="refresh-schedules-btn", color="info")
                     ])
                 ], className="mb-4"),
@@ -1482,15 +1482,17 @@ def update_monitoring_displays(n_intervals, refresh_clicks):
      Output('schedules-table-container', 'children'),
      Output('toast-container', 'children')],
     [Input('run-selected-schedule-btn', 'n_clicks'),
+     Input('toggle-schedule-btn', 'n_clicks'),
      Input('refresh-schedules-btn', 'n_clicks')],
     [State('schedules-table', 'selected_rows'),
      State('schedules-table', 'data')]
 )
-def handle_schedule_actions(run_clicks, refresh_clicks, selected_rows, table_data):
-    """Handle schedule management actions (run, refresh)."""
+def handle_schedule_actions(run_clicks, toggle_clicks, refresh_clicks, selected_rows, table_data):
+    """Handle schedule management actions (run, toggle, refresh)."""
     import subprocess
     import os
     from admin_components import get_schedules_table
+    from json_config_manager import JSONConfigManager
     
     ctx = callback_context
     if not ctx.triggered:
@@ -1501,6 +1503,42 @@ def handle_schedule_actions(run_clicks, refresh_clicks, selected_rows, table_dat
     # Handle refresh
     if button_id == 'refresh-schedules-btn':
         return "", get_schedules_table(), None
+    
+    # Handle toggle enabled/disabled
+    if button_id == 'toggle-schedule-btn':
+        if not toggle_clicks:
+            return "", get_schedules_table(), None
+        
+        if not selected_rows or len(selected_rows) == 0:
+            return dbc.Alert("⚠️ Please select a schedule to toggle", color="warning", dismissable=True), get_schedules_table(), None
+        
+        # Get the selected schedule data
+        selected_idx = selected_rows[0]
+        if selected_idx >= len(table_data):
+            return dbc.Alert("❌ Invalid selection", color="danger", dismissable=True), get_schedules_table(), None
+        
+        schedule_row = table_data[selected_idx]
+        schedule_name = schedule_row['Schedule']
+        
+        try:
+            manager = JSONConfigManager(db_path='data/usgs_data.db')
+            new_status = manager.toggle_schedule_enabled(schedule_name)
+            
+            status_text = "enabled" if new_status else "disabled"
+            status_icon = "✅" if new_status else "❌"
+            
+            success_msg = dbc.Alert(
+                f"{status_icon} Schedule '{schedule_name}' {status_text}",
+                color="success" if new_status else "info",
+                dismissable=True,
+                duration=3000
+            )
+            
+            return success_msg, get_schedules_table(), None
+            
+        except Exception as e:
+            error_msg = dbc.Alert(f"❌ Error toggling schedule: {e}", color="danger", dismissable=True)
+            return error_msg, get_schedules_table(), None
     
     # Handle run selected
     if button_id == 'run-selected-schedule-btn':

@@ -3,7 +3,6 @@
   "version": "1.0",
   "last_updated": "2025-11-06",
   "description": "Default data collection schedules for USGS Streamflow Dashboard",
-  
   "schedules": [
     {
       "name": "Hourly Full Update",
@@ -50,7 +49,7 @@
       "description": "Complete historical data collection with statistics recalculation",
       "configuration": "Pacific Northwest Full",
       "data_type": "both",
-      "enabled": true,
+      "enabled": false,
       "timing": {
         "type": "cron",
         "cron_expression": "0 2 * * *",
@@ -98,7 +97,6 @@
       "priority": 4
     }
   ],
-  
   "_comments": {
     "timing_types": [
       "cron - Use cron expression (more flexible)",

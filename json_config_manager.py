@@ -466,6 +466,56 @@ class JSONConfigManager:
         self._settings_cache = None
         self._settings_cache_time = None
         self.logger.info("All caches cleared")
+    
+    def toggle_schedule_enabled(self, schedule_name: str) -> bool:
+        """
+        Toggle the enabled status of a schedule in the JSON file.
+        
+        Args:
+            schedule_name: Name of the schedule to toggle
+            
+        Returns:
+            New enabled status (True/False)
+            
+        Raises:
+            ValueError: If schedule not found
+        """
+        # Load current schedules data
+        data = self._load_json_file(self.schedules_file)
+        schedules = data.get('schedules', [])
+        
+        # Find and toggle the schedule
+        found = False
+        new_status = False
+        for schedule in schedules:
+            sched_name = schedule.get('name') or schedule.get('schedule_name')
+            if sched_name == schedule_name:
+                # Toggle enabled status (check both fields)
+                current_status = schedule.get('enabled', schedule.get('is_enabled', True))
+                new_status = not current_status
+                
+                # Update both possible field names to be safe
+                schedule['enabled'] = new_status
+                if 'is_enabled' in schedule:
+                    schedule['is_enabled'] = new_status
+                
+                found = True
+                break
+        
+        if not found:
+            raise ValueError(f"Schedule '{schedule_name}' not found")
+        
+        # Write back to file
+        data['schedules'] = schedules
+        with open(self.schedules_file, 'w') as f:
+            json.dump(data, f, indent=2)
+        
+        # Clear cache to force reload
+        self._schedules_cache = None
+        self._schedules_cache_time = None
+        
+        self.logger.info(f"Toggled schedule '{schedule_name}' to {'enabled' if new_status else 'disabled'}")
+        return new_status
 
 
 # Convenience functions for backward compatibility

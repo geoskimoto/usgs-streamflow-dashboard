@@ -154,6 +154,21 @@ class ConfigurableDataCollector:
             self.logger.error(f"Error starting collection log: {e}")
             raise
     
+    def update_collection_progress(self):
+        """Update collection progress in database (for real-time monitoring)."""
+        if not self.current_log_id:
+            return
+        
+        try:
+            self.config_manager.update_collection_log(
+                log_id=self.current_log_id,
+                stations_successful=self.collection_stats['successful'],
+                stations_failed=self.collection_stats['failed'],
+                status='running'
+            )
+        except Exception as e:
+            self.logger.error(f"Error updating collection progress: {e}")
+    
     def update_collection_logging(self, status: str = 'completed', error_summary: str = None):
         """Update collection logging with final results."""
         if not self.current_log_id:
@@ -442,6 +457,9 @@ class ConfigurableDataCollector:
                     )
                 
                 self.logger.error(f"Batch {i//self.batch_size + 1} failed: {e}")
+            
+            # Update progress in database after each batch
+            self.update_collection_progress()
         
         # Print summary
         print(f"\n{'='*80}")
