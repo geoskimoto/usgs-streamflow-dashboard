@@ -107,12 +107,12 @@ class ModernMapComponent:
             margin=dict(r=0, t=50, l=0, b=0),
             font=dict(family="Arial", size=12),
             legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1,
-                bgcolor="rgba(255, 255, 255, 0.8)",
+                orientation="v",
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=0.01,
+                bgcolor="rgba(255, 255, 255, 0.9)",
                 bordercolor="black",
                 borderwidth=1
             ),
@@ -231,12 +231,12 @@ class ModernMapComponent:
                 title=f"USGS Streamflow Gauges - Pacific Northwest ({len(gauges_df)} gauges) - USGS National Map",
                 font=dict(family="Arial", size=12),
                 legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="right",
-                    x=1,
-                    bgcolor="rgba(255, 255, 255, 0.8)",
+                    orientation="v",
+                    yanchor="top",
+                    y=0.99,
+                    xanchor="left",
+                    x=0.01,
+                    bgcolor="rgba(255, 255, 255, 0.9)",
                     bordercolor="black",
                     borderwidth=1
                 ),
@@ -318,12 +318,12 @@ class ModernMapComponent:
             title=f"USGS Streamflow Gauges - Pacific Northwest ({len(gauges_df)} gauges)",
             font=dict(family="Arial", size=12),
             legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1,
-                bgcolor="rgba(255, 255, 255, 0.8)",
+                orientation="v",
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=0.01,
+                bgcolor="rgba(255, 255, 255, 0.9)",
                 bordercolor="black",
                 borderwidth=1
             ),
@@ -611,6 +611,9 @@ class ModernMapComponent:
         style : dict
             Style configuration (color, width, name, fill)
         """
+        # Track if we've shown legend for this layer yet
+        first_feature = True
+        
         for feature in geojson_data.get('features', []):
             geometry = feature.get('geometry', {})
             properties = feature.get('properties', {})
@@ -636,9 +639,10 @@ class ModernMapComponent:
                     name=style['name'],
                     hovertext=hover_text,
                     hoverinfo='text',
-                    showlegend=True,
+                    showlegend=first_feature,  # Only show legend for first feature
                     legendgroup=style['name']
                 ))
+                first_feature = False
                 
             elif geometry.get('type') == 'MultiPolygon':
                 # Handle multi-polygon features
@@ -661,9 +665,10 @@ class ModernMapComponent:
                         name=style['name'],
                         hovertext=hover_text,
                         hoverinfo='text',
-                        showlegend=False,  # Only show legend for first feature
+                        showlegend=first_feature,  # Only show legend for first feature
                         legendgroup=style['name']
                     ))
+                    first_feature = False
 
     def create_simple_test_map(self) -> go.Figure:
         """Create a simple test map to verify functionality."""
