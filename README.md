@@ -1,272 +1,350 @@
-# USGS Streamflow Analysis and Visualization Tool
+# USGS Streamflow Dashboard - Pacific Northwest
 
-A comprehensive Python toolkit for analyzing and visualizing streamflow data from USGS river gauges. This tool enables water year analysis, statistical calculations, and interactive plotting with a focus on comparative analysis across multiple years.
+A real-time interactive web dashboard for visualizing and analyzing USGS streamflow data across the Pacific Northwest region. Built with Python Dash and featuring an integrated mapping system with watershed boundary visualization.
 
-![Streamflow Analysis Example](https://via.placeholder.com/800x400/0077be/ffffff?text=Interactive+Streamflow+Visualization)
+![USGS Streamflow Dashboard](https://img.shields.io/badge/status-production-green)
+![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue)
+![License](https://img.shields.io/badge/license-public_domain-lightgrey)
 
-## Features
+## Overview
 
-### 🌊 **Water Year Analysis**
-- Proper water year handling (October 1 - September 30)
-- Day-of-water-year calculations for year-over-year comparison
-- Automatic water year assignment and validation
+This dashboard provides real-time access to discharge data from 1,500+ USGS monitoring stations across Washington, Oregon, Idaho, Montana, Nevada, and California. It features an interactive map with watershed boundaries, configurable data collection schedules, and comprehensive administrative tools.
 
-### 📊 **Comprehensive Statistics**
-- Daily statistics across all years (mean, median, percentiles)
-- Monthly patterns and seasonal analysis
-- Annual summaries (peaks, volumes, low flows)
-- Flow duration curves and exceedance probabilities
+## Key Features
 
-### 📈 **Interactive Visualizations**
-- Stacked line plots with multiple water years overlaid
-- Percentile bands and statistical overlays
-- Highlighted years with customizable styling
-- Flow duration curves and monthly comparisons
-- Publication-quality plots with Plotly
+### 🗺️ **Interactive Mapping**
+- Real-time station locations with color-coded status indicators
+- Watershed boundary visualization with hierarchical HUC layers:
+  - HUC2: Major basins (Columbia River Basin)
+  - HUC4: Sub-regions (e.g., Upper Columbia, Snake River)
+  - HUC6: Accounting units (e.g., Kootenai, Pend Oreille, Spokane)
+  - HUC8: Cataloging units (detailed watersheds)
+- Station filtering by state, basin, and activity status
+- Mapbox integration with terrain and satellite views
 
-### 🔗 **USGS Integration**
-- Direct data fetching using official `dataretrieval` library
-- Support for any USGS streamflow gauge
-- Built-in data quality assessment
-- Site metadata retrieval
+### � **Data Visualization**
+- Real-time discharge graphs with 7-day history
+- Daily discharge trends and statistics
+- Water year analysis (October 1 - September 30)
+- Comparative analysis across multiple years
+- Interactive Plotly charts with zoom and pan
 
-## Installation
+### 🔄 **Automated Data Collection**
+- Configurable collection schedules for real-time and daily data
+- Batch processing with error handling and retry logic
+- Database-driven configuration management
+- Smart scheduling with interval-based updates
+- Collection monitoring and activity logs
 
-1. **Clone or download this repository**
+### �️ **Administrative Interface**
+- Station management and metadata editing
+- Configuration management for station groups
+- Schedule creation and monitoring
+- System health monitoring and diagnostics
+- Collection job history and error tracking
+- User authentication and access control
+
+## Quick Start
+
+### Installation
+
+1. **Clone the repository:**
+```bash
+git clone https://github.com/geoskimoto/usgs-streamflow-dashboard.git
+cd usgs-streamflow-dashboard
+```
+
 2. **Install dependencies:**
 ```bash
 pip install -r requirements.txt
 ```
 
 ### Required Dependencies
-- `pandas` - Data manipulation
-- `numpy` - Numerical computations  
+- `dash` - Web framework
 - `plotly` - Interactive visualizations
-- `dataretrieval` - USGS data access (official library)
-- `scipy` - Statistical analysis
-- `openpyxl` - Excel export
+- `pandas` - Data manipulation
+- `dataretrieval` - USGS data access
+- `sqlite3` - Database (built-in)
+- `gunicorn` - Production server
 
-## Quick Start
+### Basic Setup
 
-### Basic Usage
-
-```python
-from streamflow_analyzer import StreamflowData, StreamflowVisualizer
-
-# Load data from USGS
-data = StreamflowData(site_id='09380000',  # Lees Ferry
-                     start_date='2010-10-01', 
-                     end_date='2023-09-30')
-
-# Create visualizer and plot
-viz = StreamflowVisualizer(data)
-fig = viz.create_stacked_line_plot(
-    highlight_years=[2012, 2018, 2023],
-    show_percentile_bands=[25, 75],
-    title='Colorado River at Lees Ferry'
-)
-
-# Display and save
-fig.show()
-fig.write_html('analysis.html')
-```
-
-### One-Line Analysis
-
-```python
-from streamflow_analyzer import quick_analysis
-
-# Quick analysis with automatic plotting
-data, fig = quick_analysis('09380000', '2020-10-01', '2023-09-30')
-fig.show()
-```
-
-## Examples
-
-### 1. Jupyter Notebook Demo
-Open `StackedLinePlots_plotly.ipynb` for a complete interactive demonstration.
-
-### 2. Command Line Example
+3. **Initialize the database:**
 ```bash
-python example_usage.py
+python initialize_database.py --db-path data/usgs_data.db
 ```
 
-### 3. Load from CSV
-```python
-# Load existing data file
-data = StreamflowData(csv_path='leesferry_webservice.csv')
-
-# Analyze specific years
-filtered_data = data.filter_by_years(2010, 2020)
+4. **Import station metadata:**
+```bash
+python import_stations.py
 ```
 
-## Advanced Features
+5. **Collect initial data (optional):**
+```bash
+# Collect real-time data (last 7 days)
+python update_realtime_discharge_configurable.py
 
-### Customizable Plotting
-```python
-fig = viz.create_stacked_line_plot(
-    highlight_years=[2002, 2012, 2023],
-    show_mean=True,
-    show_median=True,
-    percentile_bands=[10, 90],
-    color_scheme='viridis',
-    line_alpha=0.3,
-    y_axis_scale='log'
-)
+# Collect daily data (full water years)
+python update_daily_discharge_configurable.py
 ```
 
-### Statistical Analysis
-```python
-# Access computed statistics
-print(data.annual_stats)     # Annual summaries
-print(data.monthly_stats)    # Monthly patterns  
-print(data.daily_stats)      # Daily statistics
+6. **Start the dashboard:**
+```bash
+# Development mode
+python app.py
 
-# Data quality assessment
-quality = data.detect_data_quality_issues()
-print(quality)
+# Production mode
+gunicorn --bind 0.0.0.0:8050 --workers 1 --timeout 120 app:server
 ```
 
-### Multiple Visualizations
-```python
-# Flow duration curve
-fdc_fig = viz.create_flow_duration_curve()
+7. **Access the dashboard:**
+   - Open http://localhost:8050 in your web browser
+   - Admin panel available at the 🔧 Admin tab
 
-# Monthly comparison
-monthly_fig = viz.create_monthly_comparison()
+## Deployment
 
-# Annual summary dashboard
-annual_fig = viz.create_annual_summary()
-```
+See **[DEPLOYMENT.md](DEPLOYMENT.md)** for comprehensive deployment instructions including:
+- Watershed boundary data setup
+- Platform-specific configurations (Render, Heroku, Docker)
+- Automated data collection setup
+- Environment variables and optimization
+- Troubleshooting guide
 
-## Water Year Plotting
+**Quick deployment checklist:**
+- ✅ Python dependencies installed
+- ✅ HUC boundary files in `data/basemaps/`
+- ✅ Station CSV files in root directory  
+- ✅ Database initialized with `initialize_database.py`
+- ✅ Stations imported with `import_stations.py`
+- ✅ Initial data collected (optional but recommended)
 
-The tool correctly handles water years for streamflow analysis:
-
-- **Water Year Definition**: October 1 to September 30
-- **X-axis**: Shows day of water year (1-365/366)
-- **Year Labeling**: Water Year 2023 = Oct 1, 2022 to Sep 30, 2023
-- **Seasonal Alignment**: All years align for proper comparison
-
-This ensures that:
-- Peak snowmelt (spring) appears at the same x-position across years
-- Baseflow periods (late summer/fall) are properly aligned
-- Seasonal patterns are clearly visible
-
-## API Reference
-
-### StreamflowData Class
-
-#### Initialization
-```python
-StreamflowData(site_id=None, csv_path=None, start_date=None, 
-               end_date=None, parameter_code='00060')
-```
-
-#### Key Methods
-- `fetch_usgs_data(site_id, start_date, end_date)` - Get data from USGS
-- `load_from_csv(file_path)` - Load from CSV file
-- `filter_by_years(start_year, end_year)` - Filter by water year range
-- `compute_statistics()` - Calculate all statistics
-- `detect_data_quality_issues()` - Assess data quality
-- `export_statistics(filename)` - Export to Excel
-
-#### Properties
-- `data` - Processed DataFrame
-- `daily_stats` - Daily statistics across all years
-- `monthly_stats` - Monthly statistics
-- `annual_stats` - Annual statistics by water year
-- `water_years` - Available water years
-- `site_info` - USGS site metadata
-
-### StreamflowVisualizer Class
-
-#### Initialization
-```python
-StreamflowVisualizer(streamflow_data)
-```
-
-#### Key Methods
-- `create_stacked_line_plot(**kwargs)` - Main visualization
-- `create_flow_duration_curve()` - Flow duration analysis
-- `create_monthly_comparison()` - Monthly boxplots
-- `create_annual_summary()` - Multi-panel annual plots
-
-## File Structure
+## Project Structure
 
 ```
-📁 StackedLinePlots/
-├── 📄 streamflow_analyzer.py      # Main analysis classes
-├── 📄 requirements.txt            # Dependencies
-├── 📄 example_usage.py           # Example script
-├── 📄 StackedLinePlots_plotly.ipynb  # Demo notebook
-├── 📄 leesferry_webservice.csv   # Sample data
-├── 📄 README.md                  # This file
-└── 📁 Archive/                   # Old implementation files
+📁 usgs-streamflow-dashboard/
+├── 📄 app.py                              # Main Dash application
+├── 📄 initialize_database.py              # Database setup script
+├── 📄 import_stations.py                  # Station import script
+├── 📄 update_realtime_discharge_configurable.py  # Real-time collector
+├── 📄 update_daily_discharge_configurable.py     # Daily collector
+├── 📄 smart_scheduler.py                  # Smart scheduling system
+├── 📄 requirements.txt                    # Python dependencies
+├── 📄 README.md                          # This file
+├── 📄 DEPLOYMENT.md                      # Deployment guide
+├── 📄 Procfile                           # Heroku configuration
+├── 📄 render.yaml                        # Render.com configuration
+├── 📁 usgs_dashboard/                    # Dashboard package
+│   ├── 📁 components/                    # UI components
+│   │   ├── map_component.py              # Interactive map with HUC boundaries
+│   │   ├── graph_component.py            # Discharge graphs
+│   │   └── filter_component.py           # Station filters
+│   ├── 📁 data/                          # Data management
+│   │   ├── data_manager.py               # Database interface
+│   │   └── usgs_collector.py             # USGS API interface
+│   └── 📁 utils/                         # Utility functions
+├── 📁 config/                            # Configuration files
+│   ├── default_configurations.json       # Station groups
+│   ├── default_schedules.json            # Collection schedules
+│   └── system_settings.json              # System settings
+├── 📁 data/                              # Data directory
+│   ├── usgs_data.db                      # SQLite database
+│   └── 📁 basemaps/                      # Watershed boundaries
+│       ├── huc2_pnw.geojson              # Major basins
+│       ├── huc4_pnw.geojson              # Sub-regions
+│       ├── huc6_pnw.geojson              # Accounting units
+│       └── huc8_pnw.geojson              # Cataloging units
+└── 📁 logs/                              # Application logs
 ```
 
-## Sample Output
+## Features in Detail
 
-The tool generates:
+### Interactive Map
 
-1. **Interactive HTML plots** with hover information and zoom/pan
-2. **Excel statistics files** with daily, monthly, and annual summaries  
-3. **Publication-quality figures** suitable for reports and presentations
+The map component provides:
+- **Station markers** color-coded by data availability
+- **Watershed boundaries** with 4 hierarchical levels (HUC2/4/6/8)
+- **Hover tooltips** showing station name, ID, and metadata
+- **Click interaction** to view detailed discharge graphs
+- **Filter controls** for state, basin, and status
+- **Map styles** including terrain, satellite, and street views
 
-### Plot Features
-- Multiple water years overlaid on same axes
-- Highlighted years with custom colors and styles
-- Statistical overlays (mean, median, percentiles)
-- Percentile bands showing normal ranges
-- Water year x-axis (Oct 1 - Sep 30)
-- Interactive hover information
-- Export capabilities (HTML, PNG, SVG)
+### Data Collection
+
+The system supports flexible data collection:
+- **Real-time data**: Instantaneous discharge values (15-minute to hourly)
+- **Daily data**: Mean daily discharge values
+- **Configurable schedules**: Database-driven collection timing
+- **Batch processing**: Efficient multi-station collection
+- **Error handling**: Retry logic and error logging
+- **Rate limiting**: Respects USGS API guidelines
+
+### Administrative Tools
+
+Admin panel features:
+- **Dashboard**: System health, database statistics, recent activity
+- **Configurations**: Create and manage station groups
+- **Stations**: Browse, filter, and edit station metadata
+- **Schedules**: Create and monitor collection jobs
+- **Monitoring**: View collection history and errors
+- **System Info**: Server details and diagnostics
+
+### Database Schema
+
+The unified database (`usgs_data.db`) includes:
+- `stations`: Station metadata and location data
+- `realtime_discharge`: Instantaneous discharge values
+- `daily_discharge`: Daily mean discharge values
+- `configurations`: Station group definitions
+- `schedules`: Collection schedule definitions
+- `collection_logs`: Data collection history
+- Various views for reporting and analysis
+
+## Configuration
+
+### Station Groups
+
+Station groups are defined in `config/default_configurations.json`:
+
+```json
+{
+  "configurations": [
+    {
+      "name": "Pacific Northwest Full",
+      "description": "All PNW stations",
+      "station_selection": {"filter_type": "all"},
+      "is_active": true
+    }
+  ]
+}
+```
+
+### Collection Schedules
+
+Schedules are defined in `config/default_schedules.json`:
+
+```json
+{
+  "schedules": [
+    {
+      "name": "Real-time Every 2 Hours",
+      "data_type": "realtime",
+      "interval_hours": 2,
+      "is_active": true
+    }
+  ]
+}
+```
+
+## API and Data Sources
+
+### USGS Water Services
+
+Data is collected from the official USGS Water Services API:
+- **Base URL**: https://waterservices.usgs.gov/
+- **Services used**:
+  - Instantaneous Values (IV): Real-time data
+  - Daily Values (DV): Historical daily data
+- **Parameter**: 00060 (Discharge, cubic feet per second)
+
+### Watershed Boundary Dataset
+
+Watershed boundaries from the USGS National Watershed Boundary Dataset:
+- **Source**: USGS National Hydrography Dataset
+- **Format**: GeoJSON (converted from File Geodatabase)
+- **Coverage**: Pacific Northwest (HUC region 17)
+- **Levels**: HUC2 (1 basin), HUC4 (12 sub-regions), HUC6 (22 accounting units), HUC8 (229 cataloging units)
+
+## Usage Examples
+
+### View Real-time Data
+
+1. Open the dashboard
+2. Navigate to a region of interest on the map
+3. Click a station marker
+4. View the real-time discharge graph (last 7 days)
+
+### Enable Watershed Boundaries
+
+1. Open the sidebar (if closed)
+2. Find "Basin Boundaries" section
+3. Check the desired HUC levels:
+   - Major Basins (HUC2)
+   - Sub-regions (HUC4)
+   - Accounting Units (HUC6)
+   - Cataloging Units (HUC8)
+4. Boundaries will appear on the map
+
+### Filter Stations
+
+1. Use the sidebar filters:
+   - **State**: Select one or more states
+   - **Basin**: Filter by major basin
+   - **Status**: Show only active stations
+2. Map updates automatically
+
+### Trigger Manual Data Collection
+
+1. Go to Admin panel (🔧 Admin tab)
+2. Navigate to Schedules section
+3. Click "Run Now" on a schedule
+4. Monitor progress in the Monitoring section
 
 ## Troubleshooting
 
-### Common Issues
+### Map Not Loading
 
-1. **Import errors**: Install required packages with `pip install -r requirements.txt`
+- Check browser console for errors
+- Verify Mapbox token is configured (if using custom token)
+- Ensure `data/basemaps/` directory contains HUC GeoJSON files
 
-2. **USGS data access fails**: Check internet connection and verify site ID format
+### No Stations Visible
 
-3. **Date format issues**: Use 'YYYY-MM-DD' format for dates
+- Verify database has stations: `sqlite3 data/usgs_data.db "SELECT COUNT(*) FROM stations;"`
+- Run station import: `python import_stations.py`
+- Check CSV files exist: `ls -lh *stations*.csv`
 
-4. **Empty plots**: Verify data exists for specified date range and site
+### No Data in Graphs
 
-### Data Quality
+- Collect data: `python update_realtime_discharge_configurable.py`
+- Check database: `sqlite3 data/usgs_data.db "SELECT COUNT(*) FROM realtime_discharge;"`
+- Verify USGS API connectivity
 
-The tool automatically:
-- Removes duplicate timestamps
-- Flags missing or invalid values
-- Identifies potential outliers
-- Reports data completeness
+### Watershed Boundaries Missing
+
+- Ensure files exist: `ls -lh data/basemaps/huc*_pnw.geojson`
+- Files should be 71KB to 3.3MB in size
+- See DEPLOYMENT.md for obtaining HUC files
 
 ## Contributing
 
-This tool is designed to be extensible. Key areas for enhancement:
-- Additional statistical metrics
-- New visualization types
+Contributions welcome! Areas for enhancement:
+- Additional visualization types
+- Enhanced statistical analysis
 - Multi-site comparison features
-- Climate correlation analysis
-- Web interface development
+- Export functionality (CSV, PDF reports)
+- Mobile-responsive design improvements
 
 ## License
 
-This project is in the public domain. The USGS `dataretrieval` library is also public domain.
+This project is in the public domain. USGS data is also public domain.
 
 ## Acknowledgments
 
-- **USGS dataretrieval team** for the excellent Python library
-- **Plotly** for interactive visualization capabilities
-- **Pandas** for data manipulation tools
+- **USGS Water Services** for providing free access to streamflow data
+- **USGS National Hydrography Dataset** for watershed boundaries
+- **Plotly/Dash** for the interactive visualization framework
+- **Mapbox** for mapping capabilities
 
 ## Citation
 
-If you use this tool in research or reports, please cite the USGS dataretrieval library:
+If you use this dashboard in research or reports, please cite:
+
+> USGS Water Data for the Nation: https://waterdata.usgs.gov/
+
+For the dataretrieval library:
 
 > Hodson, T.O., Hariharan, J.A., Black, S., and Horsburgh, J.S., 2023, dataretrieval (Python): a Python package for discovering and retrieving water data available from U.S. federal hydrologic web services: U.S. Geological Survey software release, https://doi.org/10.5066/P94I5TX3
 
 ---
 
-**For questions or issues, please check the troubleshooting section or review the example files.**
+**Questions or Issues?** Check [DEPLOYMENT.md](DEPLOYMENT.md) for detailed troubleshooting or open an issue on GitHub.
