@@ -38,33 +38,62 @@ class USGSDataManager:
         
         NOTE: Schema creation is handled by initialize_database.py
         This method only checks connectivity to the unified database.
+        If database doesn't exist, attempts to create it automatically.
         """
-        # Verify database file exists
+        # If database doesn't exist, try to initialize it
         if not os.path.exists(self.cache_db):
-            raise FileNotFoundError(
-                f"Database not found at {self.cache_db}. "
-                "Please run: python initialize_database.py --db-path data/usgs_data.db"
-            )
+            print(f"⚠️  Database not found at {self.cache_db}")
+            print(f"⚠️  Attempting to initialize database automatically...")
+            
+            try:
+                # Try to run initialize_database.py
+                import subprocess
+                result = subprocess.run(
+                    ['python', 'initialize_database.py', '--db-path', self.cache_db],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                
+                if result.returncode != 0:
+                    print(f"❌ Failed to initialize database: {result.stderr}")
+                    raise RuntimeError(
+                        f"Database not found and auto-initialization failed. "
+                        f"Please run manually: python initialize_database.py --db-path {self.cache_db}"
+                    )
+                else:
+                    print(f"✅ Database initialized successfully")
+                    
+            except Exception as e:
+                print(f"❌ Error during auto-initialization: {e}")
+                raise FileNotFoundError(
+                    f"Database not found at {self.cache_db} and could not be created automatically. "
+                    f"Please run: python initialize_database.py --db-path {self.cache_db}"
+                )
         
         # Verify we can connect and that required tables exist
-        conn = sqlite3.connect(self.cache_db)
-        cursor = conn.cursor()
-        
-        # Check for required tables from unified schema
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = {row[0] for row in cursor.fetchall()}
-        
-        required_tables = {'stations', 'streamflow_data', 'realtime_discharge'}
-        missing_tables = required_tables - tables
-        
-        if missing_tables:
+        try:
+            conn = sqlite3.connect(self.cache_db)
+            cursor = conn.cursor()
+            
+            # Check for required tables from unified schema
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = {row[0] for row in cursor.fetchall()}
+            
+            required_tables = {'stations', 'streamflow_data', 'realtime_discharge'}
+            missing_tables = required_tables - tables
+            
+            if missing_tables:
+                conn.close()
+                print(f"⚠️  Database missing required tables: {missing_tables}")
+                raise RuntimeError(
+                    f"Database is missing required tables: {missing_tables}. "
+                    f"Please run: python initialize_database.py --db-path {self.cache_db} --force"
+                )
+            
             conn.close()
-            raise RuntimeError(
-                f"Database is missing required tables: {missing_tables}. "
-                "Please run: python initialize_database.py --db-path data/usgs_data.db --force"
-            )
-        
-        conn.close()
+        except sqlite3.Error as e:
+            raise RuntimeError(f"Database connection error: {e}")
     
     def load_regional_gauges(self, refresh=False, max_sites=None):
         """
