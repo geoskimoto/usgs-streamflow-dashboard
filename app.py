@@ -260,6 +260,22 @@ def create_sidebar():
                     className="mb-3"
                 ),
                 
+                dbc.Label("Watershed Boundaries:"),
+                dbc.Checklist(
+                    id="basin-boundaries-checklist",
+                    options=[
+                        {"label": " Major Basins (HUC2)", "value": "huc2"},
+                        {"label": " Sub-Regions (HUC4)", "value": "huc4"},
+                        {"label": " Accounting Units (HUC6)", "value": "huc6"},
+                        {"label": " Sub-Basins (HUC8)", "value": "huc8"}
+                    ],
+                    value=["huc2", "huc4"],  # Show HUC2 and HUC4 by default
+                    inline=False,
+                    className="mb-2"
+                ),
+                html.P("Display watershed boundaries on the map", 
+                      className="small text-muted mb-3"),
+                
                 html.Hr(),
                 
                 # Visualization controls
@@ -365,6 +381,22 @@ def create_public_sidebar():
                     value="usgs-national",
                     className="mb-3"
                 ),
+                
+                dbc.Label("Watershed Boundaries:"),
+                dbc.Checklist(
+                    id="basin-boundaries-checklist",
+                    options=[
+                        {"label": " Major Basins (HUC2)", "value": "huc2"},
+                        {"label": " Sub-Regions (HUC4)", "value": "huc4"},
+                        {"label": " Accounting Units (HUC6)", "value": "huc6"},
+                        {"label": " Sub-Basins (HUC8)", "value": "huc8"}
+                    ],
+                    value=["huc2", "huc4"],  # Show HUC2 and HUC4 by default
+                    inline=False,
+                    className="mb-2"
+                ),
+                html.P("Display watershed boundaries on the map", 
+                      className="small text-muted mb-3"),
                 
                 html.Hr(),
                 
@@ -824,6 +856,7 @@ def load_gauge_data(pathname):
     [Input('gauges-store', 'data'),
      Input('map-style-dropdown', 'value'),
      Input('map-height-dropdown', 'value'),
+     Input('basin-boundaries-checklist', 'value'),
      Input('search-input', 'value'),
      Input('state-filter', 'value'),
      Input('drainage-area-filter', 'value'),
@@ -832,7 +865,7 @@ def load_gauge_data(pathname):
      Input('realtime-filter', 'value')],
     [State('selected-gauge-store', 'data')]
 )
-def update_map_with_simplified_filters(gauges_data, map_style, map_height, search_text, states, 
+def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin_boundaries, search_text, states, 
                                      drainage_range, basins, hucs, show_realtime_only, selected_gauge):
     """Update the gauge map based on simplified filters."""
     if not gauges_data:
@@ -916,6 +949,21 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, searc
             height=map_height,
             auto_fit_bounds=auto_fit  # Only auto-fit when filters change, not on map style/height changes
         )
+        
+        # Add watershed boundaries if selected
+        if basin_boundaries:
+            show_huc2 = 'huc2' in basin_boundaries
+            show_huc4 = 'huc4' in basin_boundaries
+            show_huc6 = 'huc6' in basin_boundaries
+            show_huc8 = 'huc8' in basin_boundaries
+            fig = map_component.add_watershed_boundaries(
+                fig, 
+                show_huc2=show_huc2, 
+                show_huc4=show_huc4,
+                show_huc6=show_huc6,
+                show_huc8=show_huc8,
+                region='pnw'  # Pacific Northwest region
+            )
     else:
         fig = go.Figure()
         fig.update_layout(

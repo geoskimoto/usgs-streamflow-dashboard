@@ -9,6 +9,8 @@ import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
 import numpy as np
+import json
+from pathlib import Path
 from typing import Dict, List, Optional
 from ..utils.config import (
     MAP_CONFIG, GAUGE_COLORS, MAP_CENTER_LAT, MAP_CENTER_LON,
@@ -26,6 +28,10 @@ class ModernMapComponent:
         # Store last map view state to preserve zoom/pan between rebuilds
         self.last_center = dict(lat=MAP_CENTER_LAT, lon=MAP_CENTER_LON)
         self.last_zoom = DEFAULT_ZOOM_LEVEL
+        
+        # Watershed boundary data cache
+        self._basin_cache = {}
+        self._basemaps_dir = Path(__file__).parent.parent.parent / "data" / "basemaps"
         
     def create_gauge_map(self, gauges_df: pd.DataFrame, 
                         selected_gauge: Optional[str] = None,
@@ -101,12 +107,12 @@ class ModernMapComponent:
             margin=dict(r=0, t=50, l=0, b=0),
             font=dict(family="Arial", size=12),
             legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1,
-                bgcolor="rgba(255, 255, 255, 0.8)",
+                orientation="v",
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=0.01,
+                bgcolor="rgba(255, 255, 255, 0.9)",
                 bordercolor="black",
                 borderwidth=1
             ),
@@ -225,12 +231,12 @@ class ModernMapComponent:
                 title=f"USGS Streamflow Gauges - Pacific Northwest ({len(gauges_df)} gauges) - USGS National Map",
                 font=dict(family="Arial", size=12),
                 legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="right",
-                    x=1,
-                    bgcolor="rgba(255, 255, 255, 0.8)",
+                    orientation="v",
+                    yanchor="top",
+                    y=0.99,
+                    xanchor="left",
+                    x=0.01,
+                    bgcolor="rgba(255, 255, 255, 0.9)",
                     bordercolor="black",
                     borderwidth=1
                 ),
@@ -312,12 +318,12 @@ class ModernMapComponent:
             title=f"USGS Streamflow Gauges - Pacific Northwest ({len(gauges_df)} gauges)",
             font=dict(family="Arial", size=12),
             legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1,
-                bgcolor="rgba(255, 255, 255, 0.8)",
+                orientation="v",
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=0.01,
+                bgcolor="rgba(255, 255, 255, 0.9)",
                 bordercolor="black",
                 borderwidth=1
             ),
@@ -475,6 +481,194 @@ class ModernMapComponent:
             )
         
         return fig
+
+    def _load_basin_geojson(self, basin_level: str, region: str = "pnw") -> Optional[Dict]:
+        """
+        Load watershed boundary GeoJSON file.
+        
+        Parameters:
+        -----------
+        basin_level : str
+            Basin level: 'huc2', 'huc4', or 'huc8'
+        region : str
+            Region: 'pnw' (Pacific Northwest) or 'national'
+            
+        Returns:
+        --------
+        dict or None
+            GeoJSON data if file exists, None otherwise
+        """
+        cache_key = f"{basin_level}_{region}"
+        
+        # Return cached data if available
+        if cache_key in self._basin_cache:
+            return self._basin_cache[cache_key]
+        
+        # Construct filename
+        filename = f"{basin_level}_{region}.geojson"
+        filepath = self._basemaps_dir / filename
+        
+        # Load from file
+        if filepath.exists():
+            try:
+                with open(filepath, 'r') as f:
+                    geojson_data = json.load(f)
+                    self._basin_cache[cache_key] = geojson_data
+                    return geojson_data
+            except Exception as e:
+                print(f"Error loading {filename}: {e}")
+                return None
+        else:
+            print(f"Basin file not found: {filepath}")
+            return None
+    
+    def add_watershed_boundaries(self, fig: go.Figure, 
+                                 show_huc2: bool = True,
+                                 show_huc4: bool = True,
+                                 show_huc6: bool = False,
+                                 show_huc8: bool = False,
+                                 region: str = "pnw") -> go.Figure:
+        """
+        Add watershed boundary layers to the map.
+        
+        Parameters:
+        -----------
+        fig : go.Figure
+            Existing Plotly figure to add boundaries to
+        show_huc2 : bool
+            Show major regional basins (default: True)
+        show_huc4 : bool
+            Show sub-regional watersheds (default: True)
+        show_huc6 : bool
+            Show accounting units (default: False)
+        show_huc8 : bool
+            Show sub-basin watersheds (default: False, can be slow)
+        region : str
+            Region to display: 'pnw' or 'national' (default: 'pnw')
+            
+        Returns:
+        --------
+        go.Figure
+            Figure with watershed boundary layers added
+        """
+        # Define layer styles
+        layer_styles = {
+            'huc2': {
+                'color': 'rgba(139, 0, 139, 0.8)',  # Dark Magenta
+                'width': 3,
+                'name': 'Major Basins (HUC2)',
+                'fill': 'rgba(139, 0, 139, 0.05)'
+            },
+            'huc4': {
+                'color': 'rgba(0, 100, 200, 0.7)',  # Blue
+                'width': 2,
+                'name': 'Sub-Regions (HUC4)',
+                'fill': 'rgba(0, 100, 200, 0.03)'
+            },
+            'huc6': {
+                'color': 'rgba(255, 140, 0, 0.65)',  # Dark Orange
+                'width': 1.5,
+                'name': 'Accounting Units (HUC6)',
+                'fill': 'rgba(255, 140, 0, 0.025)'
+            },
+            'huc8': {
+                'color': 'rgba(34, 139, 34, 0.6)',  # Forest Green
+                'width': 1,
+                'name': 'Sub-Basins (HUC8)',
+                'fill': 'rgba(34, 139, 34, 0.02)'
+            }
+        }
+        
+        # Add layers in order (largest to smallest)
+        layers_to_add = []
+        if show_huc8:
+            layers_to_add.append('huc8')
+        if show_huc6:
+            layers_to_add.append('huc6')
+        if show_huc4:
+            layers_to_add.append('huc4')
+        if show_huc2:
+            layers_to_add.append('huc2')
+        
+        for level in layers_to_add:
+            geojson_data = self._load_basin_geojson(level, region)
+            if geojson_data:
+                style = layer_styles[level]
+                self._add_geojson_layer(fig, geojson_data, style)
+        
+        return fig
+    
+    def _add_geojson_layer(self, fig: go.Figure, geojson_data: Dict, style: Dict):
+        """
+        Add a GeoJSON layer to the map figure.
+        
+        Parameters:
+        -----------
+        fig : go.Figure
+            Figure to add layer to
+        geojson_data : dict
+            GeoJSON FeatureCollection
+        style : dict
+            Style configuration (color, width, name, fill)
+        """
+        # Track if we've shown legend for this layer yet
+        first_feature = True
+        
+        for feature in geojson_data.get('features', []):
+            geometry = feature.get('geometry', {})
+            properties = feature.get('properties', {})
+            
+            if geometry.get('type') == 'Polygon':
+                coords = geometry.get('coordinates', [[]])[0]
+                lons, lats = zip(*coords) if coords else ([], [])
+                
+                # Create hover text with basin info
+                huc_code = properties.get('huc2') or properties.get('huc4') or properties.get('huc6') or properties.get('huc8', 'N/A')
+                basin_name = properties.get('name', 'Unknown Basin')
+                area_sqkm = properties.get('areasqkm', 'N/A')
+                hover_text = f"<b>{basin_name}</b><br>HUC: {huc_code}<br>Area: {area_sqkm} km²"
+                
+                # Add filled polygon
+                fig.add_trace(go.Scattermapbox(
+                    lon=list(lons),
+                    lat=list(lats),
+                    mode='lines',
+                    fill='toself',
+                    fillcolor=style['fill'],
+                    line=dict(color=style['color'], width=style['width']),
+                    name=style['name'],
+                    hovertext=hover_text,
+                    hoverinfo='text',
+                    showlegend=first_feature,  # Only show legend for first feature
+                    legendgroup=style['name']
+                ))
+                first_feature = False
+                
+            elif geometry.get('type') == 'MultiPolygon':
+                # Handle multi-polygon features
+                for polygon in geometry.get('coordinates', []):
+                    coords = polygon[0] if polygon else []
+                    lons, lats = zip(*coords) if coords else ([], [])
+                    
+                    huc_code = properties.get('huc2') or properties.get('huc4') or properties.get('huc6') or properties.get('huc8', 'N/A')
+                    basin_name = properties.get('name', 'Unknown Basin')
+                    area_sqkm = properties.get('areasqkm', 'N/A')
+                    hover_text = f"<b>{basin_name}</b><br>HUC: {huc_code}<br>Area: {area_sqkm} km²"
+                    
+                    fig.add_trace(go.Scattermapbox(
+                        lon=list(lons),
+                        lat=list(lats),
+                        mode='lines',
+                        fill='toself',
+                        fillcolor=style['fill'],
+                        line=dict(color=style['color'], width=style['width']),
+                        name=style['name'],
+                        hovertext=hover_text,
+                        hoverinfo='text',
+                        showlegend=first_feature,  # Only show legend for first feature
+                        legendgroup=style['name']
+                    ))
+                    first_feature = False
 
     def create_simple_test_map(self) -> go.Figure:
         """Create a simple test map to verify functionality."""
