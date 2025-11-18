@@ -90,20 +90,13 @@ def import_stations_from_csv(db_path="data/usgs_data.db"):
         total_added += added
         total_updated += updated
     
-    # Configuration linking is now handled by config_loader.py
-    # The configurations table uses a many-to-many relationship via configuration_stations
+    # Configuration linking is now handled via JSON files in config/
+    # No database tables needed for configuration management (unified schema)
     print(f"\n✓ Station import complete!")
     print(f"   Total stations in database: {total_added + total_updated}")
     print(f"\n📝 Next steps:")
-    print(f"   1. Run: python config_loader.py")
-    print(f"   2. This will link stations to configurations based on config/default_configurations.json")
-    
-    # Update Development Test Set with first 25 stations
-    cursor.execute("""
-    UPDATE configurations
-    SET site_id = (SELECT GROUP_CONCAT(site_id) FROM (SELECT site_id FROM stations LIMIT 25))
-    WHERE config_name = 'Development Test Set'
-    """)
+    print(f"   1. Configurations are managed via config/default_configurations.json")
+    print(f"   2. Start collecting data with update_realtime_discharge_configurable.py")
     
     conn.commit()
     

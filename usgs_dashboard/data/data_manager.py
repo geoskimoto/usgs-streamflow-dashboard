@@ -33,67 +33,37 @@ class USGSDataManager:
         self.setup_cache()
         
     def setup_cache(self):
-        """Setup SQLite database for caching gauge data."""
+        """
+        Verify database exists and is accessible.
+        
+        NOTE: Schema creation is handled by initialize_database.py
+        This method only checks connectivity to the unified database.
+        """
+        # Verify database file exists
+        if not os.path.exists(self.cache_db):
+            raise FileNotFoundError(
+                f"Database not found at {self.cache_db}. "
+                "Please run: python initialize_database.py --db-path data/usgs_data.db"
+            )
+        
+        # Verify we can connect and that required tables exist
         conn = sqlite3.connect(self.cache_db)
         cursor = conn.cursor()
         
-        # Create streamflow_data table for historical daily data
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS streamflow_data (
-                site_id TEXT,
-                data_json TEXT,
-                start_date TEXT,
-                end_date TEXT,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (site_id, start_date, end_date)
-            )
-        ''')
+        # Check for required tables from unified schema
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = {row[0] for row in cursor.fetchall()}
         
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS data_statistics (
-                site_id TEXT PRIMARY KEY,
-                stats_json TEXT,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-
-        # Create comprehensive filters table for station metadata
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS filters (
-                site_id TEXT PRIMARY KEY,
-                station_name TEXT,
-                latitude REAL,
-                longitude REAL,
-                drainage_area REAL,
-                state TEXT,
-                county TEXT,
-                site_type TEXT,
-                agency TEXT,
-                huc_code TEXT,
-                basin TEXT,
-                years_of_record INTEGER,
-                num_water_years INTEGER,
-                last_data_date TEXT,
-                is_active BOOLEAN,
-                status TEXT,
-                color TEXT,
-                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
+        required_tables = {'stations', 'streamflow_data', 'realtime_discharge'}
+        missing_tables = required_tables - tables
         
-        # Subset selection cache table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS subset_cache (
-                id INTEGER PRIMARY KEY,
-                subset_config TEXT,
-                site_ids TEXT,
-                selection_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                total_available INTEGER,
-                subset_size INTEGER
+        if missing_tables:
+            conn.close()
+            raise RuntimeError(
+                f"Database is missing required tables: {missing_tables}. "
+                "Please run: python initialize_database.py --db-path data/usgs_data.db --force"
             )
-        ''')
         
-        conn.commit()
         conn.close()
     
     def load_regional_gauges(self, refresh=False, max_sites=None):
@@ -136,7 +106,7 @@ class USGSDataManager:
         # Step 4: Process metadata and cache
         processed_gauges = self._process_gauge_metadata(validated_gauges)
         
-        # Update filters table with metadata (no additional data downloads needed)
+        # Update stations table with enriched metadata (no additional data downloads needed)
         self._update_filters_table_optimized(processed_gauges)
         
         self._cache_gauge_metadata(processed_gauges)
@@ -261,7 +231,7 @@ class USGSDataManager:
 
     def _update_filters_table_optimized(self, gauges_df):
         """
-        OPTIMIZED: Update filters table with metadata.
+        OPTIMIZED: Update stations table with enriched metadata.
         No additional data downloads needed since data was downloaded during validation.
         """
         conn = sqlite3.connect(self.cache_db)
@@ -288,7 +258,7 @@ class USGSDataManager:
                 return val
             
             conn.execute('''
-                INSERT OR REPLACE INTO filters (
+                INSERT OR REPLACE INTO stations (
                     site_id, station_name, latitude, longitude, drainage_area, state, county, site_type, agency, huc_code, basin, years_of_record, num_water_years, last_data_date, is_active, status, color, last_updated
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
@@ -314,7 +284,7 @@ class USGSDataManager:
         
         conn.commit()
         conn.close()
-        print(f"✅ Updated filters table for {len(gauges_df)} sites (optimized - no additional API calls)")
+        print(f"✅ Updated stations table for {len(gauges_df)} sites (optimized - no additional API calls)")
 
     def _update_filters_table(self, gauges_df):
         """
@@ -368,7 +338,7 @@ class USGSDataManager:
                     return val.item()
                 return val
             conn.execute('''
-                INSERT OR REPLACE INTO filters (
+                INSERT OR REPLACE INTO stations (
                     site_id, station_name, latitude, longitude, drainage_area, state, county, site_type, agency, huc_code, basin, years_of_record, num_water_years, last_data_date, is_active, status, color, last_updated
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
@@ -1236,7 +1206,7 @@ class USGSDataManager:
             conn.execute("DELETE FROM streamflow_data")
             conn.execute("DELETE FROM data_statistics")
             conn.execute("DELETE FROM subset_cache")
-            conn.execute("DELETE FROM filters")
+            conn.execute("DELETE FROM stations")
             conn.commit()
             conn.close()
             print("Cache cleared successfully")
@@ -1434,13 +1404,8 @@ class USGSDataManager:
         """
         try:
             conn = sqlite3.connect(self.cache_db)
-            # Try filters table first (has enriched metadata)
-            filters_df = pd.read_sql_query('SELECT * FROM filters', conn)
-            
-            # If filters table is empty or missing critical columns, fall back to stations
-            if filters_df.empty or 'drainage_area' not in filters_df.columns:
-                print("Warning: filters table empty or missing columns, falling back to stations table")
-                filters_df = pd.read_sql_query('SELECT * FROM stations', conn)
+            # Load from unified stations table (contains both basic and enriched metadata)
+            filters_df = pd.read_sql_query('SELECT * FROM stations', conn)
             
             conn.close()
             return filters_df
