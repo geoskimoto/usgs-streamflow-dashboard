@@ -25,6 +25,7 @@ except ImportError:
 
 from ..utils.config import WATER_YEAR_START, DEFAULT_PERCENTILES
 from ..utils.water_year_datetime import get_water_year_handler
+from ..utils.water_year_calculator import get_water_year, get_day_of_water_year
 
 
 class VisualizationManager:
@@ -205,15 +206,11 @@ class VisualizationManager:
         data = data.dropna()
         fig = go.Figure()
         if plot_type == 'water_year':
-            # Use the new clean water year handler with enhanced features
-            fig = self.wy_handler.create_water_year_plot(
-                data, value_col, highlight_years, 
-                title=f"Water Year Plot - Site {site_id}",
-                show_current_year=True,  # Default to current water year
-                show_statistics=True,    # Show mean and median lines
-                show_current_day=True,   # Show current day marker
-                show_percentiles=True,   # Show percentile bands for context
-                use_default_zoom=True    # Enable ±30 day zoom from current day
+            # Use the internal enhanced water year plot method
+            fig = self._create_enhanced_water_year_plot(
+                data, value_col, highlight_years,
+                show_percentiles=True,
+                show_statistics=True
             )
         else:
             fig = self._create_basic_timeseries_plot(data, value_col)
@@ -257,9 +254,9 @@ class VisualizationManager:
         # Filter out any rows with invalid dates
         data_copy = data_copy.dropna()
         
-        # Now safely calculate water year and day
-        data_copy['water_year'] = data_copy.index.map(self._get_water_year)
-        data_copy['day_of_wy'] = data_copy.index.map(self._get_day_of_water_year)
+        # Now safely calculate water year and day using imported functions
+        data_copy['water_year'] = data_copy.index.map(lambda d: get_water_year(d, WATER_YEAR_START))
+        data_copy['day_of_wy'] = data_copy.index.map(lambda d: get_day_of_water_year(d, WATER_YEAR_START))
         
         fig = go.Figure()
         
@@ -371,9 +368,9 @@ class VisualizationManager:
         # Filter out any rows with invalid dates
         data_copy = data_copy.dropna()
         print("[DEBUG] After dropna: Data shape:", data_copy.shape)
-        # Now safely calculate water year and day
-        data_copy['water_year'] = data_copy.index.map(self._get_water_year)
-        data_copy['day_of_wy'] = data_copy.index.map(self._get_day_of_water_year)
+        # Now safely calculate water year and day using imported functions
+        data_copy['water_year'] = data_copy.index.map(lambda d: get_water_year(d, WATER_YEAR_START))
+        data_copy['day_of_wy'] = data_copy.index.map(lambda d: get_day_of_water_year(d, WATER_YEAR_START))
         print("[DEBUG] Unique water_years:", data_copy['water_year'].unique())
         print("[DEBUG] Unique day_of_wy (first 10):", data_copy['day_of_wy'].unique()[:10])
         # Debug: Check for 1970 or other default years
@@ -691,57 +688,10 @@ class VisualizationManager:
         
         return fig
     
-    def _get_water_year(self, date) -> int:
-        """Get water year for a given date."""
-        try:
-            # Handle different input types
-            if isinstance(date, (int, float)):
-                # If it's a number, probably not a valid date
-                return 2024  # Default year
-            
-            # Ensure it's a pandas Timestamp
-            if not isinstance(date, pd.Timestamp):
-                date = pd.to_datetime(date)
-            
-            # Remove timezone info to avoid timezone mixing issues
-            if date.tz is not None:
-                date = date.tz_localize(None)
-            
-            if date.month >= WATER_YEAR_START:
-                return date.year + 1
-            else:
-                return date.year
-        except Exception as e:
-            print(f"Error getting water year for date {date}: {e}")
-            return 2024  # Default year
-    
-    def _get_day_of_water_year(self, date) -> int:
-        """Get day of water year (1-365/366)."""
-        try:
-            # Handle different input types
-            if isinstance(date, (int, float)):
-                # If it's a number, probably not a valid date
-                return 1  # Default day
-            
-            # Ensure it's a pandas Timestamp
-            if not isinstance(date, pd.Timestamp):
-                date = pd.to_datetime(date)
-            
-            # Remove timezone info to avoid timezone mixing issues
-            if date.tz is not None:
-                date = date.tz_localize(None)
-            
-            water_year = self._get_water_year(date)
-            
-            if date.month >= WATER_YEAR_START:
-                wy_start = pd.Timestamp(year=date.year, month=WATER_YEAR_START, day=1)
-            else:
-                wy_start = pd.Timestamp(year=date.year - 1, month=WATER_YEAR_START, day=1)
-            
-            return (date - wy_start).days + 1
-        except Exception as e:
-            print(f"Error getting day of water year for date {date}: {e}")
-            return 1  # Default day
+    # Removed: _get_water_year() and _get_day_of_water_year()
+    # Now use imported functions from water_year_calculator.py:
+    #   - get_water_year(date, start_month=10)
+    #   - get_day_of_water_year(date, start_month=10)
     
     def get_data_summary_stats(self, data: pd.DataFrame) -> Dict:
         """Get summary statistics for streamflow data."""

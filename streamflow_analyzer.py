@@ -16,6 +16,26 @@ import warnings
 from typing import Optional, List, Dict, Tuple, Union
 import calendar
 
+# Import water year utilities - try dashboard location first, then handle standalone use
+try:
+    from usgs_dashboard.utils.water_year_calculator import get_water_year, get_day_of_water_year
+except ImportError:
+    # Standalone mode - define minimal implementations
+    def get_water_year(date: pd.Timestamp, start_month: int = 10) -> int:
+        """Get water year for a date."""
+        if date.month >= start_month:
+            return date.year + 1
+        return date.year
+    
+    def get_day_of_water_year(date: pd.Timestamp, start_month: int = 10) -> int:
+        """Get day of water year."""
+        water_year = get_water_year(date, start_month)
+        if date.month >= start_month:
+            wy_start = pd.Timestamp(date.year, start_month, 1)
+        else:
+            wy_start = pd.Timestamp(date.year - 1, start_month, 1)
+        return (date - wy_start).days + 1
+
 __version__ = "1.0.0"
 __author__ = "USGS Streamflow Analysis Tool"
 
@@ -217,9 +237,8 @@ class StreamflowData:
         if self._df is None:
             return
         
-        # Water year starts Oct 1, so if month >= 10, water year = calendar year + 1
-        self._df['water_year'] = self._df['datetime'].dt.year
-        self._df.loc[self._df['datetime'].dt.month >= 10, 'water_year'] += 1
+        # Use imported function for consistency
+        self._df['water_year'] = self._df['datetime'].apply(lambda d: get_water_year(d, start_month=10))
         
         # Also add calendar year, month, day for convenience
         self._df['year'] = self._df['datetime'].dt.year
@@ -231,18 +250,8 @@ class StreamflowData:
         if self._df is None:
             return
         
-        def get_water_year_day(row):
-            date = row['datetime']
-            water_year = row['water_year']
-            
-            # Water year starts October 1 of previous calendar year
-            wy_start = datetime(water_year - 1, 10, 1)
-            
-            # Calculate days since start of water year
-            delta = date - wy_start
-            return delta.days + 1
-        
-        self._df['day_of_water_year'] = self._df.apply(get_water_year_day, axis=1)
+        # Use imported function for consistency
+        self._df['day_of_water_year'] = self._df['datetime'].apply(lambda d: get_day_of_water_year(d, start_month=10))
         
         # Create month-day string for easier grouping (MM-DD format)
         self._df['month_day'] = self._df['datetime'].dt.strftime('%m-%d')
