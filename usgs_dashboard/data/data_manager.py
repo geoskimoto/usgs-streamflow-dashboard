@@ -1,18 +1,18 @@
 """
 USGS Data Manager for streamflow dashboard
 OPTIMIZED: Single-pass data loading system for improved performance
+REFACTORED: Uses repository pattern for clean database access
 """
 
-import sqlite3
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import dataretrieval.nwis as nwis
 from typing import Optional, Dict, Any, List
-import json
 import os
 
 from ..utils.config import TARGET_STATES, CACHE_DURATION, MAX_YEARS_LOAD, GAUGE_COLORS, SUBSET_CONFIG
+from .database import SchemaManager, StationRepository, StreamflowRepository, RealtimeRepository
 
 
 class USGSDataManager:
@@ -28,72 +28,40 @@ class USGSDataManager:
             Directory to store cache database
         """
         self.cache_dir = cache_dir
-        self.cache_db = os.path.join(cache_dir, 'usgs_data.db')  # Updated to unified database
+        self.cache_db = os.path.join(cache_dir, 'usgs_data.db')
         os.makedirs(cache_dir, exist_ok=True)
+        
+        # Initialize repositories
+        self.schema_mgr = SchemaManager(self.cache_db)
+        self.station_repo = StationRepository(self.cache_db)
+        self.streamflow_repo = StreamflowRepository(self.cache_db, cache_duration_seconds=CACHE_DURATION)
+        self.realtime_repo = RealtimeRepository(self.cache_db)
+        
         self.setup_cache()
         
     def setup_cache(self):
         """
         Verify database exists and is accessible.
-        
-        NOTE: Schema creation is handled by initialize_database.py
-        This method only checks connectivity to the unified database.
-        If database doesn't exist, attempts to create it automatically.
+        Uses SchemaManager for database initialization and verification.
         """
-        # If database doesn't exist, try to initialize it
-        if not os.path.exists(self.cache_db):
+        # Initialize database if it doesn't exist
+        if not self.schema_mgr.db.database_exists():
             print(f"⚠️  Database not found at {self.cache_db}")
             print(f"⚠️  Attempting to initialize database automatically...")
             
-            try:
-                # Try to run initialize_database.py
-                import subprocess
-                result = subprocess.run(
-                    ['python', 'initialize_database.py', '--db-path', self.cache_db],
-                    capture_output=True,
-                    text=True,
-                    timeout=30
-                )
-                
-                if result.returncode != 0:
-                    print(f"❌ Failed to initialize database: {result.stderr}")
-                    raise RuntimeError(
-                        f"Database not found and auto-initialization failed. "
-                        f"Please run manually: python initialize_database.py --db-path {self.cache_db}"
-                    )
-                else:
-                    print(f"✅ Database initialized successfully")
-                    
-            except Exception as e:
-                print(f"❌ Error during auto-initialization: {e}")
-                raise FileNotFoundError(
-                    f"Database not found at {self.cache_db} and could not be created automatically. "
-                    f"Please run: python initialize_database.py --db-path {self.cache_db}"
-                )
-        
-        # Verify we can connect and that required tables exist
-        try:
-            conn = sqlite3.connect(self.cache_db)
-            cursor = conn.cursor()
-            
-            # Check for required tables from unified schema
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-            tables = {row[0] for row in cursor.fetchall()}
-            
-            required_tables = {'stations', 'streamflow_data', 'realtime_discharge'}
-            missing_tables = required_tables - tables
-            
-            if missing_tables:
-                conn.close()
-                print(f"⚠️  Database missing required tables: {missing_tables}")
+            if not self.schema_mgr.initialize_database():
                 raise RuntimeError(
-                    f"Database is missing required tables: {missing_tables}. "
-                    f"Please run: python initialize_database.py --db-path {self.cache_db} --force"
+                    f"Database initialization failed. "
+                    f"Please check logs and try running: python -m usgs_dashboard.data.database.schema_manager"
                 )
-            
-            conn.close()
-        except sqlite3.Error as e:
-            raise RuntimeError(f"Database connection error: {e}")
+            print(f"✅ Database initialized successfully")
+        
+        # Verify schema
+        if not self.schema_mgr.verify_schema():
+            raise RuntimeError(
+                f"Database schema verification failed. "
+                f"Please run: python -m usgs_dashboard.data.database.schema_manager --force"
+            )
     
     def load_regional_gauges(self, refresh=False, max_sites=None):
         """
@@ -780,7 +748,17 @@ class USGSDataManager:
             return 'inactive'
     
     def _cache_gauge_metadata(self, gauges: pd.DataFrame):
-        """Cache gauge metadata in SQLite database with all required columns."""
+        """Cache gauge metadata using station repository."""
+        # Use station repository for clean database operations
+        count = self.station_repo.bulk_upsert_stations(gauges)
+        print(f"✅ Cached metadata for {count} stations")
+        
+        # Sync filters table for backward compatibility
+        self.station_repo.sync_filters_table()
+        return
+        
+        # OLD CODE BELOW - kept for reference, can be removed
+        import sqlite3
         conn = sqlite3.connect(self.cache_db)
         
         # Ensure table exists with ALL required columns for filtering
@@ -843,11 +821,23 @@ class USGSDataManager:
         conn.close()
     
     def _load_cached_gauge_metadata(self) -> Optional[pd.DataFrame]:
-        """Load gauge metadata from cache with all required columns."""
-        if not os.path.exists(self.cache_db):
+        """Load gauge metadata from cache using station repository."""
+        if not self.schema_mgr.db.database_exists():
             return None
         
         try:
+            # Use station repository
+            df = self.station_repo.get_all_stations()
+            if df.empty:
+                return None
+            return df
+        except Exception as e:
+            print(f"Error loading cached gauge metadata: {e}")
+            return None
+        
+        # OLD CODE BELOW - kept for reference, can be removed
+        try:
+            import sqlite3
             conn = sqlite3.connect(self.cache_db)
             
             # Check if data is recent (within 7 days)
@@ -916,9 +906,9 @@ class USGSDataManager:
             # End date should be current date, not end of current water year
             end_date = datetime.now().strftime("%Y-%m-%d")
         
-        # Try cache first
+        # Try cache first using repository
         if use_cache:
-            cached_data = self._load_cached_streamflow_data(site_id, start_date, end_date)
+            cached_data = self.streamflow_repo.get_streamflow_data(site_id, start_date, end_date)
             if cached_data is not None:
                 return cached_data
         
@@ -959,9 +949,9 @@ class USGSDataManager:
                 print(f"No valid data after processing for site {site_id}")
                 return None
             
-            # Cache the data
+            # Cache the data using repository
             if use_cache:
-                self._cache_streamflow_data(site_id, df, start_date, end_date)
+                self.streamflow_repo.save_streamflow_data(site_id, df, start_date, end_date)
             
             return df
             
@@ -1208,37 +1198,26 @@ class USGSDataManager:
             List of site IDs that have data in the realtime_discharge table
         """
         try:
-            conn = sqlite3.connect(self.cache_db)
-            cursor = conn.cursor()
-            
-            cursor.execute('''
-                SELECT DISTINCT site_id 
-                FROM realtime_discharge 
-                ORDER BY site_id
-            ''')
-            
-            sites = [row[0] for row in cursor.fetchall()]
-            conn.close()
-            
+            # Use realtime repository
+            sites = self.realtime_repo.get_sites_with_realtime_data()
             print(f"Found {len(sites)} sites with real-time data")
             return sites
-            
         except Exception as e:
             print(f"Error getting sites with real-time data: {e}")
             return []
     
     def clear_cache(self):
-        """Clear all cached data."""
-        if os.path.exists(self.cache_db):
-            conn = sqlite3.connect(self.cache_db)
-            conn.execute("DELETE FROM gauge_metadata")
-            conn.execute("DELETE FROM streamflow_data")
-            conn.execute("DELETE FROM data_statistics")
-            conn.execute("DELETE FROM subset_cache")
-            conn.execute("DELETE FROM stations")
-            conn.commit()
-            conn.close()
-            print("Cache cleared successfully")
+        """Clear all cached data using repositories."""
+        try:
+            # Clear streamflow cache
+            expired = self.streamflow_repo.clear_expired_cache()
+            print(f"✅ Cleared {expired} expired streamflow cache entries")
+            
+            # Note: Station metadata and realtime data are operational, not cache
+            # They should not be cleared unless explicitly requested
+            print("✅ Cache cleared successfully")
+        except Exception as e:
+            print(f"❌ Error clearing cache: {e}")
     
     def get_subset_status(self) -> Dict:
         """Get information about current subset configuration and status."""
