@@ -15,9 +15,9 @@ def calculate_current_water_year():
         return today.year
 
 # Map Settings
-MAP_CENTER = [46.0, -117.0]  # Center on Pacific Northwest (OR, WA, ID)
-MAP_CENTER_LAT = 46.0
-MAP_CENTER_LON = -117.0
+MAP_CENTER = [42.0, -114.0]  # Center to include both Pacific NW and Southwest states
+MAP_CENTER_LAT = 42.0
+MAP_CENTER_LON = -114.0
 MAP_ZOOM = 5
 DEFAULT_ZOOM_LEVEL = 5
 MIN_ZOOM_LEVEL = 4
@@ -52,7 +52,7 @@ WATER_YEAR_START = 10  # October 1st (month 10)
 DEFAULT_PERCENTILES = [10, 25, 50, 75, 90]
 
 # States to Include
-TARGET_STATES = ['OR', 'WA', 'ID']
+TARGET_STATES = ['OR', 'WA', 'ID', 'MT', 'NV', 'CA', 'UT', 'AZ', 'CO']
 
 # Plot Settings
 DASHBOARD_PLOT_HEIGHT = 400
@@ -114,8 +114,8 @@ SUBSET_CONFIG = {
 }
 
 # App Settings
-APP_TITLE = 'USGS Streamflow Dashboard - Pacific Northwest'
-APP_DESCRIPTION = 'Interactive dashboard for exploring USGS streamflow data across Oregon, Washington, and Idaho'
+APP_TITLE = 'USGS Streamflow Dashboard - Western US'
+APP_DESCRIPTION = 'Interactive dashboard for exploring USGS streamflow data across the Western United States'
 
 APP_CONFIG = {
     'debug': True,
