@@ -8,7 +8,6 @@ hardcoded station lists.
 
 import os
 import sys
-import sqlite3
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta, timezone
@@ -24,7 +23,17 @@ from pathlib import Path
 project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(project_root)
 
-from json_config_manager import JSONConfigManager
+# Use new repository classes
+try:
+    from usgs_dashboard.data.database import (
+        StationRepository, StreamflowRepository, 
+        RealtimeRepository, ConfigRepository
+    )
+    USE_REPOSITORIES = True
+except ImportError:
+    # Fallback to old json_config_manager if repositories not available
+    from json_config_manager import JSONConfigManager
+    USE_REPOSITORIES = False
 
 
 class ConfigurableDataCollector:
@@ -40,7 +49,17 @@ class ConfigurableDataCollector:
             Path to the main USGS cache database
         """
         self.db_path = db_path
-        self.config_manager = JSONConfigManager(db_path=db_path)
+        
+        # Initialize repositories
+        if USE_REPOSITORIES:
+            self.station_repo = StationRepository(db_path)
+            self.streamflow_repo = StreamflowRepository(db_path)
+            self.realtime_repo = RealtimeRepository(db_path)
+            self.config_repo = ConfigRepository(db_path)
+        else:
+            # Fallback to old manager
+            self.config_manager = JSONConfigManager(db_path=db_path)
+        
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'USGS-Streamflow-Dashboard/1.0 (Educational Use)'

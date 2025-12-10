@@ -65,7 +65,7 @@ class SimplifiedFilterPanel:
                     dbc.Checklist(
                         id="state-filter",
                         options=[],  # Will be populated dynamically
-                        value=["OR", "WA", "ID", "MT"],
+                        value=["OR", "WA", "ID", "MT", "CA", "NV", "UT", "AZ", "CO"],
                         inline=True,
                         className="mb-3"
                     )

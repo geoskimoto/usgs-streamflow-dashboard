@@ -25,6 +25,7 @@ except ImportError:
 
 from ..utils.config import WATER_YEAR_START, DEFAULT_PERCENTILES
 from ..utils.water_year_datetime import get_water_year_handler
+from ..utils.water_year_calculator import get_water_year, get_day_of_water_year
 
 
 class VisualizationManager:
@@ -205,22 +206,19 @@ class VisualizationManager:
         data = data.dropna()
         fig = go.Figure()
         if plot_type == 'water_year':
-            # Use the new clean water year handler with enhanced features
-            fig = self.wy_handler.create_water_year_plot(
-                data, value_col, highlight_years, 
-                title=f"Water Year Plot - Site {site_id}",
-                show_current_year=True,  # Default to current water year
-                show_statistics=True,    # Show mean and median lines
-                show_current_day=True,   # Show current day marker
-                show_percentiles=True,   # Show percentile bands for context
-                use_default_zoom=True    # Enable ±30 day zoom from current day
+            # Use the internal enhanced water year plot method
+            fig = self._create_enhanced_water_year_plot(
+                data, value_col, highlight_years,
+                show_percentiles=True,
+                show_statistics=True,
+                realtime_data=realtime_data
             )
         else:
             fig = self._create_basic_timeseries_plot(data, value_col)
             
-        # Add real-time data overlay if available
-        if realtime_data is not None and not realtime_data.empty:
-            fig = self._add_realtime_overlay(fig, realtime_data, site_id)
+            # Add real-time data overlay for non-water-year plots
+            if realtime_data is not None and not realtime_data.empty:
+                fig = self._add_realtime_overlay(fig, realtime_data, site_id)
         # Update layout (only for non-water year plots since water year handler manages its own)
         if plot_type != 'water_year':
             fig.update_layout(
@@ -257,9 +255,9 @@ class VisualizationManager:
         # Filter out any rows with invalid dates
         data_copy = data_copy.dropna()
         
-        # Now safely calculate water year and day
-        data_copy['water_year'] = data_copy.index.map(self._get_water_year)
-        data_copy['day_of_wy'] = data_copy.index.map(self._get_day_of_water_year)
+        # Now safely calculate water year and day using imported functions
+        data_copy['water_year'] = data_copy.index.map(lambda d: get_water_year(d, WATER_YEAR_START))
+        data_copy['day_of_wy'] = data_copy.index.map(lambda d: get_day_of_water_year(d, WATER_YEAR_START))
         
         fig = go.Figure()
         
@@ -334,7 +332,8 @@ class VisualizationManager:
     def _create_enhanced_water_year_plot(self, data: pd.DataFrame, value_col: str,
                                        highlight_years: List[int],
                                        show_percentiles: bool = True,
-                                       show_statistics: bool = True) -> go.Figure:
+                                       show_statistics: bool = True,
+                                       realtime_data: pd.DataFrame = None) -> go.Figure:
         """
         Create enhanced water year plot with percentile bands.
         Robust date handling: Only set index to a valid date column ('datetime', 'date', 'timestamp').
@@ -371,9 +370,9 @@ class VisualizationManager:
         # Filter out any rows with invalid dates
         data_copy = data_copy.dropna()
         print("[DEBUG] After dropna: Data shape:", data_copy.shape)
-        # Now safely calculate water year and day
-        data_copy['water_year'] = data_copy.index.map(self._get_water_year)
-        data_copy['day_of_wy'] = data_copy.index.map(self._get_day_of_water_year)
+        # Now safely calculate water year and day using imported functions
+        data_copy['water_year'] = data_copy.index.map(lambda d: get_water_year(d, WATER_YEAR_START))
+        data_copy['day_of_wy'] = data_copy.index.map(lambda d: get_day_of_water_year(d, WATER_YEAR_START))
         print("[DEBUG] Unique water_years:", data_copy['water_year'].unique())
         print("[DEBUG] Unique day_of_wy (first 10):", data_copy['day_of_wy'].unique()[:10])
         # Debug: Check for 1970 or other default years
@@ -395,13 +394,17 @@ class VisualizationManager:
                 lambda x: x.quantile(0.90)
             ])
             daily_stats.columns = ['median', 'q25', 'q75', 'q10', 'q90']
+            # Store daily stats for tooltip customization
+            self._daily_stats = daily_stats
+            
             fig.add_trace(go.Scatter(
                 x=daily_stats.index,
                 y=daily_stats['q90'],
                 mode='lines',
                 line=dict(color='rgba(173, 216, 230, 0)'),
                 showlegend=False,
-                name='90th percentile'
+                name='90th percentile',
+                hovertemplate='<extra></extra>'  # Hide hover for boundary
             ))
             fig.add_trace(go.Scatter(
                 x=daily_stats.index,
@@ -409,9 +412,10 @@ class VisualizationManager:
                 mode='lines',
                 line=dict(color='rgba(173, 216, 230, 0)'),
                 fill='tonexty',
-                fillcolor='rgba(173, 216, 230, 0.3)',
+                fillcolor='rgba(173, 216, 230, 0.42)',  # Increased from 0.3 to 0.42 (40% increase)
                 showlegend=True,
-                name='10th-90th percentile'
+                name='10th-90th percentile',
+                hovertemplate='<extra></extra>'  # Hide hover for fill
             ))
             fig.add_trace(go.Scatter(
                 x=daily_stats.index,
@@ -419,7 +423,8 @@ class VisualizationManager:
                 mode='lines',
                 line=dict(color='rgba(100, 149, 237, 0)'),
                 showlegend=False,
-                name='75th percentile'
+                name='75th percentile',
+                hovertemplate='<extra></extra>'  # Hide hover for boundary
             ))
             fig.add_trace(go.Scatter(
                 x=daily_stats.index,
@@ -427,22 +432,24 @@ class VisualizationManager:
                 mode='lines',
                 line=dict(color='rgba(100, 149, 237, 0)'),
                 fill='tonexty',
-                fillcolor='rgba(100, 149, 237, 0.4)',
+                fillcolor='rgba(100, 149, 237, 0.56)',  # Increased from 0.4 to 0.56 (40% increase)
                 showlegend=True,
-                name='25th-75th percentile'
+                name='25th-75th percentile',
+                hovertemplate='<extra></extra>'  # Hide hover for fill
             ))
         # Get unique years
         years = sorted(data_copy['water_year'].unique())
         print("[DEBUG] Years to plot:", years)
         
-        # Define colors for highlighted years
+        # Get current water year
+        current_wy = get_water_year(pd.Timestamp.now(), WATER_YEAR_START)
+        
+        # Define colors for highlighted years (excluding current water year)
         highlight_colors = [
-            '#FF0000',  # Red
             '#FF8C00',  # Dark Orange  
             '#9932CC',  # Dark Orchid
             '#228B22',  # Forest Green
             '#DC143C',  # Crimson
-            '#4169E1',  # Royal Blue
             '#FF1493',  # Deep Pink
             '#32CD32',  # Lime Green
             '#FF6347',  # Tomato
@@ -450,6 +457,9 @@ class VisualizationManager:
         ]
         
         # Plot each year
+        # Track if we've shown the "All Historical Years" legend
+        shown_historical_legend = False
+        
         for i, year in enumerate(years):
             year_data = data_copy[data_copy['water_year'] == year]
             if len(year_data) == 0:
@@ -457,23 +467,68 @@ class VisualizationManager:
             # Debug: Log x and y sample for this year
             print(f"[DEBUG] Plotting year {year}: day_of_wy sample:", year_data['day_of_wy'][:10].tolist())
             print(f"[DEBUG] Plotting year {year}: discharge sample:", year_data[value_col][:10].tolist())
+            
             # Determine line properties
-            if highlight_years and year in highlight_years:
-                # Use different colors for each highlighted year
+            if year == current_wy:
+                # Current water year is BLUE
+                line_color = '#0000FF'  # Blue
+                line_width = 3
+                opacity = 1.0
+                showlegend = True
+                name = f"WY {year} (Current)"
+                legendgroup = None
+            elif highlight_years and year in highlight_years:
+                # Other highlighted years (not current) get different colors
                 highlight_index = highlight_years.index(year)
                 color_index = highlight_index % len(highlight_colors)
                 line_color = highlight_colors[color_index]
                 line_width = 3
                 opacity = 1.0
                 showlegend = True
-                name = f"WY {year}"  # Clean year only, no extra text
-            else:
-                line_color = 'lightblue'
-                line_width = 1
-                opacity = 0.6
-                showlegend = False
                 name = f"WY {year}"
-            fig.add_trace(go.Scatter(
+                legendgroup = None
+            else:
+                # All other historical years grouped together
+                line_color = 'lightgray'
+                line_width = 1
+                opacity = 0.4
+                showlegend = not shown_historical_legend  # Only show legend for first historical year
+                name = "All Historical Years"
+                legendgroup = "historical"
+                shown_historical_legend = True
+            
+            # Create custom data for tooltip with percentile info
+            customdata = []
+            for day in year_data['day_of_wy']:
+                if show_percentiles and hasattr(self, '_daily_stats') and day in self._daily_stats.index:
+                    stats = self._daily_stats.loc[day]
+                    customdata.append([
+                        stats['q90'],
+                        stats['q75'],
+                        stats['median'],
+                        stats['q25'],
+                        stats['q10']
+                    ])
+                else:
+                    customdata.append([None, None, None, None, None])
+            
+            hovertemplate = (
+                f"<b>WY {year}</b><br>"
+                "Day %{x}<br>"
+                "<b>Discharge: %{y:.1f} cfs</b><br>"
+            )
+            if show_percentiles:
+                hovertemplate += (
+                    "<br>"
+                    "90th percentile: %{customdata[0]:.1f} cfs<br>"
+                    "75th percentile: %{customdata[1]:.1f} cfs<br>"
+                    "Median: %{customdata[2]:.1f} cfs<br>"
+                    "25th percentile: %{customdata[3]:.1f} cfs<br>"
+                    "10th percentile: %{customdata[4]:.1f} cfs"
+                )
+            hovertemplate += "<extra></extra>"
+            
+            trace = go.Scatter(
                 x=year_data['day_of_wy'],
                 y=year_data[value_col],
                 mode='lines',
@@ -481,22 +536,104 @@ class VisualizationManager:
                 line=dict(color=line_color, width=line_width),
                 opacity=opacity,
                 showlegend=showlegend,
-                hovertemplate=f"<b>Water Year {year}</b><br>" +
-                            "Day %{x}<br>" +
-                            "Discharge: %{y:.1f} cfs<extra></extra>"
-            ))
+                customdata=customdata if show_percentiles else None,
+                hovertemplate=hovertemplate
+            )
+            
+            # Add legendgroup for historical years
+            if legendgroup:
+                trace.legendgroup = legendgroup
+                
+            fig.add_trace(trace)
         
-        # Add median/mean line LAST so it appears on top of all year traces
+        # Add median and mean lines LAST so they appear on top of all year traces
         if show_statistics and len(data_copy) > 50:
-            daily_stats = data_copy.groupby('day_of_wy')[value_col].median()
+            daily_median = data_copy.groupby('day_of_wy')[value_col].median()
+            daily_mean = data_copy.groupby('day_of_wy')[value_col].mean()
+            
+            # Add median line (black, solid)
             fig.add_trace(go.Scatter(
-                x=daily_stats.index,
-                y=daily_stats.values,
+                x=daily_median.index,
+                y=daily_median.values,
                 mode='lines',
                 name='Long-term Median',
-                line=dict(color='black', width=3),  # Made thicker for better visibility
+                line=dict(color='black', width=2.5, dash='solid'),
                 hovertemplate="Day %{x}<br>Median: %{y:.1f} cfs<extra></extra>"
             ))
+            
+            # Add mean line (gray, dashed)
+            fig.add_trace(go.Scatter(
+                x=daily_mean.index,
+                y=daily_mean.values,
+                mode='lines',
+                name='Long-term Mean',
+                line=dict(color='gray', width=2.5, dash='dash'),
+                hovertemplate="Day %{x}<br>Mean: %{y:.1f} cfs<extra></extra>"
+            ))
+        
+        # Add current date vertical line
+        current_date = pd.Timestamp.now()
+        current_day_of_wy = get_day_of_water_year(current_date, WATER_YEAR_START)
+        
+        fig.add_vline(
+            x=current_day_of_wy,
+            line_dash="dash",
+            line_color="red",
+            line_width=2,
+            annotation_text="Current Day",
+            annotation_position="top",
+            annotation=dict(
+                font_size=10,
+                font_color="red"
+            )
+        )
+        
+        # Add realtime data if available
+        if realtime_data is not None and not realtime_data.empty:
+            # Find the discharge column in real-time data
+            rt_value_col = None
+            for col in realtime_data.columns:
+                if any(term in col.lower() for term in ['discharge', 'flow', '00060']):
+                    rt_value_col = col
+                    break
+            
+            if rt_value_col is not None:
+                # Prepare realtime data
+                rt_data = realtime_data.copy()
+                if not isinstance(rt_data.index, pd.DatetimeIndex):
+                    # Try to find a date column
+                    date_col = None
+                    for col in rt_data.columns:
+                        if col.lower() in ['datetime', 'date', 'dates', 'timestamp']:
+                            date_col = col
+                            break
+                    if date_col:
+                        rt_data[date_col] = pd.to_datetime(rt_data[date_col], errors='coerce')
+                        rt_data = rt_data.set_index(date_col)
+                
+                if isinstance(rt_data.index, pd.DatetimeIndex):
+                    # Calculate water year and day of water year for realtime data
+                    rt_data['water_year'] = rt_data.index.map(lambda d: get_water_year(d, WATER_YEAR_START))
+                    rt_data['day_of_wy'] = rt_data.index.map(lambda d: get_day_of_water_year(d, WATER_YEAR_START))
+                    
+                    # Filter for current water year
+                    current_wy_rt = rt_data[rt_data['water_year'] == current_wy]
+                    
+                    if not current_wy_rt.empty:
+                        # Sort by day of water year
+                        current_wy_rt = current_wy_rt.sort_values('day_of_wy')
+                        
+                        # Add realtime trace in RED
+                        fig.add_trace(go.Scatter(
+                            x=current_wy_rt['day_of_wy'],
+                            y=current_wy_rt[rt_value_col],
+                            mode='lines',
+                            name='Real-time Data',
+                            line=dict(color='#FF0000', width=2.5),  # Red
+                            hovertemplate="<b>Real-time</b><br>" +
+                                        "Day %{x}<br>" +
+                                        "Discharge: %{y:.1f} cfs<extra></extra>"
+                        ))
         
         # After adding traces, set x-axis labels
         max_day = int(data_copy['day_of_wy'].max())
@@ -691,57 +828,10 @@ class VisualizationManager:
         
         return fig
     
-    def _get_water_year(self, date) -> int:
-        """Get water year for a given date."""
-        try:
-            # Handle different input types
-            if isinstance(date, (int, float)):
-                # If it's a number, probably not a valid date
-                return 2024  # Default year
-            
-            # Ensure it's a pandas Timestamp
-            if not isinstance(date, pd.Timestamp):
-                date = pd.to_datetime(date)
-            
-            # Remove timezone info to avoid timezone mixing issues
-            if date.tz is not None:
-                date = date.tz_localize(None)
-            
-            if date.month >= WATER_YEAR_START:
-                return date.year + 1
-            else:
-                return date.year
-        except Exception as e:
-            print(f"Error getting water year for date {date}: {e}")
-            return 2024  # Default year
-    
-    def _get_day_of_water_year(self, date) -> int:
-        """Get day of water year (1-365/366)."""
-        try:
-            # Handle different input types
-            if isinstance(date, (int, float)):
-                # If it's a number, probably not a valid date
-                return 1  # Default day
-            
-            # Ensure it's a pandas Timestamp
-            if not isinstance(date, pd.Timestamp):
-                date = pd.to_datetime(date)
-            
-            # Remove timezone info to avoid timezone mixing issues
-            if date.tz is not None:
-                date = date.tz_localize(None)
-            
-            water_year = self._get_water_year(date)
-            
-            if date.month >= WATER_YEAR_START:
-                wy_start = pd.Timestamp(year=date.year, month=WATER_YEAR_START, day=1)
-            else:
-                wy_start = pd.Timestamp(year=date.year - 1, month=WATER_YEAR_START, day=1)
-            
-            return (date - wy_start).days + 1
-        except Exception as e:
-            print(f"Error getting day of water year for date {date}: {e}")
-            return 1  # Default day
+    # Removed: _get_water_year() and _get_day_of_water_year()
+    # Now use imported functions from water_year_calculator.py:
+    #   - get_water_year(date, start_month=10)
+    #   - get_day_of_water_year(date, start_month=10)
     
     def get_data_summary_stats(self, data: pd.DataFrame) -> Dict:
         """Get summary statistics for streamflow data."""

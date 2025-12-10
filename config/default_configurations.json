@@ -75,6 +75,29 @@
         "sort_order": "desc"
       },
       "priority": 3
+    },
+    {
+      "name": "Southwest States (UT, AZ, CO)",
+      "description": "USGS discharge monitoring stations in Utah, Arizona, and Colorado (2,974 stations)",
+      "is_default": false,
+      "is_active": true,
+      "created_by": "system",
+      "station_source": {
+        "type": "csv",
+        "path": "southwest_discharge_stations.csv",
+        "id_column": "site_no",
+        "columns": {
+          "usgs_id": "site_no",
+          "station_name": "station_nm",
+          "state": "state_cd",
+          "latitude": "latitude",
+          "longitude": "longitude",
+          "huc_code": "huc_code",
+          "drainage_area": "drainage_area"
+        },
+        "filters": []
+      },
+      "priority": 4
     }
   ],
   

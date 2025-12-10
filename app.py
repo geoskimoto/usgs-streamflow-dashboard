@@ -1235,10 +1235,13 @@ def update_filter_summary(gauges_data):
             'ID': '⛰️ Idaho',
             'MT': '⛰️ Montana',
             'CA': '☀️ California',
-            'NV': '🏜️ Nevada'
+            'NV': '🏜️ Nevada',
+            'UT': '🏔️ Utah',
+            'AZ': '🌵 Arizona',
+            'CO': '⛰️ Colorado'
         }
         
-        for state in ['OR', 'WA', 'ID', 'MT', 'CA', 'NV']:
+        for state in ['OR', 'WA', 'ID', 'MT', 'CA', 'NV', 'UT', 'AZ', 'CO']:
             count = state_counts.get(state, 0)
             if count > 0:  # Only show states that have stations
                 label = f"{state_labels[state]} ({count} sites)"
