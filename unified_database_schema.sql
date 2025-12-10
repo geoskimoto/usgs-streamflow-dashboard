@@ -84,7 +84,7 @@ CREATE TABLE stations (
     CHECK (years_of_record IS NULL OR years_of_record >= 0),
     CHECK (num_water_years IS NULL OR num_water_years >= 0),
     CHECK (status IN ('active', 'inactive', 'error', 'pending', 'unknown')),
-    CHECK (source_dataset IN ('HADS_PNW', 'HADS_Columbia', 'Custom', 'Manual', 'Import'))
+    CHECK (source_dataset IN ('HADS_PNW', 'HADS_Columbia', 'Southwest', 'Custom', 'Manual', 'Import'))
 );
 
 -- Indexes for performance

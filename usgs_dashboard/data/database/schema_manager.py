@@ -114,7 +114,7 @@ class SchemaManager:
                         last_data_date TEXT,
                         is_active BOOLEAN DEFAULT TRUE,
                         status TEXT DEFAULT 'active',
-                        source_dataset TEXT NOT NULL,
+                        source_dataset TEXT NOT NULL CHECK (source_dataset IN ('HADS_PNW', 'HADS_Columbia', 'Southwest', 'Custom', 'Manual', 'Import')),
                         date_added TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         last_verified TIMESTAMP,
                         color TEXT,
@@ -363,3 +363,38 @@ class SchemaManager:
         print("🔧 Reindexing database...")
         self.db.reindex()
         print("✅ Database reindexed")
+
+
+if __name__ == '__main__':
+    """Run schema initialization when executed as a module."""
+    import sys
+    
+    # Default database path
+    db_path = "data/usgs_data.db"
+    
+    # Check for command line arguments
+    if len(sys.argv) > 1:
+        db_path = sys.argv[1]
+    
+    print(f"🔧 Initializing database schema: {db_path}")
+    print("=" * 60)
+    
+    schema_mgr = SchemaManager(db_path)
+    success = schema_mgr.initialize_database()
+    
+    if success:
+        print("\n✅ Database schema initialized successfully!")
+        
+        # Show database info
+        info = schema_mgr.get_database_info()
+        print(f"\n📊 Database Information:")
+        print(f"   Path: {info['path']}")
+        print(f"   Size: {info['size_bytes']:,} bytes")
+        print(f"   Tables: {len(info['tables'])}")
+        for table_name, table_info in info['tables'].items():
+            print(f"      • {table_name}: {table_info['row_count']} rows")
+        
+        sys.exit(0)
+    else:
+        print("\n❌ Failed to initialize database schema")
+        sys.exit(1)
