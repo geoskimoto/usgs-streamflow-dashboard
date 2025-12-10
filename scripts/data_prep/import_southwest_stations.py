@@ -43,9 +43,9 @@ def import_southwest_stations():
         print("⚙️  Initializing database schema...")
         schema_mgr.initialize_database()
     
-    # Load CSV file
+    # Load CSV file - preserve leading zeros in site_no
     print(f"\n📂 Loading {csv_file}...")
-    df = pd.read_csv(csv_file)
+    df = pd.read_csv(csv_file, dtype={'site_no': str})
     print(f"   Found {len(df)} stations in CSV")
     
     # Show state breakdown
@@ -60,7 +60,7 @@ def import_southwest_stations():
     for _, row in df.iterrows():
         try:
             station = {
-                'site_id': str(row['site_no']).strip(),
+                'site_id': str(row['site_no']).strip().zfill(8),  # Ensure 8 digits
                 'station_name': str(row['station_nm']).strip(),
                 'state': str(row['state_cd']).strip(),
                 'latitude': float(row['latitude']) if pd.notna(row['latitude']) else None,
