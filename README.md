@@ -13,20 +13,36 @@ See the [`Documentation/`](./Documentation/) folder for:
 
 ## Quick Start
 
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+**One-command deployment:**
 
-2. Initialize the database:
-   ```bash
-   python -m usgs_dashboard.data.database.schema_manager
-   ```
+```bash
+# Install dependencies first (one time)
+pip install -r requirements.txt
 
-3. Run the dashboard:
-   ```bash
-   python app.py
-   ```
+# Deploy everything (database + stations + start dashboard)
+python deploy.py
+```
+
+**That's it!** The script will:
+1. ✅ Initialize database schema
+2. ✅ Import all 4,480+ stations (PNW, Columbia Basin, Southwest)
+3. ✅ Pre-populate real-time data (optional, can skip with `--skip-data`)
+4. ✅ Start the dashboard at http://localhost:8050
+
+**Quick start options:**
+```bash
+python deploy.py                 # Full deployment + start dashboard
+python deploy.py --skip-data     # Skip data pre-population (faster)
+python deploy.py --setup-only    # Setup only, don't start dashboard
+python deploy.py --quick         # Just start dashboard (if already set up)
+```
+
+**Manual steps** (if you prefer):
+```bash
+python -m usgs_dashboard.data.database.schema_manager
+python scripts/data_prep/import_all_stations.py
+python app.py
+```
 
 ## Project Structure
 
