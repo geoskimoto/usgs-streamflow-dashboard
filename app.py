@@ -471,7 +471,7 @@ def create_public_sidebar():
     ]
 def create_admin_content():
     """Create the admin panel content."""
-    from admin_components import create_enhanced_admin_content
+    from dashboard_admin import create_enhanced_admin_content
     
     return dbc.Row([
         dbc.Col([
@@ -1352,7 +1352,7 @@ def toggle_sidebar(n_clicks):
 def update_admin_tab_content(dash_clicks, station_clicks, 
                            schedule_clicks, monitor_clicks, current_content):
     """Update admin tab content based on selected tab."""
-    from admin_components import (get_system_health_display, 
+    from dashboard_admin import (get_system_health_display, 
                                 get_recent_activity_table, StationAdminPanel)
     
     ctx = callback_context
@@ -1367,7 +1367,7 @@ def update_admin_tab_content(dash_clicks, station_clicks,
     
     try:
         if button_id == 'admin-stations-tab':
-            from admin_components import get_stations_table
+            from dashboard_admin import get_stations_table
             return dbc.Container([
                 html.H4("🗺️ Station Browser", className="mb-4"),
                 
@@ -1430,7 +1430,7 @@ def update_admin_tab_content(dash_clicks, station_clicks,
             ])
         
         elif button_id == 'admin-schedules-tab':
-            from admin_components import get_schedules_table
+            from dashboard_admin import get_schedules_table
             return dbc.Container([
                 html.H4("⏰ Schedule Management", className="mb-4"),
                 
@@ -1516,7 +1516,7 @@ def update_admin_tab_styles(dash_clicks, station_clicks,
 )
 def update_monitoring_displays(n_intervals, refresh_clicks):
     """Update monitoring tab displays - runs every 30 seconds or on refresh button."""
-    from admin_components import get_system_health_display, get_recent_activity_table
+    from dashboard_admin import get_system_health_display, get_recent_activity_table
     
     try:
         return (
@@ -1539,11 +1539,17 @@ def update_monitoring_displays(n_intervals, refresh_clicks):
      State('schedules-table', 'data')]
 )
 def handle_schedule_actions(run_clicks, toggle_clicks, refresh_clicks, selected_rows, table_data):
-    """Handle schedule management actions (run, toggle, refresh)."""
+    """
+    Handle schedule management actions (run, toggle, refresh).
+    
+    NOTE: This callback is deprecated. Schedule management now handled by DataOps.
+    Kept for backward compatibility only.
+    """
     import subprocess
     import os
-    from admin_components import get_schedules_table
-    from json_config_manager import JSONConfigManager
+    from dashboard_admin import get_schedules_table
+    # NOTE: JSONConfigManager removed - schedules now managed in DataOps
+    # from json_config_manager import JSONConfigManager
     
     ctx = callback_context
     if not ctx.triggered:
@@ -1571,25 +1577,34 @@ def handle_schedule_actions(run_clicks, toggle_clicks, refresh_clicks, selected_
         schedule_row = table_data[selected_idx]
         schedule_name = schedule_row['Schedule']
         
-        try:
-            manager = JSONConfigManager(db_path='data/usgs_data.db')
-            new_status = manager.toggle_schedule_enabled(schedule_name)
-            
-            status_text = "enabled" if new_status else "disabled"
-            status_icon = "✅" if new_status else "❌"
-            
-            success_msg = dbc.Alert(
-                f"{status_icon} Schedule '{schedule_name}' {status_text}",
-                color="success" if new_status else "info",
-                dismissable=True,
-                duration=3000
-            )
-            
-            return success_msg, get_schedules_table(), None
-            
-        except Exception as e:
-            error_msg = dbc.Alert(f"❌ Error toggling schedule: {e}", color="danger", dismissable=True)
-            return error_msg, get_schedules_table(), None
+        # NOTE: Schedule toggling moved to DataOps web interface
+        # This functionality is disabled
+        return dbc.Alert(
+            "⚠️ Schedule management moved to DataOps. Please use the DataOps admin interface.",
+            color="warning",
+            dismissable=True
+        ), get_schedules_table(), None
+        
+        # Legacy code - commented out
+        # try:
+        #     manager = JSONConfigManager(db_path='data/usgs_data.db')
+        #     new_status = manager.toggle_schedule_enabled(schedule_name)
+        #     
+        #     status_text = "enabled" if new_status else "disabled"
+        #     status_icon = "✅" if new_status else "❌"
+        #     
+        #     success_msg = dbc.Alert(
+        #         f"{status_icon} Schedule '{schedule_name}' {status_text}",
+        #         color="success" if new_status else "info",
+        #         dismissable=True,
+        #         duration=3000
+        #     )
+        #     
+        #     return success_msg, get_schedules_table(), None
+        #     
+        # except Exception as e:
+        #     error_msg = dbc.Alert(f"❌ Error toggling schedule: {e}", color="danger", dismissable=True)
+        #     return error_msg, get_schedules_table(), None
     
     # Handle run selected
     if button_id == 'run-selected-schedule-btn':
@@ -1707,7 +1722,7 @@ def handle_schedule_actions(run_clicks, toggle_clicks, refresh_clicks, selected_
 )
 def update_admin_system_info(admin_style, pathname):
     """Update the admin system information section when admin panel is visible."""
-    from admin_components import get_system_info
+    from dashboard_admin import get_system_info
     
     # Load system info when admin content is visible (display: block)
     if admin_style and admin_style.get('display') == 'block':
