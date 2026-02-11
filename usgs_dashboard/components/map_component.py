@@ -75,7 +75,7 @@ class ModernMapComponent:
         # Prepare custom_data for tooltips
         # Note: years_of_record column may have been dropped for serialization
         custom_data_fields = [
-            'site_id', 'state', 'drainage_area', 'num_water_years', 'status',
+            'site_id', 'state', 'catchment_area_display', 'years_of_record_display', 'status',
             'latitude', 'longitude', 'size_value', 'station_name'
         ]
         
@@ -92,11 +92,10 @@ class ModernMapComponent:
             "<b>%{customdata[8]}</b><br>"
             "Site ID: %{customdata[0]}<br>"
             "State: %{customdata[1]}<br>"
-            "Drainage Area: %{customdata[2]:,.0f} sq mi<br>"
+            "Catchment Area: %{customdata[2]}<br>"
             "Years of Record: %{customdata[3]}<br>"
             "Status: %{customdata[4]}<br>"
             "Lat: %{customdata[5]:.4f}, Lon: %{customdata[6]:.4f}<br>"
-            "Size Value: %{customdata[7]:.1f}<br>"
             "<extra></extra>"
         )
         for trace in fig.data:
@@ -136,14 +135,78 @@ class ModernMapComponent:
         
         # Ensure required columns exist
         if 'status' not in map_data.columns:
-            map_data['status'] = 'good'  # Default status
-            
-        if 'drainage_area' not in map_data.columns:
-            map_data['drainage_area'] = 100  # Default size
+            # Use station_status if available, otherwise default
+            if 'station_status' in map_data.columns:
+                map_data['status'] = map_data['station_status']
+            else:
+                map_data['status'] = 'Active'  # Default status
         
-        # Ensure num_water_years column exists (may have been dropped for serialization)
-        if 'num_water_years' not in map_data.columns:
-            map_data['num_water_years'] = None  # Will show as N/A in tooltip
+        # Handle catchment_area (from API in sq km) - convert to display format
+        if 'catchment_area' not in map_data.columns:
+            map_data['catchment_area'] = None
+        
+        # Convert catchment/drainage area to display format
+        # Check both drainage_area (from CSV in sq mi) and catchment_area (from API in sq km)
+        def format_catchment_area(row):
+            # First try drainage_area from CSV (already in sq mi)
+            if 'drainage_area' in row and pd.notna(row['drainage_area']) and row['drainage_area'] > 0:
+                try:
+                    return f"{float(row['drainage_area']):,.1f} sq mi"
+                except (ValueError, TypeError):
+                    pass
+            
+            # Fall back to catchment_area from API (needs conversion from sq km)
+            if pd.notna(row.get('catchment_area')) and row.get('catchment_area'):
+                try:
+                    sq_mi = float(row['catchment_area']) * 0.386102
+                    return f"{sq_mi:,.1f} sq mi"
+                except (ValueError, TypeError):
+                    pass
+            
+            return 'N/A'
+        
+        map_data['catchment_area_display'] = map_data.apply(format_catchment_area, axis=1)
+        
+        # Ensure drainage_area exists for marker sizing
+        # Use CSV drainage_area if available, otherwise try converting catchment_area
+        if 'drainage_area' not in map_data.columns:
+            map_data['drainage_area'] = pd.to_numeric(map_data['catchment_area'], errors='coerce') * 0.386102
+        
+        # Fill NaN drainage_area with default for sizing
+        map_data['drainage_area'] = map_data['drainage_area'].fillna(100)
+        
+        # Handle years_of_record display
+        def format_years_of_record(row):
+            # Try years_of_record from API first
+            if 'years_of_record' in row and pd.notna(row['years_of_record']):
+                try:
+                    years = int(float(row['years_of_record']))
+                    return f"{years} years"
+                except (ValueError, TypeError):
+                    pass
+            
+            # Try to calculate from record dates
+            if 'record_start_date' in row and 'record_end_date' in row:
+                if pd.notna(row['record_start_date']) and pd.notna(row['record_end_date']):
+                    try:
+                        start = pd.to_datetime(row['record_start_date'])
+                        end = pd.to_datetime(row['record_end_date'])
+                        years = (end - start).days / 365.25
+                        return f"{int(years)} years"
+                    except Exception:
+                        pass
+            
+            # Fall back to num_water_years if available
+            if 'num_water_years' in row and pd.notna(row['num_water_years']):
+                try:
+                    years = int(row['num_water_years'])
+                    return f"{years} years"
+                except (ValueError, TypeError):
+                    pass
+            
+            return 'N/A'
+        
+        map_data['years_of_record_display'] = map_data.apply(format_years_of_record, axis=1)
             
         # Create size values for markers (normalized) - Increased for better visibility
         if 'drainage_area' in map_data.columns and map_data['drainage_area'].notna().any():
@@ -174,32 +237,33 @@ class ModernMapComponent:
             # Prepare custom data for this status group
             custom_data = []
             for _, row in status_data.iterrows():
-                # Use num_water_years if available and not null, otherwise 'N/A'
-                years_record = row['num_water_years'] if pd.notna(row['num_water_years']) else 'N/A'
-                drainage = row['drainage_area'] if pd.notna(row['drainage_area']) else 'N/A'
                 custom_data.append([
-                    row['site_id'], row['state'], drainage, 
-                    years_record, row['status'], row['latitude'], 
+                    row['site_id'], row['state'], row['catchment_area_display'], 
+                    row['years_of_record_display'], row['status'], row['latitude'], 
                     row['longitude'], row['size_value'], row['station_name']
                 ])
+            
+            # Inactive stations get smaller markers and lower opacity
+            marker_opacity = 0.4 if status == 'Inactive' else 0.8
+            marker_sizes = status_data['size_value'] * (0.6 if status == 'Inactive' else 1.0)
             
             fig.add_trace(go.Scattermapbox(
                 lat=status_data['latitude'],
                 lon=status_data['longitude'],
                 mode='markers',
                 marker=dict(
-                    size=status_data['size_value'],
+                    size=marker_sizes,
                     color=color_map.get(status, '#808080'),
-                    opacity=0.8
+                    opacity=marker_opacity
                 ),
                 text=status_data['station_name'],
-                name=status.title(),
+                name=f"{status} ({len(status_data)})",
                 customdata=custom_data,
                 hovertemplate=(
                     "<b>%{customdata[8]}</b><br>"
                     "Site ID: %{customdata[0]}<br>"
                     "State: %{customdata[1]}<br>"
-                    "Drainage Area: %{customdata[2]}<br>"
+                    "Catchment Area: %{customdata[2]}<br>"
                     "Years of Record: %{customdata[3]}<br>"
                     "Status: %{customdata[4]}<br>"
                     "Lat: %{customdata[5]:.4f}, Lon: %{customdata[6]:.4f}<br>"
@@ -273,32 +337,33 @@ class ModernMapComponent:
             # Prepare custom data for this status group
             custom_data = []
             for _, row in status_data.iterrows():
-                # Use num_water_years if available and not null, otherwise 'N/A'
-                years_record = row['num_water_years'] if pd.notna(row['num_water_years']) else 'N/A'
-                drainage = row['drainage_area'] if pd.notna(row['drainage_area']) else 'N/A'
                 custom_data.append([
-                    row['site_id'], row['state'], drainage, 
-                    years_record, row['status'], row['latitude'], 
+                    row['site_id'], row['state'], row['catchment_area_display'], 
+                    row['years_of_record_display'], row['status'], row['latitude'], 
                     row['longitude'], row['size_value'], row['station_name']
                 ])
+            
+            # Inactive stations get smaller markers and lower opacity
+            marker_opacity = 0.4 if status == 'Inactive' else 0.8
+            marker_sizes = status_data['size_value'] * (0.6 if status == 'Inactive' else 1.0)
             
             fig.add_trace(go.Scattermapbox(
                 lat=status_data['latitude'],
                 lon=status_data['longitude'],
                 mode='markers',
                 marker=dict(
-                    size=status_data['size_value'],
+                    size=marker_sizes,
                     color=color_map.get(status, '#808080'),
-                    opacity=0.8
+                    opacity=marker_opacity
                 ),
                 text=status_data['station_name'],
-                name=status.title(),
+                name=f"{status} ({len(status_data)})",
                 customdata=custom_data,
                 hovertemplate=(
                     "<b>%{customdata[8]}</b><br>"
                     "Site ID: %{customdata[0]}<br>"
                     "State: %{customdata[1]}<br>"
-                    "Drainage Area: %{customdata[2]}<br>"
+                    "Catchment Area: %{customdata[2]}<br>"
                     "Years of Record: %{customdata[3]}<br>"
                     "Status: %{customdata[4]}<br>"
                     "Lat: %{customdata[5]:.4f}, Lon: %{customdata[6]:.4f}<br>"
@@ -383,15 +448,13 @@ class ModernMapComponent:
     def _get_color_map(self) -> Dict[str, str]:
         """Get color mapping for gauge status."""
         return {
-            'excellent': '#2E8B57',      # Sea Green
-            'good': '#FFD700',           # Gold
-            'fair': '#FF8C00',           # Dark Orange  
-            'poor': '#DC143C',           # Crimson
-            'inactive': '#808080',       # Gray
-            'active_excellent': '#2E8B57',
-            'active_good': '#32CD32',    # Lime Green
-            'active_fair': '#FFA500',    # Orange
-            'active_poor': '#FF6347'     # Tomato
+            'Active': '#32CD32',         # Lime Green - has recent data
+            'Inactive': '#808080',       # Gray - no recent data
+            'excellent': '#2E8B57',      # Sea Green (legacy)
+            'good': '#FFD700',           # Gold (legacy)
+            'fair': '#FF8C00',           # Dark Orange (legacy)
+            'poor': '#DC143C',           # Crimson (legacy)
+            'inactive': '#808080',       # Gray (legacy alias)
         }
     
     def _add_selected_gauge_highlight(self, fig: go.Figure, gauges_df: pd.DataFrame, 

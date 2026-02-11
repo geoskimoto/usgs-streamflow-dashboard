@@ -59,13 +59,34 @@ class SimplifiedFilterPanel:
                     ], className="mb-3")
                 ]),
                 
+                # Station Status Filter (Active / Inactive)
+                html.Div([
+                    html.Label("📍 Station Status:", className="fw-bold mb-2"),
+                    dbc.RadioItems(
+                        id="station-status-filter",
+                        options=[
+                            {"label": "All Stations", "value": "all"},
+                            {"label": "Active (recent data)", "value": "active"},
+                            {"label": "Inactive (no recent data)", "value": "inactive"},
+                        ],
+                        value="all",
+                        inline=True,
+                        className="mb-2"
+                    ),
+                    html.Small(
+                        id="station-status-info",
+                        className="text-muted d-block",
+                        children="Active = has discharge data in the last 6 months"
+                    )
+                ], className="mb-3"),
+                
                 # State Filter
                 html.Div([
                     html.Label("States:", className="fw-bold"),
                     dbc.Checklist(
                         id="state-filter",
                         options=[],  # Will be populated dynamically
-                        value=["OR", "WA", "ID", "MT", "CA", "NV", "UT", "AZ", "CO"],
+                        value=["OR", "WA", "ID", "MT", "NV"],
                         inline=True,
                         className="mb-3"
                     )

@@ -471,7 +471,7 @@ def create_public_sidebar():
     ]
 def create_admin_content():
     """Create the admin panel content."""
-    from admin_components import create_enhanced_admin_content
+    from dashboard_admin import create_enhanced_admin_content
     
     return dbc.Row([
         dbc.Col([
@@ -775,49 +775,47 @@ def handle_logout(logout_clicks):
     prevent_initial_call=False
 )
 def load_gauge_data(pathname):
-    """Load gauge data on app start from the stations table (unified database)."""
-    import sqlite3
+    """Load gauge data on app start from DataOps API."""
     
     print(f"\n=== load_gauge_data CALLBACK FIRED ===")
     print(f"pathname: {pathname}")
     
     try:
-        # Fixed site limit (no longer configurable from UI)
-        site_limit = 300
-        print(f"Using site_limit: {site_limit}")
+        # Load all stations (no per-state cap)
+        print("Loading all stations (no site limit)")
         
-        # Load from stations table (unified database)
-        db_path = data_manager.cache_db
-        print(f"Loading from database: {db_path}")
+        # Load stations from DataOps API via data_manager
+        filters_df = data_manager.load_regional_gauges()
         
-        conn = sqlite3.connect(db_path)
-        filters_df = pd.read_sql_query('SELECT * FROM stations', conn)
-        conn.close()
+        if filters_df.empty:
+            print("WARNING: No stations returned from DataOps API")
+            alert = dbc.Alert(
+                "No gauge data available. Check DataOps API connection.",
+                color="warning",
+                dismissable=True
+            )
+            return [], alert, site_limit
         
-        print(f"Loaded {len(filters_df)} stations from stations table")
-        
-        # Rename usgs_id to site_id for backward compatibility with map component
-        if 'usgs_id' in filters_df.columns and 'site_id' not in filters_df.columns:
-            filters_df = filters_df.rename(columns={'usgs_id': 'site_id'})
-            print("Renamed 'usgs_id' to 'site_id' for compatibility")
+        print(f"Loaded {len(filters_df)} stations from DataOps API")
         
         global gauges_df
         gauges_df = filters_df.copy()
         
-        # Convert binary columns to avoid serialization issues
-        # years_of_record is stored as BLOB but not needed for map display
+        # Drop columns that can't be JSON-serialized
         if 'years_of_record' in gauges_df.columns:
             gauges_df = gauges_df.drop('years_of_record', axis=1)
         
         # Convert any remaining binary columns to None
         for col in gauges_df.columns:
             if gauges_df[col].dtype == object:
-                # Check if any values are bytes
                 sample = gauges_df[col].dropna().head(1)
                 if len(sample) > 0 and isinstance(sample.iloc[0], bytes):
                     gauges_df[col] = None
         
-        alert_msg = f"Successfully loaded {len(gauges_df)} USGS gauges from {', '.join(TARGET_STATES)} (limit: {site_limit})"
+        alert_msg = f"Successfully loaded {len(gauges_df)} USGS gauges from {', '.join(TARGET_STATES)}"
+        if 'station_status' in gauges_df.columns:
+            active_count = (gauges_df['station_status'] == 'Active').sum()
+            alert_msg += f" ({active_count} active, {len(gauges_df) - active_count} inactive)"
         
         gauges_data = gauges_df.to_dict('records')
         print(f"Returning {len(gauges_data)} gauge records")
@@ -830,7 +828,7 @@ def load_gauge_data(pathname):
             dismissable=True,
             duration=4000
         )
-        return gauges_data, alert, site_limit
+        return gauges_data, alert, len(gauges_data)
         
     except Exception as e:
         print(f"ERROR in load_gauge_data: {str(e)}")
@@ -843,7 +841,7 @@ def load_gauge_data(pathname):
             color="danger",
             dismissable=True
         )
-        return [], alert, site_limit or 300
+        return [], alert, 0
 
 
 # Legacy callbacks removed - UI components no longer exist
@@ -862,11 +860,12 @@ def load_gauge_data(pathname):
      Input('drainage-area-filter', 'value'),
      Input('basin-filter', 'value'),
      Input('huc-filter', 'value'),
-     Input('realtime-filter', 'value')],
+     Input('realtime-filter', 'value'),
+     Input('station-status-filter', 'value')],
     [State('selected-gauge-store', 'data')]
 )
 def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin_boundaries, search_text, states, 
-                                     drainage_range, basins, hucs, show_realtime_only, selected_gauge):
+                                     drainage_range, basins, hucs, show_realtime_only, station_status, selected_gauge):
     """Update the gauge map based on simplified filters."""
     if not gauges_data:
         empty_fig = go.Figure()
@@ -906,6 +905,13 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
     # State filter (default to all if none selected)
     if states:
         filtered_gauges = filtered_gauges[filtered_gauges['state'].isin(states)]
+    
+    # Station status filter (Active / Inactive)
+    if station_status and station_status != 'all' and 'station_status' in filtered_gauges.columns:
+        if station_status == 'active':
+            filtered_gauges = filtered_gauges[filtered_gauges['station_status'] == 'Active']
+        elif station_status == 'inactive':
+            filtered_gauges = filtered_gauges[filtered_gauges['station_status'] == 'Inactive']
     
     # Drainage area filter - only apply if not at default range [0, 90000]
     if drainage_range and len(drainage_range) == 2:
@@ -976,7 +982,14 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
     # Calculate statistics
     filtered_count = len(filtered_gauges)
     gauge_badge = f"{filtered_count:,} / {original_count:,}"
-    results_count = f"{filtered_count:,} sites shown"
+    
+    # Show active/inactive breakdown in results
+    if 'station_status' in all_gauges.columns and filtered_count > 0:
+        active_shown = (filtered_gauges['station_status'] == 'Active').sum() if 'station_status' in filtered_gauges.columns else 0
+        inactive_shown = filtered_count - active_shown
+        results_count = f"{filtered_count:,} sites shown ({active_shown:,} active, {inactive_shown:,} inactive)"
+    else:
+        results_count = f"{filtered_count:,} sites shown"
     
     return fig, gauge_badge, results_count
 
@@ -1032,12 +1045,30 @@ def handle_gauge_selection(clickData, gauges_data):
         html.P([html.Strong("State: "), gauge['state']], className="mb-1"),
     ]
     
-    # Add drainage area if available
-    if pd.notna(gauge['drainage_area']) and gauge['drainage_area'] > 0:
-        da_text = f"{gauge['drainage_area']:,.1f} sq mi"
+    # Add catchment area if available
+    if 'catchment_area' in gauge and pd.notna(gauge['catchment_area']) and gauge['catchment_area'] > 0:
+        # Convert from sq km to sq mi
+        catchment_sq_mi = gauge['catchment_area'] * 0.386102
         info_content.append(
-            html.P([html.Strong("Drainage Area: "), da_text], className="mb-1")
+            html.P([html.Strong("Catchment Area: "), f"{catchment_sq_mi:,.1f} sq mi"], className="mb-1")
         )
+    elif pd.notna(gauge.get('drainage_area')) and gauge['drainage_area'] > 0:
+        info_content.append(
+            html.P([html.Strong("Catchment Area: "), f"{gauge['drainage_area']:,.1f} sq mi"], className="mb-1")
+        )
+    
+    # Add years of record if available
+    if 'years_of_record' in gauge and pd.notna(gauge['years_of_record']):
+        info_content.append(
+            html.P([html.Strong("Years of Record: "), f"{int(gauge['years_of_record'])} years"], className="mb-1")
+        )
+    
+    # Add agency/data source
+    agency = gauge.get('agency', 'USGS')
+    data_source = 'StreamFlow DataOps API' if 'catchment_area' in gauge or 'station_status' in gauge else 'USGS'
+    info_content.append(
+        html.P([html.Strong("Data Source: "), f"{agency} via {data_source}"], className="mb-1")
+    )
     
     # Add coordinates
     info_content.extend([
@@ -1092,6 +1123,10 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
             if gauge.get('site_id') == selected_gauge:
                 station_name = gauge.get('station_name', 'Unknown Station')
                 break
+    
+    # Get data source info
+    data_source_info = data_manager.get_data_source_info()
+    data_source_text = data_source_info.get('source_name', 'Unknown')
     
     # Fetch streamflow data
     streamflow_data = data_manager.get_streamflow_data(selected_gauge)
@@ -1160,7 +1195,12 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
             
             cards.append(
                 dbc.Card([
-                    dbc.CardHeader(f"{title} - Site {selected_gauge} - {station_name}"),
+                    dbc.CardHeader([
+                        html.Div(f"{title} - Site {selected_gauge} - {station_name}", 
+                                style={'fontWeight': 'bold'}),
+                        html.Div(f"Data Source: {data_source_text}", 
+                                style={'fontSize': '0.9em', 'fontWeight': 'normal', 'color': '#6c757d'})
+                    ]),
                     dbc.CardBody([
                         dcc.Graph(figure=fig, config=graph_config, style=graph_style)
                     ])
@@ -1244,7 +1284,13 @@ def update_filter_summary(gauges_data):
         for state in ['OR', 'WA', 'ID', 'MT', 'CA', 'NV', 'UT', 'AZ', 'CO']:
             count = state_counts.get(state, 0)
             if count > 0:  # Only show states that have stations
-                label = f"{state_labels[state]} ({count} sites)"
+                # Show active count breakdown if available
+                if 'station_status' in gauges_df.columns:
+                    state_data = gauges_df[gauges_df['state'] == state]
+                    active = (state_data['station_status'] == 'Active').sum()
+                    label = f"{state_labels[state]} ({count} sites, {active} active)"
+                else:
+                    label = f"{state_labels[state]} ({count} sites)"
                 state_options.append({"label": label, "value": state})
         
         # Create summary text
@@ -1352,8 +1398,8 @@ def toggle_sidebar(n_clicks):
 def update_admin_tab_content(dash_clicks, station_clicks, 
                            schedule_clicks, monitor_clicks, current_content):
     """Update admin tab content based on selected tab."""
-    from admin_components import (get_system_health_display, 
-                                get_recent_activity_table, StationAdminPanel)
+    from dashboard_admin import (get_system_health_display, 
+                                get_recent_activity_table)
     
     ctx = callback_context
     if not ctx.triggered:
@@ -1367,7 +1413,7 @@ def update_admin_tab_content(dash_clicks, station_clicks,
     
     try:
         if button_id == 'admin-stations-tab':
-            from admin_components import get_stations_table
+            from dashboard_admin import get_stations_table
             return dbc.Container([
                 html.H4("🗺️ Station Browser", className="mb-4"),
                 
@@ -1430,7 +1476,7 @@ def update_admin_tab_content(dash_clicks, station_clicks,
             ])
         
         elif button_id == 'admin-schedules-tab':
-            from admin_components import get_schedules_table
+            from dashboard_admin import get_schedules_table
             return dbc.Container([
                 html.H4("⏰ Schedule Management", className="mb-4"),
                 
@@ -1449,8 +1495,21 @@ def update_admin_tab_content(dash_clicks, station_clicks,
             ])
         
         elif button_id == 'admin-monitoring-tab':
-            panel = StationAdminPanel()
-            return panel.create_collection_monitoring()
+            return dbc.Container([
+                html.H4("📊 Collection Monitoring", className="mb-4"),
+                dbc.Alert([
+                    html.H5("Data Collection Managed by DataOps", className="alert-heading"),
+                    html.P("All data collection is handled by the StreamFlow DataOps service."),
+                    html.Hr(),
+                    html.P([
+                        "View collection status and logs at: ",
+                        html.A("StreamFlow DataOps Admin",
+                               href="https://streamflowops.3rdplaces.io/admin/",
+                               target="_blank",
+                               className="alert-link")
+                    ]),
+                ], color="info")
+            ])
         
         else:  # Dashboard tab (default)
             return dbc.Container([
@@ -1516,7 +1575,7 @@ def update_admin_tab_styles(dash_clicks, station_clicks,
 )
 def update_monitoring_displays(n_intervals, refresh_clicks):
     """Update monitoring tab displays - runs every 30 seconds or on refresh button."""
-    from admin_components import get_system_health_display, get_recent_activity_table
+    from dashboard_admin import get_system_health_display, get_recent_activity_table
     
     try:
         return (
@@ -1539,11 +1598,14 @@ def update_monitoring_displays(n_intervals, refresh_clicks):
      State('schedules-table', 'data')]
 )
 def handle_schedule_actions(run_clicks, toggle_clicks, refresh_clicks, selected_rows, table_data):
-    """Handle schedule management actions (run, toggle, refresh)."""
-    import subprocess
-    import os
-    from admin_components import get_schedules_table
-    from json_config_manager import JSONConfigManager
+    """
+    Handle schedule management actions.
+    
+    Data collection is managed by StreamFlow DataOps — this dashboard
+    only displays data. Schedule management is deferred to the DataOps
+    admin interface.
+    """
+    from dashboard_admin import get_schedules_table
     
     ctx = callback_context
     if not ctx.triggered:
@@ -1555,150 +1617,21 @@ def handle_schedule_actions(run_clicks, toggle_clicks, refresh_clicks, selected_
     if button_id == 'refresh-schedules-btn':
         return "", get_schedules_table(), None
     
-    # Handle toggle enabled/disabled
-    if button_id == 'toggle-schedule-btn':
-        if not toggle_clicks:
-            return "", get_schedules_table(), None
-        
-        if not selected_rows or len(selected_rows) == 0:
-            return dbc.Alert("⚠️ Please select a schedule to toggle", color="warning", dismissable=True), get_schedules_table(), None
-        
-        # Get the selected schedule data
-        selected_idx = selected_rows[0]
-        if selected_idx >= len(table_data):
-            return dbc.Alert("❌ Invalid selection", color="danger", dismissable=True), get_schedules_table(), None
-        
-        schedule_row = table_data[selected_idx]
-        schedule_name = schedule_row['Schedule']
-        
-        try:
-            manager = JSONConfigManager(db_path='data/usgs_data.db')
-            new_status = manager.toggle_schedule_enabled(schedule_name)
-            
-            status_text = "enabled" if new_status else "disabled"
-            status_icon = "✅" if new_status else "❌"
-            
-            success_msg = dbc.Alert(
-                f"{status_icon} Schedule '{schedule_name}' {status_text}",
-                color="success" if new_status else "info",
-                dismissable=True,
-                duration=3000
-            )
-            
-            return success_msg, get_schedules_table(), None
-            
-        except Exception as e:
-            error_msg = dbc.Alert(f"❌ Error toggling schedule: {e}", color="danger", dismissable=True)
-            return error_msg, get_schedules_table(), None
+    # All management actions redirect to DataOps
+    dataops_url = os.environ.get('DATAOPS_API_URL', 'https://streamflowops.3rdplaces.io')
+    msg = dbc.Alert([
+        html.H5("ℹ️ Data Collection Managed by DataOps", className="alert-heading"),
+        html.P("Schedule and collection management is handled by the StreamFlow DataOps system."),
+        dbc.Button(
+            "Open DataOps Admin",
+            href=f"{dataops_url}/admin/",
+            target="_blank",
+            color="primary",
+            size="sm"
+        )
+    ], color="info", dismissable=True)
     
-    # Handle run selected
-    if button_id == 'run-selected-schedule-btn':
-        if not run_clicks:
-            return "", get_schedules_table(), None
-        
-        if not selected_rows or len(selected_rows) == 0:
-            return dbc.Alert("⚠️ Please select a schedule to run", color="warning", dismissable=True), get_schedules_table(), None
-        
-        # Get the selected schedule data
-        selected_idx = selected_rows[0]
-        if selected_idx >= len(table_data):
-            return dbc.Alert("❌ Invalid selection", color="danger", dismissable=True), get_schedules_table(), None
-        
-        schedule_row = table_data[selected_idx]
-        schedule_name = schedule_row['Schedule']
-        config_name = schedule_row['Configuration']
-        data_type = schedule_row['Data Type'].lower()
-        
-        try:
-            # Determine which script to run
-            if data_type == 'realtime':
-                script = 'update_realtime_discharge_configurable.py'
-            elif data_type == 'daily':
-                script = 'update_daily_discharge_configurable.py'
-            else:
-                return dbc.Alert(f"❌ Unknown data type: {data_type}", color="danger", dismissable=True), get_schedules_table(), None
-            
-            # Build command
-            project_root = os.path.dirname(os.path.abspath(__file__))
-            script_path = os.path.join(project_root, script)
-            
-            # Create logs directory if it doesn't exist
-            logs_dir = os.path.join(project_root, 'logs')
-            os.makedirs(logs_dir, exist_ok=True)
-            
-            # Create log files for this run
-            from datetime import datetime
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            log_file = os.path.join(logs_dir, f'manual_run_{data_type}_{timestamp}.log')
-            
-            # Run in background
-            cmd = [
-                'python3', script_path,
-                '--config', config_name
-            ]
-            
-            # Debug: Print command for troubleshooting
-            print(f"🚀 Starting collection process:")
-            print(f"   Command: {' '.join(cmd)}")
-            print(f"   Working directory: {project_root}")
-            print(f"   Log file: {log_file}")
-            
-            # Start the collection process in background
-            with open(log_file, 'w') as log_f:
-                process = subprocess.Popen(
-                    cmd,
-                    stdout=log_f,
-                    stderr=subprocess.STDOUT,  # Redirect stderr to stdout (same log file)
-                    cwd=project_root,
-                    start_new_session=True  # Detach from parent process
-                )
-            
-            print(f"   Process ID: {process.pid}")
-            print(f"   Log file created: {log_file}")
-            
-            success_msg = dbc.Alert([
-                html.H5(f"✅ Collection Started!", className="alert-heading"),
-                html.P([
-                    f"Schedule: {schedule_name}", html.Br(),
-                    f"Configuration: {config_name}", html.Br(),
-                    f"Data Type: {data_type.title()}", html.Br(),
-                    html.Hr(),
-                    html.Small([
-                        "The collection is running in the background. ",
-                        html.Strong("Check the Monitoring tab"), " to see live progress and results. ", html.Br(),
-                        f"Process ID: {process.pid}", html.Br(),
-                        f"Log file: logs/manual_run_{data_type}_{timestamp}.log"
-                    ])
-                ])
-            ], color="success", dismissable=True)
-            
-            # Create toast notification
-            toast = dbc.Toast(
-                [html.P([
-                    f"🔄 Collection started: {schedule_name}", html.Br(),
-                    html.Small(f"{config_name} - {data_type.title()}", className="text-muted"), html.Br(),
-                    html.Small("View progress in Monitoring tab →", className="text-info")
-                ], className="mb-0 small")],
-                header="Collection Started",
-                icon="success",
-                dismissable=True,
-                is_open=True,
-                duration=5000,  # Auto-dismiss after 5 seconds
-                style={"position": "fixed", "top": 80, "right": 20, "width": 350, "zIndex": 9999}
-            )
-            
-            return success_msg, get_schedules_table(), toast
-            
-        except Exception as e:
-            error_msg = dbc.Alert([
-                html.H5("❌ Error Starting Collection", className="alert-heading"),
-                html.P(f"Error: {str(e)}")
-            ], color="danger", dismissable=True)
-            
-            return error_msg, get_schedules_table(), None
-    
-    return "", get_schedules_table(), None
-
+    return msg, get_schedules_table(), None
 
 @app.callback(
     Output('admin-system-info', 'children'),
@@ -1707,7 +1640,7 @@ def handle_schedule_actions(run_clicks, toggle_clicks, refresh_clicks, selected_
 )
 def update_admin_system_info(admin_style, pathname):
     """Update the admin system information section when admin panel is visible."""
-    from admin_components import get_system_info
+    from dashboard_admin import get_system_info
     
     # Load system info when admin content is visible (display: block)
     if admin_style and admin_style.get('display') == 'block':
@@ -1722,41 +1655,12 @@ def update_admin_system_info(admin_style, pathname):
 
 if __name__ == '__main__':
     import os
-    import subprocess
     
     print(f"Starting {APP_TITLE}...")
+    print(f"Data source: StreamFlow DataOps API")
     
-    # Initialize database if it doesn't exist
-    # Check both root and data/ directory for the database
-    db_path = 'data/usgs_data.db'
-    db_dir = os.path.dirname(db_path)
-    
-    # Ensure data directory exists
-    if not os.path.exists(db_dir):
-        os.makedirs(db_dir)
-        print(f"✓ Created directory: {db_dir}")
-    
-    if not os.path.exists(db_path):
-        print(f"\n{'='*60}")
-        print("Database not found - initializing...")
-        print(f"{'='*60}")
-        try:
-            # Run the initialization script with the correct path
-            result = subprocess.run(['python', 'initialize_database.py', '--db-path', db_path], 
-                                  capture_output=False, 
-                                  check=True)
-            print(f"{'='*60}")
-            print("Database initialized successfully!")
-            print(f"{'='*60}\n")
-        except subprocess.CalledProcessError as e:
-            print(f"\n{'='*60}")
-            print("ERROR: Failed to initialize database!")
-            print(f"{'='*60}")
-            print(f"Please run: python initialize_database.py --db-path {db_path}")
-            print(f"{'='*60}\n")
-            raise
-    else:
-        print(f"✓ Database found: {db_path}")
+    # Ensure data directory exists (for local cache)
+    os.makedirs('data', exist_ok=True)
     
     # Get port from environment (Render provides this) or default to 8050
     port = int(os.environ.get('PORT', 8050))
