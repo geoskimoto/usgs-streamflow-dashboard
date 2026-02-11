@@ -382,6 +382,40 @@ class USGSDataManager:
             logger.error(f"Error getting sites with realtime data: {e}")
             return []
     
+    def get_data_source_info(self) -> Dict[str, Any]:
+        """
+        Get information about the data source for discharge data.
+        
+        Returns:
+        --------
+        dict
+            Dictionary with keys:
+            - mode: 'api', 'cache', or 'hybrid'
+            - api_enabled: bool
+            - cache_enabled: bool
+            - source_name: Human-readable source name
+        """
+        mode = self.adapter.mode
+        api_enabled = self.adapter.api_enabled
+        cache_enabled = self.adapter.cache_enabled
+        
+        # Determine source name
+        if mode == 'api':
+            source_name = "StreamFlow DataOps API"
+        elif mode == 'cache':
+            source_name = "Local Cache (Offline)"
+        elif mode == 'hybrid':
+            source_name = "StreamFlow DataOps API (Cache Fallback)"
+        else:
+            source_name = "Unknown"
+        
+        return {
+            'mode': mode,
+            'api_enabled': api_enabled,
+            'cache_enabled': cache_enabled,
+            'source_name': source_name
+        }
+    
     def get_streamflow_data(
         self, 
         site_id: str, 

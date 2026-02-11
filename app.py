@@ -1124,6 +1124,10 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
                 station_name = gauge.get('station_name', 'Unknown Station')
                 break
     
+    # Get data source info
+    data_source_info = data_manager.get_data_source_info()
+    data_source_text = data_source_info.get('source_name', 'Unknown')
+    
     # Fetch streamflow data
     streamflow_data = data_manager.get_streamflow_data(selected_gauge)
     if streamflow_data is None or streamflow_data.empty:
@@ -1191,7 +1195,12 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
             
             cards.append(
                 dbc.Card([
-                    dbc.CardHeader(f"{title} - Site {selected_gauge} - {station_name}"),
+                    dbc.CardHeader([
+                        html.Div(f"{title} - Site {selected_gauge} - {station_name}", 
+                                style={'fontWeight': 'bold'}),
+                        html.Div(f"Data Source: {data_source_text}", 
+                                style={'fontSize': '0.9em', 'fontWeight': 'normal', 'color': '#6c757d'})
+                    ]),
                     dbc.CardBody([
                         dcc.Graph(figure=fig, config=graph_config, style=graph_style)
                     ])
