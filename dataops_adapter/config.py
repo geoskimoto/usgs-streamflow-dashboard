@@ -13,7 +13,7 @@ class AdapterConfig:
         load_dotenv()
         
         # API configuration
-        self.api_url = os.getenv('DATAOPS_API_URL', 'http://localhost:8000')
+        self.api_url = os.getenv('DATAOPS_API_URL', 'https://streamflowops.3rdplaces.io')
         self.api_token = os.getenv('DATAOPS_API_TOKEN')
         self.verify_ssl = os.getenv('DATAOPS_VERIFY_SSL', 'true').lower() == 'true'
         self.timeout = int(os.getenv('DATAOPS_TIMEOUT', '30'))
@@ -24,7 +24,7 @@ class AdapterConfig:
         self.cache_db_path = 'data/dataops_cache.db'
         
         # Feature flags
-        self.use_dataops_api = os.getenv('USE_DATAOPS_API', 'false').lower() == 'true'
+        self.use_dataops_api = os.getenv('USE_DATAOPS_API', 'true').lower() == 'true'
         self.debug_mode = os.getenv('DEBUG_MODE', 'false').lower() == 'true'
     
     def get_mode(self) -> str:

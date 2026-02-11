@@ -53,14 +53,14 @@ class DataOpsClient:
     Client for the StreamFlow DataOps REST API.
     
     Example:
-        >>> client = DataOpsClient(base_url="http://localhost:8000", api_token="your-token")
+        >>> client = DataOpsClient(base_url="https://streamflowops.3rdplaces.io", api_token="your-token")
         >>> stations = client.get_stations(state="CO", limit=10)
         >>> data = client.get_station_data("09070500", start_date="2026-01-01", end_date="2026-01-17")
     """
     
     def __init__(
         self,
-        base_url: str = "http://localhost:8000",
+        base_url: str = "https://streamflowops.3rdplaces.io",
         api_token: Optional[str] = None,
         timeout: int = 60,
         verify_ssl: bool = True,
@@ -299,46 +299,67 @@ class DataOpsClient:
         start_date: Union[str, datetime],
         end_date: Union[str, datetime],
         data_type: Optional[str] = None,
-        format: str = 'json',
         use_cache: bool = False,  # Don't cache time series data by default
+        limit: int = 50000,
     ) -> List[DischargeObservation]:
         """
         Get discharge observations for a station.
         
+        Uses /api/v1/observations/discharge/ with station_number query param.
+        
         Args:
-            station_number: Station identifier
+            station_number: Station identifier (e.g., '09070500')
             start_date: Start date (YYYY-MM-DD or datetime object)
             end_date: End date (YYYY-MM-DD or datetime object)
-            data_type: Filter by data type (realtime_15min, daily_mean)
-            format: Response format (json or csv)
+            data_type: Filter by data type ('realtime_15min' or 'daily_mean')
             use_cache: Whether to cache the response
+            limit: Max results per page (default: 50000)
         
         Returns:
             List of DischargeObservation objects
         """
         params = {
+            'station_number': station_number,
             'start_date': self._format_date(start_date),
             'end_date': self._format_date(end_date),
-            'format': format,
+            'limit': limit,
         }
         
         if data_type:
-            params['data_type'] = data_type
+            params['type'] = data_type  # API uses 'type' not 'data_type'
         
-        data = self._request(
-            'GET',
-            f'/api/v1/stations/{station_number}/data/',
-            params=params,
-            use_cache=use_cache
-        )
+        # Fetch from observations endpoint (station data sub-endpoint doesn't exist)
+        all_results = []
+        endpoint = '/api/v1/observations/discharge/'
         
-        # Handle paginated or direct list response
-        if isinstance(data, dict) and 'results' in data:
-            results = data['results']
-        else:
-            results = data
+        while endpoint:
+            data = self._request(
+                'GET',
+                endpoint,
+                params=params,
+                use_cache=use_cache
+            )
+            
+            if isinstance(data, dict) and 'results' in data:
+                all_results.extend(data['results'])
+                # Follow pagination
+                next_url = data.get('next')
+                if next_url:
+                    # Extract relative path from full URL
+                    from urllib.parse import urlparse, parse_qs
+                    parsed = urlparse(next_url)
+                    endpoint = parsed.path
+                    params = {k: v[0] if len(v) == 1 else v 
+                              for k, v in parse_qs(parsed.query).items()}
+                else:
+                    endpoint = None
+            else:
+                # Non-paginated response
+                if isinstance(data, list):
+                    all_results.extend(data)
+                endpoint = None
         
-        return [DischargeObservation.from_dict(obs) for obs in results]
+        return [DischargeObservation.from_dict(obs) for obs in all_results]
     
     def get_station_statistics(
         self,

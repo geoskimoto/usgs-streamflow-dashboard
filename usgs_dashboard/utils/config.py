@@ -54,6 +54,9 @@ DEFAULT_PERCENTILES = [10, 25, 50, 75, 90]
 # States to Include
 TARGET_STATES = ['OR', 'WA', 'ID', 'MT', 'NV', 'CA', 'UT', 'AZ', 'CO']
 
+# HUC17 Columbia River Basin states (default view)
+HUC17_STATES = ['OR', 'WA', 'ID', 'MT', 'NV']
+
 # Plot Settings
 DASHBOARD_PLOT_HEIGHT = 400
 DASHBOARD_PLOT_WIDTH = 600

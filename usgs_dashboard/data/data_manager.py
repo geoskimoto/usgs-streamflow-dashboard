@@ -11,7 +11,7 @@ from typing import Optional, Dict, Any, List
 import os
 import logging
 
-from ..utils.config import TARGET_STATES, CACHE_DURATION, MAX_YEARS_LOAD, GAUGE_COLORS, SUBSET_CONFIG
+from ..utils.config import TARGET_STATES, CACHE_DURATION, MAX_YEARS_LOAD, GAUGE_COLORS
 
 # Import DataOps adapter
 from dataops_adapter import DataOpsAdapter
@@ -28,7 +28,8 @@ class USGSDataManager:
     2. Handles data format conversions for visualization components
     3. Maintains the same interface as the old data_manager
     
-    All data collection, storage, and management is now handled by DataOps.
+    All data collection, storage, and management is now handled by
+    StreamFlow DataOps (https://streamflowops.3rdplaces.io).
     """
     
     def __init__(self, cache_dir: str = "data"):
@@ -46,6 +47,9 @@ class USGSDataManager:
         # Initialize DataOps adapter (hybrid mode by default)
         self.adapter = DataOpsAdapter()
         
+        # Cached stations DataFrame (refreshed on load_regional_gauges)
+        self._stations_cache = None
+        
         logger.info(f"✅ USGSDataManager initialized with DataOps adapter")
         logger.info(f"   Mode: {self.adapter.mode}")
         logger.info(f"   API enabled: {self.adapter.api_enabled}")
@@ -53,7 +57,10 @@ class USGSDataManager:
     
     def load_regional_gauges(self, refresh=False, max_sites=None) -> pd.DataFrame:
         """
-        Load all USGS gauges with metadata.
+        Load all USGS gauges with metadata from DataOps API.
+        
+        Fetches stations per-state from TARGET_STATES to ensure state
+        metadata is available even if the list serializer omits it.
         
         Parameters:
         -----------
@@ -69,23 +76,57 @@ class USGSDataManager:
         """
         logger.info("Loading regional gauges via DataOps adapter")
         
-        # If subset is enabled, apply limit
-        limit = max_sites if max_sites else (SUBSET_CONFIG['max_sites'] if SUBSET_CONFIG['enabled'] else 10000)
+        # Use high limit to fetch all stations per state
+        # (max_sites is per-state limit, not total)
+        limit = max_sites if max_sites else 10000
         
         try:
-            # Get stations from DataOps
-            stations_df = self.adapter.get_stations(
-                agency='USGS',
-                is_active=True,
-                limit=limit
-            )
+            all_stations = []
+            
+            if TARGET_STATES:
+                # Fetch per-state to ensure we have state metadata
+                for state in TARGET_STATES:
+                    try:
+                        state_df = self.adapter.get_stations(
+                            agency='USGS',
+                            state=state,
+                            limit=limit
+                        )
+                        if not state_df.empty:
+                            # Ensure state column is populated (may be missing from StationList serializer)
+                            if 'state' not in state_df.columns or state_df['state'].isna().all():
+                                state_df['state'] = state
+                            logger.info(f"  Loaded {len(state_df)} stations for {state}")
+                            all_stations.append(state_df)
+                    except Exception as e:
+                        logger.warning(f"Error loading stations for state {state}: {e}")
+                
+                if all_stations:
+                    stations_df = pd.concat(all_stations, ignore_index=True)
+                    # Remove duplicates (station might appear in multiple state queries)
+                    if 'station_number' in stations_df.columns:
+                        stations_df = stations_df.drop_duplicates(subset=['station_number'], keep='first')
+                else:
+                    stations_df = pd.DataFrame()
+            else:
+                # No target states configured, fetch all
+                stations_df = self.adapter.get_stations(
+                    agency='USGS',
+                    limit=limit
+                )
             
             if stations_df.empty:
                 logger.warning("No stations returned from DataOps")
                 return pd.DataFrame()
             
+            # Classify station activity based on recent discharge data
+            stations_df = self._classify_station_activity(stations_df)
+            
             # Enrich with visualization metadata
             stations_df = self._enrich_station_metadata(stations_df)
+            
+            # Cache for use by get_filters_table() and other methods
+            self._stations_cache = stations_df.copy()
             
             logger.info(f"✅ Loaded {len(stations_df)} stations from DataOps")
             return stations_df
@@ -95,9 +136,53 @@ class USGSDataManager:
             # Return empty DataFrame on error
             return pd.DataFrame()
     
+    def _classify_station_activity(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Classify stations as Active or Inactive based on recent discharge data.
+        
+        Active = has discharge observations in the last 6 months.
+        Inactive = no discharge observations in the last 6 months.
+        
+        Parameters:
+        -----------
+        df : pd.DataFrame
+            Station data with 'station_number' column
+        
+        Returns:
+        --------
+        pd.DataFrame
+            Station data with 'station_status' column added
+        """
+        if df.empty:
+            return df
+        
+        try:
+            # Get set of station numbers with recent discharge data
+            active_stations = self.adapter.get_active_station_numbers(months_back=6)
+            
+            if active_stations:
+                df['station_status'] = df['station_number'].apply(
+                    lambda sn: 'Active' if sn in active_stations else 'Inactive'
+                )
+                active_count = (df['station_status'] == 'Active').sum()
+                inactive_count = (df['station_status'] == 'Inactive').sum()
+                logger.info(f"Station activity: {active_count} active, {inactive_count} inactive")
+            else:
+                # Fallback: mark all as unknown if we can't determine activity
+                logger.warning("Could not determine station activity, defaulting to 'Active'")
+                df['station_status'] = 'Active'
+        except Exception as e:
+            logger.error(f"Error classifying station activity: {e}")
+            df['station_status'] = 'Active'
+        
+        return df
+    
     def _enrich_station_metadata(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Enrich station metadata with visualization-specific fields.
+        
+        Maps API field names to the names expected by the dashboard
+        components (map, filters, etc.).
         
         Parameters:
         -----------
@@ -107,37 +192,119 @@ class USGSDataManager:
         Returns:
         --------
         pd.DataFrame
-            Enriched station data with color coding, etc.
+            Enriched station data with color coding, aliases, etc.
         """
         if df.empty:
             return df
         
-        # Add site_no column (alias for station_number) for compatibility
+        # === Column name mappings for backward compatibility ===
+        
+        # site_id: primary identifier used by map component and callbacks
+        if 'station_number' in df.columns and 'site_id' not in df.columns:
+            df['site_id'] = df['station_number']
+        
+        # site_no: alias used by some visualization code
         if 'station_number' in df.columns and 'site_no' not in df.columns:
             df['site_no'] = df['station_number']
         
-        # Add station_nm column (alias for name) for compatibility
+        # station_name: display name used by map hover and info panels
+        if 'name' in df.columns and 'station_name' not in df.columns:
+            df['station_name'] = df['name']
+        
+        # station_nm: legacy alias
         if 'name' in df.columns and 'station_nm' not in df.columns:
             df['station_nm'] = df['name']
         
-        # Ensure required columns exist
-        required_cols = ['latitude', 'longitude', 'state']
-        for col in required_cols:
-            if col not in df.columns:
-                logger.warning(f"Missing required column: {col}")
-                df[col] = None
+        # drainage_area: map sizing (API returns catchment_area in sq km)
+        if 'catchment_area' in df.columns and 'drainage_area' not in df.columns:
+            # Convert sq km to sq mi (1 sq km = 0.386102 sq mi)
+            df['drainage_area'] = pd.to_numeric(df['catchment_area'], errors='coerce') * 0.386102
+        elif 'drainage_area' not in df.columns:
+            df['drainage_area'] = None
         
-        # Add color coding based on state (for map visualization)
-        if 'state' in df.columns:
-            df['color'] = df['state'].apply(lambda x: GAUGE_COLORS.get(x, '#808080'))
+        # basin: filter dropdown (API returns 'basin' directly)
+        if 'basin_name' in df.columns and 'basin' not in df.columns:
+            df['basin'] = df['basin_name']
+        
+        # Ensure required columns exist with defaults
+        required_defaults = {
+            'latitude': None,
+            'longitude': None,
+            'state': None,
+            'huc_code': None,
+            'basin': None,
+            'drainage_area': None,
+            'is_active': True,
+        }
+        for col, default in required_defaults.items():
+            if col not in df.columns:
+                logger.warning(f"Missing column '{col}', using default: {default}")
+                df[col] = default
+        
+        # Add color coding based on station activity status (for map visualization)
+        if 'station_status' in df.columns:
+            df['status'] = df['station_status']
+            df['color'] = df['station_status'].apply(
+                lambda s: '#32CD32' if s == 'Active' else '#808080'
+            )
+        elif 'state' in df.columns:
+            df['status'] = 'Active'
+            df['color'] = '#32CD32'
         else:
-            df['color'] = '#808080'  # Default gray
+            df['status'] = 'Active'
+            df['color'] = '#32CD32'
         
         # Filter by target states if configured
         if TARGET_STATES and 'state' in df.columns:
             df = df[df['state'].isin(TARGET_STATES)]
         
         return df
+    
+    def get_filters_table(self) -> pd.DataFrame:
+        """
+        Get station data for populating filter dropdowns (basin, HUC, state).
+        
+        Returns the cached stations DataFrame from the last load_regional_gauges()
+        call. If no cache exists, fetches fresh data.
+        
+        Returns:
+        --------
+        pd.DataFrame
+            Station data with state, basin, huc_code columns
+        """
+        if self._stations_cache is not None and not self._stations_cache.empty:
+            return self._stations_cache
+        
+        # Cache miss — load fresh
+        logger.info("get_filters_table: no cache, loading fresh station data")
+        return self.load_regional_gauges()
+    
+    def get_sites_with_realtime_data(self) -> List[str]:
+        """
+        Get list of site IDs that have real-time (15-min) data available.
+        
+        Queries the DataOps API for stations that have realtime observations.
+        Falls back to returning all sites if the query fails.
+        
+        Returns:
+        --------
+        list
+            List of site IDs with real-time data
+        """
+        try:
+            # Use cached stations if available
+            if self._stations_cache is not None and not self._stations_cache.empty:
+                if 'site_id' in self._stations_cache.columns:
+                    return self._stations_cache['site_id'].tolist()
+                elif 'station_number' in self._stations_cache.columns:
+                    return self._stations_cache['station_number'].tolist()
+            
+            # Fallback: return all available sites
+            return self.get_available_sites()
+            
+        except Exception as e:
+            logger.error(f"Error getting sites with realtime data: {e}")
+            return []
     
     def get_streamflow_data(
         self, 

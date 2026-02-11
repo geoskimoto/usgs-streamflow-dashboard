@@ -29,7 +29,7 @@ class ClientConfig:
         - DATAOPS_CACHE_ENABLED: Enable response caching
         - DATAOPS_CACHE_TTL: Cache time-to-live (seconds)
         """
-        self.base_url = base_url or os.getenv('DATAOPS_API_URL', 'http://localhost:8000')
+        self.base_url = base_url or os.getenv('DATAOPS_API_URL', 'https://streamflowops.3rdplaces.io')
         self.api_token = api_token or os.getenv('DATAOPS_API_TOKEN')
         self.timeout = int(os.getenv('DATAOPS_API_TIMEOUT', timeout))
         self.verify_ssl = os.getenv('DATAOPS_VERIFY_SSL', str(verify_ssl)).lower() == 'true'

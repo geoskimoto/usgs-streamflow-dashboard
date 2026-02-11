@@ -136,7 +136,11 @@ class ModernMapComponent:
         
         # Ensure required columns exist
         if 'status' not in map_data.columns:
-            map_data['status'] = 'good'  # Default status
+            # Use station_status if available, otherwise default
+            if 'station_status' in map_data.columns:
+                map_data['status'] = map_data['station_status']
+            else:
+                map_data['status'] = 'Active'  # Default status
             
         if 'drainage_area' not in map_data.columns:
             map_data['drainage_area'] = 100  # Default size
@@ -183,17 +187,21 @@ class ModernMapComponent:
                     row['longitude'], row['size_value'], row['station_name']
                 ])
             
+            # Inactive stations get smaller markers and lower opacity
+            marker_opacity = 0.4 if status == 'Inactive' else 0.8
+            marker_sizes = status_data['size_value'] * (0.6 if status == 'Inactive' else 1.0)
+            
             fig.add_trace(go.Scattermapbox(
                 lat=status_data['latitude'],
                 lon=status_data['longitude'],
                 mode='markers',
                 marker=dict(
-                    size=status_data['size_value'],
+                    size=marker_sizes,
                     color=color_map.get(status, '#808080'),
-                    opacity=0.8
+                    opacity=marker_opacity
                 ),
                 text=status_data['station_name'],
-                name=status.title(),
+                name=f"{status} ({len(status_data)})",
                 customdata=custom_data,
                 hovertemplate=(
                     "<b>%{customdata[8]}</b><br>"
@@ -282,17 +290,21 @@ class ModernMapComponent:
                     row['longitude'], row['size_value'], row['station_name']
                 ])
             
+            # Inactive stations get smaller markers and lower opacity
+            marker_opacity = 0.4 if status == 'Inactive' else 0.8
+            marker_sizes = status_data['size_value'] * (0.6 if status == 'Inactive' else 1.0)
+            
             fig.add_trace(go.Scattermapbox(
                 lat=status_data['latitude'],
                 lon=status_data['longitude'],
                 mode='markers',
                 marker=dict(
-                    size=status_data['size_value'],
+                    size=marker_sizes,
                     color=color_map.get(status, '#808080'),
-                    opacity=0.8
+                    opacity=marker_opacity
                 ),
                 text=status_data['station_name'],
-                name=status.title(),
+                name=f"{status} ({len(status_data)})",
                 customdata=custom_data,
                 hovertemplate=(
                     "<b>%{customdata[8]}</b><br>"
@@ -383,15 +395,13 @@ class ModernMapComponent:
     def _get_color_map(self) -> Dict[str, str]:
         """Get color mapping for gauge status."""
         return {
-            'excellent': '#2E8B57',      # Sea Green
-            'good': '#FFD700',           # Gold
-            'fair': '#FF8C00',           # Dark Orange  
-            'poor': '#DC143C',           # Crimson
-            'inactive': '#808080',       # Gray
-            'active_excellent': '#2E8B57',
-            'active_good': '#32CD32',    # Lime Green
-            'active_fair': '#FFA500',    # Orange
-            'active_poor': '#FF6347'     # Tomato
+            'Active': '#32CD32',         # Lime Green - has recent data
+            'Inactive': '#808080',       # Gray - no recent data
+            'excellent': '#2E8B57',      # Sea Green (legacy)
+            'good': '#FFD700',           # Gold (legacy)
+            'fair': '#FF8C00',           # Dark Orange (legacy)
+            'poor': '#DC143C',           # Crimson (legacy)
+            'inactive': '#808080',       # Gray (legacy alias)
         }
     
     def _add_selected_gauge_highlight(self, fig: go.Figure, gauges_df: pd.DataFrame, 

@@ -70,13 +70,23 @@ class DischargeObservation:
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'DischargeObservation':
-        """Create DischargeObservation from API response."""
+        """Create DischargeObservation from API response.
+        
+        API returns:
+            station: int (FK)
+            station_number: str (readOnly, computed from FK)
+            observed_at: datetime
+            discharge: decimal string (NOT 'discharge_value')
+            unit: 'cfs' | 'cms'
+            type: 'realtime_15min' | 'daily_mean'
+            quality_code: 'P' | 'A' | ''
+        """
         return cls(
-            station_number=data['station'],
-            observed_at=datetime.fromisoformat(data['observed_at'].replace('Z', '+00:00')),
-            discharge_value=float(data['discharge_value']),
-            unit=data['unit'],
-            data_type=data['type'],
+            station_number=data.get('station_number', str(data.get('station', ''))),
+            observed_at=datetime.fromisoformat(str(data['observed_at']).replace('Z', '+00:00')),
+            discharge_value=float(data['discharge']),  # API field is 'discharge'
+            unit=data.get('unit', 'cfs'),
+            data_type=data.get('type', 'daily_mean'),
             quality_code=data.get('quality_code'),
         )
 

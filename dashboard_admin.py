@@ -32,7 +32,7 @@ def create_enhanced_admin_content():
     dash component
         Admin interface layout
     """
-    dataops_url = os.getenv('DATAOPS_API_URL', 'http://localhost:8000')
+    dataops_url = os.getenv('DATAOPS_API_URL', 'https://streamflowops.3rdplaces.io')
     
     return dbc.Container([
         # Header
@@ -252,7 +252,7 @@ def get_recent_activity_table():
     dash component
         Redirect message to DataOps
     """
-    dataops_url = os.getenv('DATAOPS_API_URL', 'http://localhost:8000')
+    dataops_url = os.getenv('DATAOPS_API_URL', 'https://streamflowops.3rdplaces.io')
     
     return dbc.Alert([
         html.H5("📊 Collection Activity", className="alert-heading"),
@@ -311,7 +311,7 @@ def get_system_info():
 # These redirect to DataOps interface
 def get_stations_table(*args, **kwargs):
     """Legacy function - redirects to DataOps"""
-    dataops_url = os.getenv('DATAOPS_API_URL', 'http://localhost:8000')
+    dataops_url = os.getenv('DATAOPS_API_URL', 'https://streamflowops.3rdplaces.io')
     return dbc.Alert([
         html.P("Station management has moved to DataOps."),
         dbc.Button("Manage Stations", href=f"{dataops_url}/admin/core/station/", 
@@ -321,7 +321,7 @@ def get_stations_table(*args, **kwargs):
 
 def get_schedules_table(*args, **kwargs):
     """Legacy function - redirects to DataOps"""
-    dataops_url = os.getenv('DATAOPS_API_URL', 'http://localhost:8000')
+    dataops_url = os.getenv('DATAOPS_API_URL', 'https://streamflowops.3rdplaces.io')
     return dbc.Alert([
         html.P("Schedule management has moved to DataOps."),
         dbc.Button("Manage Schedules", href=f"{dataops_url}/admin/scheduler/schedule/", 
