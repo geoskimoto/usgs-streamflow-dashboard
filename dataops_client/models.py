@@ -18,6 +18,10 @@ class Station:
     huc_code: Optional[str] = None
     basin_name: Optional[str] = None
     is_active: bool = True
+    catchment_area: Optional[float] = None  # In sq km
+    years_of_record: Optional[int] = None
+    record_start_date: Optional[datetime] = None
+    record_end_date: Optional[datetime] = None
     last_observation_date: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -41,6 +45,10 @@ class Station:
             huc_code=data.get('huc_code'),
             basin_name=data.get('basin'),  # API uses 'basin' not 'basin_name'
             is_active=data.get('is_active', True),
+            catchment_area=float(data['catchment_area']) if data.get('catchment_area') else None,
+            years_of_record=int(data['years_of_record']) if data.get('years_of_record') else None,
+            record_start_date=cls._parse_datetime(data.get('record_start_date')),
+            record_end_date=cls._parse_datetime(data.get('record_end_date')),
             last_observation_date=cls._parse_datetime(data.get('last_observation_date')),
             created_at=cls._parse_datetime(data.get('created_at')),
             updated_at=cls._parse_datetime(data.get('last_updated')),  # API uses 'last_updated'

@@ -1045,12 +1045,30 @@ def handle_gauge_selection(clickData, gauges_data):
         html.P([html.Strong("State: "), gauge['state']], className="mb-1"),
     ]
     
-    # Add drainage area if available
-    if pd.notna(gauge['drainage_area']) and gauge['drainage_area'] > 0:
-        da_text = f"{gauge['drainage_area']:,.1f} sq mi"
+    # Add catchment area if available
+    if 'catchment_area' in gauge and pd.notna(gauge['catchment_area']) and gauge['catchment_area'] > 0:
+        # Convert from sq km to sq mi
+        catchment_sq_mi = gauge['catchment_area'] * 0.386102
         info_content.append(
-            html.P([html.Strong("Drainage Area: "), da_text], className="mb-1")
+            html.P([html.Strong("Catchment Area: "), f"{catchment_sq_mi:,.1f} sq mi"], className="mb-1")
         )
+    elif pd.notna(gauge.get('drainage_area')) and gauge['drainage_area'] > 0:
+        info_content.append(
+            html.P([html.Strong("Catchment Area: "), f"{gauge['drainage_area']:,.1f} sq mi"], className="mb-1")
+        )
+    
+    # Add years of record if available
+    if 'years_of_record' in gauge and pd.notna(gauge['years_of_record']):
+        info_content.append(
+            html.P([html.Strong("Years of Record: "), f"{int(gauge['years_of_record'])} years"], className="mb-1")
+        )
+    
+    # Add agency/data source
+    agency = gauge.get('agency', 'USGS')
+    data_source = 'StreamFlow DataOps API' if 'catchment_area' in gauge or 'station_status' in gauge else 'USGS'
+    info_content.append(
+        html.P([html.Strong("Data Source: "), f"{agency} via {data_source}"], className="mb-1")
+    )
     
     # Add coordinates
     info_content.extend([

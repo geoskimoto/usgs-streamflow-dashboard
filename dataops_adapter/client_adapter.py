@@ -355,6 +355,10 @@ class DataOpsAdapter:
                 'huc_code': station.huc_code,
                 'is_active': station.is_active,
                 'basin_name': getattr(station, 'basin_name', None),
+                'catchment_area': float(station.catchment_area) if station.catchment_area else None,
+                'years_of_record': int(float(station.years_of_record)) if station.years_of_record else None,
+                'record_start_date': station.record_start_date,
+                'record_end_date': station.record_end_date,
             })
         
         return pd.DataFrame(data)

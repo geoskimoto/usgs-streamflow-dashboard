@@ -122,6 +122,9 @@ class USGSDataManager:
             # Classify station activity based on recent discharge data
             stations_df = self._classify_station_activity(stations_df)
             
+            # Enrich with CSV data (drainage area, etc.)
+            stations_df = self._enrich_from_csv(stations_df)
+            
             # Enrich with visualization metadata
             stations_df = self._enrich_station_metadata(stations_df)
             
@@ -174,6 +177,79 @@ class USGSDataManager:
         except Exception as e:
             logger.error(f"Error classifying station activity: {e}")
             df['station_status'] = 'Active'
+        
+        return df
+    
+    def _enrich_from_csv(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Enrich station data with information from CSV files.
+        
+        Merges drainage_area and other metadata from HUC17 CSV file
+        with the API station data. This supplements fields not available
+        in the API list endpoint.
+        
+        Parameters:
+        -----------
+        df : pd.DataFrame
+            Station data from API
+        
+        Returns:
+        --------
+        pd.DataFrame
+            Enriched station data
+        """
+        if df.empty:
+            return df
+        
+        try:
+            # Load HUC17 CSV with drainage area data
+            csv_path = os.path.join(os.path.dirname(__file__), '../../data/huc17_discharge_stations.csv')
+            if os.path.exists(csv_path):
+                csv_df = pd.read_csv(csv_path)
+                
+                # Rename columns to match our schema
+                csv_df = csv_df.rename(columns={
+                    'site_no': 'station_number',
+                    'station_nm': 'name'
+                })
+                
+                # Ensure station_number is string type for merging
+                csv_df['station_number'] = csv_df['station_number'].astype(str)
+                
+                # Select only the enrichment columns we need
+                enrich_cols = ['station_number', 'drainage_area']
+                csv_enrichment = csv_df[enrich_cols].copy()
+                
+                # Convert drainage_area to numeric (handle any formatting issues)
+                csv_enrichment['drainage_area'] = pd.to_numeric(
+                    csv_enrichment['drainage_area'], 
+                    errors='coerce'
+                )
+                
+                # Merge with existing data
+                # Only update rows where catchment_area is None or drainage_area doesn't exist
+                if 'drainage_area' not in df.columns or df['drainage_area'].isna().all():
+                    # Left merge to add drainage_area from CSV
+                    df = df.merge(
+                        csv_enrichment, 
+                        on='station_number', 
+                        how='left',
+                        suffixes=('', '_csv')
+                    )
+                    
+                    # Use CSV drainage_area if API catchment_area is not available
+                    if 'drainage_area_csv' in df.columns:
+                        if 'drainage_area' in df.columns:
+                            df['drainage_area'] = df['drainage_area'].fillna(df['drainage_area_csv'])
+                        else:
+                            df['drainage_area'] = df['drainage_area_csv']
+                        df = df.drop(columns=['drainage_area_csv'])
+                
+                logger.info(f"Enriched {len(df)} stations with CSV data")
+            else:
+                logger.warning(f"CSV file not found: {csv_path}")
+        except Exception as e:
+            logger.error(f"Error enriching from CSV: {e}")
         
         return df
     
