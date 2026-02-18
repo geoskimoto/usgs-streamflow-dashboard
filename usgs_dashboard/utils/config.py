@@ -15,9 +15,9 @@ def calculate_current_water_year():
         return today.year
 
 # Map Settings
-MAP_CENTER = [42.0, -114.0]  # Center to include both Pacific NW and Southwest states
-MAP_CENTER_LAT = 42.0
-MAP_CENTER_LON = -114.0
+MAP_CENTER = [46.5, -118.0]  # Center to include Western US and British Columbia
+MAP_CENTER_LAT = 46.5
+MAP_CENTER_LON = -118.0
 MAP_ZOOM = 5
 DEFAULT_ZOOM_LEVEL = 5
 MIN_ZOOM_LEVEL = 4
@@ -51,8 +51,8 @@ DEFAULT_END_DATE = current_date     # Through today's date
 WATER_YEAR_START = 10  # October 1st (month 10)
 DEFAULT_PERCENTILES = [10, 25, 50, 75, 90]
 
-# States to Include
-TARGET_STATES = ['OR', 'WA', 'ID', 'MT', 'NV', 'CA', 'UT', 'AZ', 'CO']
+# States/Provinces to Include
+TARGET_STATES = ['OR', 'WA', 'ID', 'MT', 'NV', 'CA', 'UT', 'AZ', 'CO', 'BC']
 
 # HUC17 Columbia River Basin states (default view)
 HUC17_STATES = ['OR', 'WA', 'ID', 'MT', 'NV']
@@ -117,8 +117,8 @@ SUBSET_CONFIG = {
 }
 
 # App Settings
-APP_TITLE = 'USGS Streamflow Dashboard - Western US'
-APP_DESCRIPTION = 'Interactive dashboard for exploring USGS streamflow data across the Western United States'
+APP_TITLE = 'Streamflow Dashboard - Western North America'
+APP_DESCRIPTION = 'Interactive dashboard for exploring streamflow data across Western US and British Columbia, Canada'
 
 APP_CONFIG = {
     'debug': True,

@@ -1278,10 +1278,11 @@ def update_filter_summary(gauges_data):
             'NV': '🏜️ Nevada',
             'UT': '🏔️ Utah',
             'AZ': '🌵 Arizona',
-            'CO': '⛰️ Colorado'
+            'CO': '⛰️ Colorado',
+            'BC': '🍁 British Columbia'
         }
         
-        for state in ['OR', 'WA', 'ID', 'MT', 'CA', 'NV', 'UT', 'AZ', 'CO']:
+        for state in ['OR', 'WA', 'ID', 'MT', 'CA', 'NV', 'UT', 'AZ', 'CO', 'BC']:
             count = state_counts.get(state, 0)
             if count > 0:  # Only show states that have stations
                 # Show active count breakdown if available
@@ -1294,7 +1295,7 @@ def update_filter_summary(gauges_data):
                 state_options.append({"label": label, "value": state})
         
         # Create summary text
-        summary_text = f"Filter {total_sites} USGS streamflow gauges (1910-present)"
+        summary_text = f"Filter {total_sites} streamflow gauges (USGS & Environment Canada)"
         
         return summary_text, state_options
         

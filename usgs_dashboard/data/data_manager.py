@@ -85,10 +85,14 @@ class USGSDataManager:
             
             if TARGET_STATES:
                 # Fetch per-state to ensure we have state metadata
+                # Support multiple agencies (USGS for US states, EC for Canadian provinces)
                 for state in TARGET_STATES:
                     try:
+                        # Determine agency based on state/province
+                        agency = 'EC' if state == 'BC' else 'USGS'
+                        
                         state_df = self.adapter.get_stations(
-                            agency='USGS',
+                            agency=agency,
                             state=state,
                             limit=limit
                         )
@@ -96,7 +100,7 @@ class USGSDataManager:
                             # Ensure state column is populated (may be missing from StationList serializer)
                             if 'state' not in state_df.columns or state_df['state'].isna().all():
                                 state_df['state'] = state
-                            logger.info(f"  Loaded {len(state_df)} stations for {state}")
+                            logger.info(f"  Loaded {len(state_df)} {agency} stations for {state}")
                             all_stations.append(state_df)
                     except Exception as e:
                         logger.warning(f"Error loading stations for state {state}: {e}")
