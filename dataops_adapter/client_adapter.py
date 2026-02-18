@@ -392,6 +392,8 @@ class DataOpsAdapter:
         unique station numbers found. This is used to classify stations as
         'Active' (has recent data) vs 'Inactive' (no recent data).
         
+        Queries both USGS and EC agencies to support multi-agency datasets.
+        
         Args:
             months_back: Number of months to look back (default: 6)
         
@@ -404,48 +406,55 @@ class DataOpsAdapter:
         
         try:
             start_date = (datetime.now() - timedelta(days=months_back * 30)).strftime('%Y-%m-%d')
-            
             active_stations = set()
-            page_num = 1
-            page_limit = 1000
-            max_pages = 10  # Safety limit
             
-            for _ in range(max_pages):
-                response = self.api_client._request(
-                    'GET',
-                    '/api/v1/observations/discharge/',
-                    params={
-                        'start_date': start_date,
-                        'limit': page_limit,
-                        'page': page_num,
-                        'ordering': 'station_number'
-                    }
-                )
+            # Query both USGS and EC agencies
+            for agency in ['USGS', 'EC']:
+                page_num = 1
+                page_limit = 1000
+                max_pages = 10  # Safety limit per agency
+                agency_stations = set()
                 
-                if not isinstance(response, dict) or 'results' not in response:
-                    break
+                for _ in range(max_pages):
+                    response = self.api_client._request(
+                        'GET',
+                        '/api/v1/observations/discharge/',
+                        params={
+                            'agency': agency,
+                            'start_date': start_date,
+                            'limit': page_limit,
+                            'page': page_num,
+                            'ordering': 'station_number'
+                        }
+                    )
+                    
+                    if not isinstance(response, dict) or 'results' not in response:
+                        break
+                    
+                    results = response['results']
+                    if not results:
+                        break
+                    
+                    prev_count = len(agency_stations)
+                    for obs in results:
+                        sn = obs.get('station_number', '')
+                        if sn:
+                            agency_stations.add(sn)
+                    
+                    # Stop if no new stations found (we've seen them all)
+                    if len(agency_stations) == prev_count:
+                        break
+                    
+                    # Stop if no more pages
+                    if not response.get('next'):
+                        break
+                    
+                    page_num += 1
                 
-                results = response['results']
-                if not results:
-                    break
-                
-                prev_count = len(active_stations)
-                for obs in results:
-                    sn = obs.get('station_number', '')
-                    if sn:
-                        active_stations.add(sn)
-                
-                # Stop if no new stations found (we've seen them all)
-                if len(active_stations) == prev_count:
-                    break
-                
-                # Stop if no more pages
-                if not response.get('next'):
-                    break
-                
-                page_num += 1
+                active_stations.update(agency_stations)
+                logger.info(f"Found {len(agency_stations)} active {agency} stations")
             
-            logger.info(f"Found {len(active_stations)} stations with data in the last {months_back} months")
+            logger.info(f"Found {len(active_stations)} total stations with data in the last {months_back} months")
             return active_stations
             
         except Exception as e:
