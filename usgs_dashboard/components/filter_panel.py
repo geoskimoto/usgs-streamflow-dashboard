@@ -82,11 +82,11 @@ class SimplifiedFilterPanel:
                 
                 # State Filter
                 html.Div([
-                    html.Label("States:", className="fw-bold"),
+                    html.Label("States/Provinces:", className="fw-bold"),
                     dbc.Checklist(
                         id="state-filter",
                         options=[],  # Will be populated dynamically
-                        value=["OR", "WA", "ID", "MT", "NV"],
+                        value=["OR", "WA", "ID", "MT", "NV", "BC"],
                         inline=True,
                         className="mb-3"
                     )
