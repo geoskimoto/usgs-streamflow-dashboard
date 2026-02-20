@@ -79,14 +79,12 @@ class ModernMapComponent:
             'latitude', 'longitude', 'size_value', 'station_name'
         ]
         
-        # Use go.Scattermapbox for all map styles for consistency
-        # Check if using custom USGS National Map
-        if map_style == 'usgs-national':
-            # Create figure with custom USGS tile layer
-            fig = self._create_usgs_national_map(map_data, custom_data_fields, gauges_df, height)
+        # Use go.Scattermapbox for all map styles with custom tile layers
+        if map_style == 'stamen-terrain':
+            fig = self._create_stamen_terrain_map(map_data, custom_data_fields, gauges_df, height)
         else:
-            # Create figure with standard mapbox styles using go.Scattermapbox
-            fig = self._create_standard_mapbox_map(map_data, custom_data_fields, gauges_df, map_style, height)
+            # Default to USGS National Map
+            fig = self._create_usgs_national_map(map_data, custom_data_fields, gauges_df, height)
         # Set hovertemplate for each trace
         hovertemplate = (
             "<b>%{customdata[8]}</b><br>"
@@ -314,19 +312,9 @@ class ModernMapComponent:
         
         return fig
 
-    def _create_standard_mapbox_map(self, map_data: pd.DataFrame, custom_data_fields: List, gauges_df: pd.DataFrame, map_style: str, height: int = 700) -> go.Figure:
-        """Create map with standard mapbox basemap styles using go.Scattermapbox."""
+    def _create_stamen_terrain_map(self, map_data: pd.DataFrame, custom_data_fields: List, gauges_df: pd.DataFrame, height: int = 700) -> go.Figure:
+        """Create map with Stamen Terrain basemap using Stadia Maps hosted tiles."""
         fig = go.Figure()
-        
-        # Validate map style
-        valid_map_styles = [
-            'open-street-map', 'satellite-streets', 'outdoors', 'light', 'dark', 'white-bg',
-            'carto-positron', 'carto-darkmatter', 'stamen-terrain', 'stamen-toner', 'stamen-watercolor'
-        ]
-        
-        if map_style not in valid_map_styles:
-            print(f"Warning: Invalid map style '{map_style}', using default 'open-street-map'")
-            map_style = 'open-street-map'
         
         # Group by status for different traces
         color_map = self._get_color_map()
@@ -371,31 +359,44 @@ class ModernMapComponent:
                 )
             ))
         
-        # Configure layout with standard mapbox style (no custom layers)
+        # Stamen Terrain tiles hosted by Stadia Maps
+        mapbox_layers = [
+            {
+                "below": "traces",
+                "sourcetype": "raster",
+                "sourceattribution": "Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL. Hosted by Stadia Maps.",
+                "source": ["https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}.png"]
+            }
+        ]
+        
+        # Configure layout with Stamen Terrain tile layer
         fig.update_layout(
-            mapbox=dict(
-                style=map_style,  # Use standard mapbox styles
-                center=self.last_center,
-                zoom=self.last_zoom
-            ),
-            height=height,
-            margin=dict(r=0, t=50, l=0, b=0),
-            title=f"USGS Streamflow Gauges - Pacific Northwest ({len(gauges_df)} gauges)",
-            font=dict(family="Arial", size=12),
-            legend=dict(
-                orientation="v",
-                yanchor="top",
-                y=0.99,
-                xanchor="left",
-                x=0.01,
-                bgcolor="rgba(255, 255, 255, 0.9)",
-                bordercolor="black",
-                borderwidth=1
-            ),
-            hoverlabel=dict(
-                bgcolor="white",
-                bordercolor="black",
-                font=dict(size=12)
+            go.Layout(
+                mapbox=dict(
+                    style="white-bg",
+                    layers=mapbox_layers,
+                    center=self.last_center,
+                    zoom=self.last_zoom
+                ),
+                height=height,
+                margin=dict(r=0, t=50, l=0, b=0),
+                title=f"USGS Streamflow Gauges - Pacific Northwest ({len(gauges_df)} gauges) - Stamen Terrain",
+                font=dict(family="Arial", size=12),
+                legend=dict(
+                    orientation="v",
+                    yanchor="top",
+                    y=0.99,
+                    xanchor="left",
+                    x=0.01,
+                    bgcolor="rgba(255, 255, 255, 0.9)",
+                    bordercolor="black",
+                    borderwidth=1
+                ),
+                hoverlabel=dict(
+                    bgcolor="white",
+                    bordercolor="black",
+                    font=dict(size=12)
+                )
             )
         )
         
@@ -508,9 +509,18 @@ class ModernMapComponent:
             showlegend=False
         ))
         
-        # Handle USGS National Map style
-        if map_style == "usgs-national":
-            # USGS National Map layers using your working configuration
+        # Build tile layers based on selected style
+        if map_style == "stamen-terrain":
+            mapbox_layers = [
+                {
+                    "below": "traces",
+                    "sourcetype": "raster",
+                    "sourceattribution": "Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL. Hosted by Stadia Maps.",
+                    "source": ["https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}.png"]
+                }
+            ]
+        else:
+            # Default: USGS National Map
             mapbox_layers = [
                 {
                     "below": "traces",
@@ -519,29 +529,18 @@ class ModernMapComponent:
                     "source": ["https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/tile/{z}/{y}/{x}"]
                 }
             ]
-            
-            fig.update_layout(
-                mapbox=dict(
-                    style="white-bg",
-                    layers=mapbox_layers,
-                    center=self.last_center,
-                    zoom=self.last_zoom
-                ),
-                height=700,
-                margin=dict(r=0, t=50, l=0, b=0),
-                title="No data available for selected filters - USGS National Map"
-            )
-        else:
-            fig.update_layout(
-                mapbox=dict(
-                    style=map_style,
-                    center=self.last_center,
-                    zoom=self.last_zoom
-                ),
-                height=700,
-                margin=dict(r=0, t=50, l=0, b=0),
-                title="No data available for selected filters"
-            )
+        
+        fig.update_layout(
+            mapbox=dict(
+                style="white-bg",
+                layers=mapbox_layers,
+                center=self.last_center,
+                zoom=self.last_zoom
+            ),
+            height=700,
+            margin=dict(r=0, t=50, l=0, b=0),
+            title="No data available for selected filters"
+        )
         
         return fig
 

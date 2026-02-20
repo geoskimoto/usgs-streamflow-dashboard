@@ -6,6 +6,7 @@ Supports API mode, cache mode, and hybrid mode with fallback.
 """
 
 import os
+import json
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 import pandas as pd
@@ -475,3 +476,131 @@ class DataOpsAdapter:
             'api_url': config.api_url if self.api_enabled else None,
             'cache_stats': self.get_cache_stats() if self.cache_enabled else None
         }
+
+    # ===== NWRFC Forecast Crosswalk =====
+
+    def _load_nwrfc_crosswalk(self) -> Dict[str, str]:
+        """
+        Load the NWRFC→USGS crosswalk from the CSV file.
+        Returns dict mapping USGS station number → NWRFC code.
+        """
+        if hasattr(self, '_usgs_to_nwrfc') and self._usgs_to_nwrfc:
+            return self._usgs_to_nwrfc
+
+        crosswalk_csv = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'data', 'usgs_hads_raw_data.csv'
+        )
+        crosswalk_json = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'data', 'nwrfc_usgs_crosswalk.json'
+        )
+
+        self._usgs_to_nwrfc = {}
+        self._nwrfc_to_usgs = {}
+
+        try:
+            # Prefer JSON crosswalk if available
+            if os.path.exists(crosswalk_json):
+                with open(crosswalk_json, 'r') as f:
+                    nwrfc_map = json.load(f)  # nws_id → usgs_id
+                for nws_id, usgs_id in nwrfc_map.items():
+                    self._nwrfc_to_usgs[nws_id] = usgs_id
+                    self._usgs_to_nwrfc[usgs_id] = nws_id
+            elif os.path.exists(crosswalk_csv):
+                import csv
+                with open(crosswalk_csv, 'r') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        nws_id = row.get('nws_id', '').strip()
+                        usgs_id = row.get('usgs_id', '').strip()
+                        if nws_id and usgs_id:
+                            self._nwrfc_to_usgs[nws_id] = usgs_id
+                            self._usgs_to_nwrfc[usgs_id] = nws_id
+
+            logger.info(f"Loaded NWRFC crosswalk: {len(self._usgs_to_nwrfc)} USGS→NWRFC mappings")
+        except Exception as e:
+            logger.warning(f"Failed to load NWRFC crosswalk: {e}")
+
+        return self._usgs_to_nwrfc
+
+    def get_nwrfc_code(self, usgs_station_number: str) -> Optional[str]:
+        """
+        Look up the NWRFC code for a USGS station number.
+        
+        Args:
+            usgs_station_number: USGS station ID (e.g., '14187500')
+        
+        Returns:
+            NWRFC code (e.g., 'WTLO3') or None if no mapping exists
+        """
+        crosswalk = self._load_nwrfc_crosswalk()
+        return crosswalk.get(usgs_station_number)
+
+    def get_forecast_data(self, usgs_station_number: str, num_days: int = 5) -> Optional[List[Dict]]:
+        """
+        Get NWRFC forecast runs for a USGS station (one per day, up to num_days).
+        
+        Uses the crosswalk to look up the NWRFC code, then fetches
+        forecast data from the DataOps API.
+        
+        Args:
+            usgs_station_number: USGS station ID (e.g., '14187500')
+            num_days: Number of distinct calendar days of forecasts to fetch
+        
+        Returns:
+            List of dicts, each with keys:
+                'run_date': str (ISO format)
+                'data': DataFrame with columns ['datetime', 'discharge_cfs']
+            Ordered newest-first. Returns None if no data available.
+        """
+        if not self.api_client:
+            return None
+
+        nwrfc_code = self.get_nwrfc_code(usgs_station_number)
+        if not nwrfc_code:
+            logger.debug(f"No NWRFC mapping for USGS station {usgs_station_number}")
+            return None
+
+        try:
+            forecasts = self.api_client.get_forecast_by_station(
+                nwrfc_code, num_days=num_days
+            )
+            if not forecasts:
+                logger.debug(f"No forecast data for {nwrfc_code}")
+                return None
+
+            result = []
+            for run in forecasts:
+                forecast_points = run.get('data', [])
+                if not forecast_points:
+                    continue
+
+                rows = []
+                for point in forecast_points:
+                    dt = pd.to_datetime(point.get('date'), errors='coerce')
+                    val = point.get('value')
+                    if pd.notna(dt) and val is not None:
+                        rows.append({'datetime': dt, 'discharge_cfs': float(val)})
+
+                if not rows:
+                    continue
+
+                df = pd.DataFrame(rows)
+                df = df.sort_values('datetime').reset_index(drop=True)
+
+                run_date = run.get('run_date', 'unknown')
+                result.append({
+                    'run_date': run_date,
+                    'data': df
+                })
+                logger.info(
+                    f"Forecast for {usgs_station_number} ({nwrfc_code}): "
+                    f"{len(df)} points, run_date={run_date}"
+                )
+
+            return result if result else None
+
+        except Exception as e:
+            logger.warning(f"Error fetching forecast for {usgs_station_number}: {e}")
+            return None

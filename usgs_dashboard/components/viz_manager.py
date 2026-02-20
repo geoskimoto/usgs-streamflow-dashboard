@@ -43,7 +43,8 @@ class VisualizationManager:
                              highlight_years: List[int] = None,
                              show_percentiles: bool = True,
                              show_statistics: bool = True,
-                             data_manager=None) -> go.Figure:
+                             data_manager=None,
+                             forecast_data: pd.DataFrame = None) -> go.Figure:
         """
         Create streamflow visualization plot.
         
@@ -86,21 +87,29 @@ class VisualizationManager:
         # Use integrated streamflow analyzer if available
         if self.streamflow_viz and StreamflowData:
             try:
-                return self._create_integrated_plot(
+                fig = self._create_integrated_plot(
                     site_id, streamflow_data, plot_type, 
                     highlight_years, show_percentiles, show_statistics, realtime_data
                 )
             except Exception as e:
                 print(f"Error with integrated plot, using fallback: {e}")
-                return self._create_fallback_plot(
+                fig = self._create_fallback_plot(
                     site_id, streamflow_data, plot_type, highlight_years,
-                    show_percentiles, show_statistics, realtime_data
+                    show_percentiles, show_statistics, realtime_data,
+                    forecast_data=forecast_data
                 )
         else:
-            return self._create_fallback_plot(
+            fig = self._create_fallback_plot(
                 site_id, streamflow_data, plot_type, highlight_years,
-                show_percentiles, show_statistics, realtime_data
+                show_percentiles, show_statistics, realtime_data,
+                forecast_data=forecast_data
             )
+        
+        # Add NWRFC forecast overlay on water year plots (works for both integrated and fallback)
+        if plot_type == 'water_year' and forecast_data:
+            fig = self._add_forecast_overlay(fig, forecast_data)
+        
+        return fig
     
     def _create_integrated_plot(self, site_id: str, data: pd.DataFrame,
                               plot_type: str, highlight_years: List[int],
@@ -157,7 +166,8 @@ class VisualizationManager:
     def _create_fallback_plot(self, site_id: str, data: pd.DataFrame,
                             plot_type: str, highlight_years: List[int],
                             show_percentiles: bool = True, 
-                            show_statistics: bool = True, realtime_data: pd.DataFrame = None) -> go.Figure:
+                            show_statistics: bool = True, realtime_data: pd.DataFrame = None,
+                            forecast_data: pd.DataFrame = None) -> go.Figure:
         """
         Create basic fallback plot when integrated tools aren't available.
         Robust date handling:
@@ -211,7 +221,8 @@ class VisualizationManager:
                 data, value_col, highlight_years,
                 show_percentiles=True,
                 show_statistics=True,
-                realtime_data=realtime_data
+                realtime_data=realtime_data,
+                forecast_data=forecast_data
             )
         else:
             fig = self._create_basic_timeseries_plot(data, value_col)
@@ -333,7 +344,8 @@ class VisualizationManager:
                                        highlight_years: List[int],
                                        show_percentiles: bool = True,
                                        show_statistics: bool = True,
-                                       realtime_data: pd.DataFrame = None) -> go.Figure:
+                                       realtime_data: pd.DataFrame = None,
+                                       forecast_data: pd.DataFrame = None) -> go.Figure:
         """
         Create enhanced water year plot with percentile bands.
         Robust date handling: Only set index to a valid date column ('datetime', 'date', 'timestamp').
@@ -635,6 +647,9 @@ class VisualizationManager:
                                         "Discharge: %{y:.1f} cfs<extra></extra>"
                         ))
         
+        # Note: NWRFC forecast overlay is now added by _add_forecast_overlay()
+        # called from create_streamflow_plot() after figure creation.
+
         # After adding traces, set x-axis labels
         max_day = int(data_copy['day_of_wy'].max())
         tickvals = list(range(1, max_day+1, max(1, max_day//12)))
@@ -645,6 +660,111 @@ class VisualizationManager:
             title="Month-Day",
             type='linear'  # Force linear axis, not datetime
         )
+        return fig
+    
+    def _add_forecast_overlay(self, fig: go.Figure, forecast_data) -> go.Figure:
+        """
+        Add NWRFC forecast data as overlays on a water year plot.
+        
+        Supports multiple forecast runs (one per day). The most recent run
+        is visible by default; older runs are hidden (toggle via legend).
+        
+        Parameters:
+        -----------
+        fig : go.Figure
+            Existing water year plot figure
+        forecast_data : list
+            List of dicts with 'run_date' (str) and 'data' (DataFrame).
+            Each DataFrame has 'datetime' and 'discharge_cfs' columns.
+            Ordered newest-first.
+            
+        Returns:
+        --------
+        go.Figure
+            Figure with forecast overlay(s) added
+        """
+        if not forecast_data:
+            return fig
+        
+        # Color gradient: newest=bright orange, older=progressively lighter
+        colors = ['#FF6600', '#FF8833', '#FFAA66', '#FFCC99', '#FFE0C0']
+        
+        try:
+            for i, run in enumerate(forecast_data):
+                run_date_str = run.get('run_date', '')
+                fc_df = run.get('data')
+                
+                if fc_df is None or fc_df.empty:
+                    continue
+                
+                fc_data = fc_df.copy()
+                if 'datetime' not in fc_data.columns:
+                    continue
+                
+                fc_data['datetime'] = pd.to_datetime(fc_data['datetime'], errors='coerce')
+                fc_data = fc_data.dropna(subset=['datetime'])
+                
+                if fc_data.empty:
+                    continue
+                
+                # Strip timezone for day-of-water-year calculation
+                if fc_data['datetime'].dt.tz is not None:
+                    fc_data['datetime'] = fc_data['datetime'].dt.tz_localize(None)
+                
+                # Calculate day of water year
+                fc_data['day_of_wy'] = fc_data['datetime'].map(
+                    lambda d: get_day_of_water_year(d, WATER_YEAR_START)
+                )
+                
+                # Find discharge column
+                fc_value_col = None
+                for col in fc_data.columns:
+                    if any(term in col.lower() for term in ['discharge', 'flow', 'cfs']):
+                        fc_value_col = col
+                        break
+                if fc_value_col is None:
+                    fc_value_col = 'discharge_cfs'
+                
+                if fc_value_col not in fc_data.columns:
+                    continue
+                
+                fc_data = fc_data.sort_values('day_of_wy')
+                fc_data['hover_date'] = fc_data['datetime'].dt.strftime('%b %-d %H:%M')
+                
+                # Parse run date for label
+                try:
+                    from datetime import datetime as dt_cls
+                    run_dt = dt_cls.fromisoformat(run_date_str.replace('Z', '+00:00'))
+                    run_label = run_dt.strftime('%b %-d')
+                except (ValueError, AttributeError):
+                    run_label = f'Run {i+1}'
+                
+                color = colors[min(i, len(colors) - 1)]
+                line_width = 3 if i == 0 else 2
+                
+                # Latest forecast visible, older ones hidden by default
+                visible = True if i == 0 else 'legendonly'
+                name = f'Forecast ({run_label})' if i > 0 else 'NWRFC Forecast'
+                
+                fig.add_trace(go.Scatter(
+                    x=fc_data['day_of_wy'],
+                    y=fc_data[fc_value_col],
+                    mode='lines',
+                    name=name,
+                    line=dict(color=color, width=line_width, dash='dash'),
+                    visible=visible,
+                    customdata=fc_data['hover_date'],
+                    hovertemplate=(
+                        f"<b>{name}</b><br>"
+                        "%{customdata}<br>"
+                        "Discharge: %{y:,.0f} cfs<extra></extra>"
+                    )
+                ))
+                print(f"[DEBUG] Added forecast overlay: {name}, {len(fc_data)} points, visible={visible}")
+                
+        except Exception as e:
+            print(f"[WARNING] Error adding forecast overlay: {e}")
+        
         return fig
     
     def _create_basic_timeseries_plot(self, data: pd.DataFrame, value_col: str) -> go.Figure:

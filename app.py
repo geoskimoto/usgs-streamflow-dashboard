@@ -248,13 +248,7 @@ def create_sidebar():
                     id="map-style-dropdown",
                     options=[
                         {"label": "🏞️ USGS National Map", "value": "usgs-national"},
-                        {"label": "🗺️ OpenStreetMap", "value": "open-street-map"},
-                        {"label": "🌍 Carto Positron", "value": "carto-positron"},
-                        {"label": "🌚 Carto Dark", "value": "carto-darkmatter"},
                         {"label": "🏔️ Stamen Terrain", "value": "stamen-terrain"},
-                        {"label": "⚫ Stamen Toner", "value": "stamen-toner"},
-                        {"label": "� Stamen Watercolor", "value": "stamen-watercolor"},
-                        {"label": "📰 White Background", "value": "white-bg"}
                     ],
                     value="usgs-national",  # Set USGS National Map as default
                     className="mb-3"
@@ -370,13 +364,7 @@ def create_public_sidebar():
                     id="map-style-dropdown",
                     options=[
                         {"label": "🏞️ USGS National Map", "value": "usgs-national"},
-                        {"label": "🗺️ OpenStreetMap", "value": "open-street-map"},
-                        {"label": "🌍 Carto Positron", "value": "carto-positron"},
-                        {"label": "🌚 Carto Dark", "value": "carto-darkmatter"},
                         {"label": "🏔️ Stamen Terrain", "value": "stamen-terrain"},
-                        {"label": "⚫ Stamen Toner", "value": "stamen-toner"},
-                        {"label": "🎨 Stamen Watercolor", "value": "stamen-watercolor"},
-                        {"label": "📰 White Background", "value": "white-bg"}
                     ],
                     value="usgs-national",
                     className="mb-3"
@@ -861,11 +849,12 @@ def load_gauge_data(pathname):
      Input('basin-filter', 'value'),
      Input('huc-filter', 'value'),
      Input('realtime-filter', 'value'),
-     Input('station-status-filter', 'value')],
+     Input('station-status-filter', 'value'),
+     Input('forecast-filter', 'value')],
     [State('selected-gauge-store', 'data')]
 )
 def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin_boundaries, search_text, states, 
-                                     drainage_range, basins, hucs, show_realtime_only, station_status, selected_gauge):
+                                     drainage_range, basins, hucs, show_realtime_only, station_status, show_forecast_only, selected_gauge):
     """Update the gauge map based on simplified filters."""
     if not gauges_data:
         empty_fig = go.Figure()
@@ -945,6 +934,17 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
                 filtered_gauges = pd.DataFrame()
         except Exception as e:
             print(f"Error filtering by real-time data: {e}")
+    
+    # Forecast data filter
+    if show_forecast_only:
+        try:
+            forecast_site_ids = data_manager.get_forecast_station_ids()
+            if forecast_site_ids:
+                filtered_gauges = filtered_gauges[filtered_gauges['site_id'].isin(forecast_site_ids)]
+            else:
+                filtered_gauges = pd.DataFrame()
+        except Exception as e:
+            print(f"Error filtering by forecast data: {e}")
     
     # Create map figure
     if len(filtered_gauges) > 0:
@@ -1133,6 +1133,17 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
     if streamflow_data is None or streamflow_data.empty:
         return [dbc.Alert(f"No streamflow data available for site {selected_gauge}", color="warning")]
     
+    # Fetch NWRFC forecast data (last 5 days, if available for this station)
+    forecast_data = None
+    try:
+        forecast_data = data_manager.get_forecast_data(selected_gauge, num_days=5)
+        if forecast_data:
+            print(f"DEBUG: Got {len(forecast_data)} forecast runs for {selected_gauge}")
+        else:
+            print(f"DEBUG: No forecast data available for {selected_gauge}")
+    except Exception as e:
+        print(f"DEBUG: Error fetching forecast data: {e}")
+    
     # Generate all plots
     plot_types = [
         ("Water Year Plot", "water_year"),
@@ -1164,7 +1175,8 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
                     highlight_years=highlight_years,
                     show_percentiles=show_percentiles,
                     show_statistics=show_statistics,
-                    data_manager=data_manager
+                    data_manager=data_manager,
+                    forecast_data=forecast_data
                 )
             else:
                 fig = viz_manager.create_streamflow_plot(

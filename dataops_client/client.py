@@ -96,7 +96,7 @@ class DataOpsClient:
         
         if self.api_token:
             self._session.headers.update({
-                'Authorization': f'Bearer {self.api_token}'
+                'Authorization': f'Token {self.api_token}'
             })
         
         logger.info(f"DataOps client initialized for {self.base_url}")
@@ -532,6 +532,102 @@ class DataOpsClient:
             return date.strftime('%Y-%m-%d')
         return date
     
+    # ===== Forecast Operations =====
+
+    def get_forecast_by_station(
+        self,
+        nwrfc_code: str,
+        num_days: int = 1,
+        use_cache: bool = True,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get forecast data for a station by its NWRFC code.
+        
+        The by-station endpoint returns forecast run summaries (without data points).
+        This method picks the latest run per calendar day (up to num_days),
+        then fetches each run's full detail (with data points).
+        
+        Args:
+            nwrfc_code: NWRFC station code (e.g., 'WTLO3')
+            num_days: Number of distinct calendar days of forecasts to fetch
+            use_cache: Whether to cache the response
+        
+        Returns:
+            List of forecast run dicts with 'data' field containing [{date, value}],
+            ordered newest-first. One run per calendar day.
+        """
+        try:
+            # Step 1: Get forecast run summaries for this station
+            data = self._request(
+                'GET',
+                f'/api/v1/forecasts/by-station/{nwrfc_code}/',
+                use_cache=use_cache,
+            )
+            
+            runs = []
+            if isinstance(data, dict) and 'results' in data:
+                runs = data['results']
+            elif isinstance(data, list):
+                runs = data
+            
+            if not runs:
+                return []
+            
+            # Step 2: Deduplicate to one run per calendar day (keep most recent per day)
+            # Runs are ordered by -run_date (newest first)
+            from datetime import datetime as dt_cls
+            seen_dates = {}
+            for run in runs:
+                run_date_str = run.get('run_date', '')
+                try:
+                    run_dt = dt_cls.fromisoformat(run_date_str.replace('Z', '+00:00'))
+                    cal_date = run_dt.date()
+                except (ValueError, AttributeError):
+                    continue
+                if cal_date not in seen_dates:
+                    seen_dates[cal_date] = run
+                if len(seen_dates) >= num_days:
+                    break
+            
+            # Step 3: Fetch full detail for each selected run
+            detailed_runs = []
+            for cal_date in sorted(seen_dates.keys(), reverse=True):
+                run = seen_dates[cal_date]
+                run_id = run.get('id')
+                if run_id:
+                    try:
+                        detail = self._request(
+                            'GET',
+                            f'/api/v1/forecasts/{run_id}/',
+                            use_cache=use_cache,
+                        )
+                        if detail and 'data' in detail:
+                            detailed_runs.append(detail)
+                    except Exception as e:
+                        logger.debug(f"Error fetching forecast detail {run_id}: {e}")
+            
+            return detailed_runs
+            
+        except NotFoundError:
+            logger.debug(f"No forecast data for station {nwrfc_code}")
+            return []
+        except Exception as e:
+            logger.warning(f"Error fetching forecast for {nwrfc_code}: {e}")
+            return []
+
+    def get_latest_forecast(self, use_cache: bool = True) -> Optional[Dict[str, Any]]:
+        """
+        Get the most recent forecast across all stations.
+        
+        Returns:
+            Latest forecast dict or None
+        """
+        try:
+            return self._request('GET', '/api/v1/forecasts/latest/', use_cache=use_cache)
+        except Exception as e:
+            logger.warning(f"Error fetching latest forecast: {e}")
+            return None
+
     def health_check(self) -> Dict[str, Any]:
         """
         Check API health status.

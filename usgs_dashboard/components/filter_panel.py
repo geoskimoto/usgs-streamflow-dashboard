@@ -59,6 +59,26 @@ class SimplifiedFilterPanel:
                     ], className="mb-3")
                 ]),
                 
+                # Forecast Data Filter
+                html.Div([
+                    html.Div([
+                        html.Label("🌊 River Forecasts:", className="fw-bold mb-2"),
+                        html.Div([
+                            dbc.Switch(
+                                id="forecast-filter",
+                                label="Show only stations with forecasts",
+                                value=False,
+                                className="mb-2"
+                            ),
+                            html.Small(
+                                id="forecast-filter-info",
+                                className="text-muted d-block",
+                                children="NWRFC forecast stations (~290 sites)"
+                            )
+                        ])
+                    ], className="mb-3")
+                ]),
+                
                 # Station Status Filter (Active / Inactive)
                 html.Div([
                     html.Label("📍 Station Status:", className="fw-bold mb-2"),
