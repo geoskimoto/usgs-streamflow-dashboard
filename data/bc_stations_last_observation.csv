@@ -1,0 +1,501 @@
+station_number,total_observations,last_date,last_value,unit
+08MB011,952,,,cms
+08EE009,3611,,,cms
+08HB011,23402,,,cms
+08HF012,9467,,,cms
+08HE001,3802,,,cms
+08HA017,989,,,cms
+08LG025,513,,,cms
+08LE065,2097,,,cms
+08HB098,411,,,cms
+08LF013,2574,,,cms
+07EC004,16027,,,cms
+08LG022,958,,,cms
+08GA061,18958,,,cms
+08LC030,1127,,,cms
+08FC003,20659,,,cms
+08JC010,492,,,cms
+08HB003,6130,,,cms
+08LB072,9119,,,cms
+08GA017,17642,,,cms
+08GA025,905,,,cms
+07FD015,2611,,,cms
+07FB009,15279,,,cms
+08LF051,26756,,,cms
+08JC007,713,,,cms
+08LB032,919,,,cms
+08JA006,2403,,,cms
+08HA063,361,,,cms
+07EE009,17778,,,cms
+08EE003,12435,,,cms
+08LF088,666,,,cms
+08KA011,996,,,cms
+08GD010,1287,,,cms
+08JC011,89,,,cms
+08HB024,17756,,,cms
+08LC042,18799,,,cms
+08KE020,888,,,cms
+08EC008,1126,,,cms
+08HA021,2587,,,cms
+08LE021,20835,,,cms
+08GA011,1744,,,cms
+08LB029,733,,,cms
+08DB008,252,,,cms
+08GD006,5727,,,cms
+08LE054,822,,,cms
+08HB059,933,,,cms
+07EE011,838,,,cms
+08GF007,6552,,,cms
+08HB027,3396,,,cms
+08FC004,671,,,cms
+07EB001,5352,,,cms
+08LG023,692,,,cms
+08LE075,13082,,,cms
+08LF069,3596,,,cms
+08LF070,1885,,,cms
+08CB002,1845,,,cms
+07EE002,3546,,,cms
+08FA004,1578,,,cms
+08LG004,9989,,,cms
+08LF001,2969,,,cms
+08KH007,4222,,,cms
+08KE019,544,,,cms
+08EB005,15103,,,cms
+08KH022,5080,,,cms
+07GC001,1782,,,cms
+08LF061,8697,,,cms
+08LF067,59,,,cms
+07FB006,17148,,,cms
+08MB008,420,,,cms
+08HB002,18116,,,cms
+08GA023,4149,,,cms
+08HD004,1252,,,cms
+08JC006,3796,,,cms
+08KE035,410,,,cms
+08HD023,7888,,,cms
+08LF024,2219,,,cms
+08LE069,4536,,,cms
+08HB033,223,,,cms
+08KE022,864,,,cms
+08HA008,654,,,cms
+08HD007,23164,,,cms
+08LD006,1206,,,cms
+08LF043,5661,,,cms
+08LB027,1708,,,cms
+08KB001,27269,,,cms
+08LE110,1323,,,cms
+08KH013,4898,,,cms
+08CE004,1916,,,cms
+08GA024,8692,,,cms
+08LF097,357,,,cms
+08LA005,11469,,,cms
+08KH026,622,,,cms
+08LE027,22811,,,cms
+08HB099,6,,,cms
+08CE005,862,,,cms
+08JC001,26953,,,cms
+08JC008,2750,,,cms
+08LF004,1012,,,cms
+08MB002,1062,,,cms
+08LC024,707,,,cms
+08LE063,349,,,cms
+08CC002,3465,,,cms
+08LE104,905,,,cms
+08FE002,23539,,,cms
+08LE049,2517,,,cms
+08LB043,535,,,cms
+07FD004,11650,,,cms
+08GA054,6605,,,cms
+08HB008,37175,,,cms
+08LE099,366,,,cms
+08HD011,18040,,,cms
+08EE010,3861,,,cms
+08HF003,4504,,,cms
+08LF005,2899,,,cms
+08HF014,3039,,,cms
+08LA026,778,,,cms
+08MA002,31530,,,cms
+08HB044,1055,,,cms
+08EG004,849,,,cms
+08LB070,2298,,,cms
+08LF025,102,,,cms
+08FC002,5211,,,cms
+07FB004,16946,,,cms
+07EF004,9710,,,cms
+08LB078,16400,,,cms
+07FA006,14890,,,cms
+08LB064,24228,,,cms
+08HD018,11582,,,cms
+08KA010,3483,,,cms
+08HE008,9645,,,cms
+08LE032,1234,,,cms
+08HA060,5743,,,cms
+08LE010,1031,,,cms
+08LE105,907,,,cms
+08LG014,1316,,,cms
+08EE020,17560,,,cms
+08HC001,24729,,,cms
+08LG060,8739,,,cms
+08LG062,146,,,cms
+08GB007,13273,,,cms
+08DA008,157,,,cms
+08GA058,310,,,cms
+08FB008,789,,,cms
+08HC004,2609,,,cms
+08JB012,3101,,,cms
+08CD001,22185,,,cms
+08HB012,2416,,,cms
+08JE002,399,,,cms
+08GA050,142,,,cms
+08LB040,549,,,cms
+08LF047,1618,,,cms
+08EC002,2429,,,cms
+08JA005,5109,,,cms
+08HB064,959,,,cms
+08HB050,531,,,cms
+07FC002,4067,,,cms
+08LF006,2056,,,cms
+08LF081,7821,,,cms
+08MC005,10583,,,cms
+08LB017,3507,,,cms
+08LG002,1003,,,cms
+08EE012,18737,,,cms
+08FD002,1426,,,cms
+08EG017,6399,,,cms
+08LF062,12538,,,cms
+08JA028,4532,,,cms
+08DC002,79,,,cms
+08EE027,150,,,cms
+07FB011,2192,,,cms
+08GA051,416,,,cms
+08GE001,2641,,,cms
+07FD005,163,,,cms
+08LC031,1984,,,cms
+08GA068,1049,,,cms
+08LC015,68,,,cms
+08LG048,21369,,,cms
+08LC028,157,,,cms
+08LF018,85,,,cms
+08LG058,150,,,cms
+08JA015,17247,,,cms
+08LF049,3980,,,cms
+08EE013,18082,,,cms
+08LF065,1076,,,cms
+08GA060,6601,,,cms
+08LG026,519,,,cms
+07EB002,15848,,,cms
+07EA002,12363,,,cms
+08LB071,2300,,,cms
+08MC003,2270,,,cms
+08LE107,982,,,cms
+08GB005,706,,,cms
+08KE006,1321,,,cms
+08FF002,20986,,,cms
+08HA039,789,,,cms
+08CG003,11318,,,cms
+08LE003,306,,,cms
+08HB063,719,,,cms
+08LB046,535,,,cms
+08LC006,13160,,,cms
+08HE002,8431,,,cms
+08FB007,16196,,,cms
+08EE002,176,,,cms
+08FF003,21103,,,cms
+08LE089,2927,,,cms
+08LE097,984,,,cms
+08LB068,265,,,cms
+08LG013,3786,,,cms
+08HB089,6417,,,cms
+08GC006,8847,,,cms
+08KE018,366,,,cms
+08GA002,682,,,cms
+08HA056,1279,,,cms
+08KE036,527,,,cms
+08GF005,4567,,,cms
+08LF007,23693,,,cms
+08LA003,1517,,,cms
+07EA005,16873,,,cms
+08LE095,668,,,cms
+08KH018,4150,,,cms
+08LB060,244,,,cms
+07FD010,11995,,,cms
+08GA007,2786,,,cms
+08LE018,281,,,cms
+08KH030,9289,,,cms
+08HA070,9948,,,cms
+08LG001,492,,,cms
+08KE030,340,,,cms
+08KE025,547,,,cms
+08LE038,170,,,cms
+07FB002,17224,,,cms
+08LF082,2659,,,cms
+08HA034,2471,,,cms
+08KG001,22990,,,cms
+08LB028,978,,,cms
+08GA065,7240,,,cms
+08GA019,566,,,cms
+08GA009,2278,,,cms
+08KH028,2754,,,cms
+08LE022,1500,,,cms
+08LC009,153,,,cms
+08KE029,2454,,,cms
+08LE112,10308,,,cms
+08LG032,4927,,,cms
+07EA001,7949,,,cms
+08HB090,822,,,cms
+08GD005,6060,,,cms
+08HA031,844,,,cms
+08JC013,682,,,cms
+08HA047,6372,,,cms
+08GA006,3233,,,cms
+08LG009,11989,,,cms
+08KA001,22284,,,cms
+08FA001,3141,,,cms
+08LC005,4080,,,cms
+08FB009,5930,,,cms
+08HB038,1831,,,cms
+08LB004,2174,,,cms
+08LE080,1592,,,cms
+08LF032,1428,,,cms
+08LE090,1233,,,cms
+08ED004,5874,,,cms
+08LF079,1138,,,cms
+08DB014,7583,,,cms
+08LB042,3330,,,cms
+08LE012,4531,,,cms
+08DC006,11666,,,cms
+08DB001,30943,,,cms
+08LB013,5120,,,cms
+08JA021,1186,,,cms
+08DA003,35,,,cms
+08HD020,8141,,,cms
+08HB097,409,,,cms
+08LE081,301,,,cms
+07FA005,15198,,,cms
+08HB042,183,,,cms
+08EG007,586,,,cms
+07FC007,97,,,cms
+08LE093,2176,,,cms
+08HA055,2009,,,cms
+08HF002,4061,,,cms
+08LE039,4322,,,cms
+08HDX03,1652,,,cms
+08GB013,11459,,,cms
+08LF014,1401,,,cms
+08DC003,98,,,cms
+08LB045,536,,,cms
+08LC004,3843,,,cms
+08LE094,4265,,,cms
+08LG035,460,,,cms
+08HB047,1872,,,cms
+08EE021,159,,,cms
+08LE058,1483,,,cms
+08HA064,1271,,,cms
+08LB015,539,,,cms
+08LE050,931,,,cms
+08KB003,23591,,,cms
+08LC036,807,,,cms
+08LF029,156,,,cms
+08KG004,2333,,,cms
+08HB034,21614,,,cms
+08LC003,30951,,,cms
+08GB009,3546,,,cms
+08LD005,537,,,cms
+08GA016,1839,,,cms
+08LG055,6446,,,cms
+08KD007,17047,,,cms
+08JA025,1186,,,cms
+08HC011,477,,,cms
+08HD016,2695,,,cms
+08MB005,17853,,,cms
+08LE005,2869,,,cms
+08LA021,2551,,,cms
+08EE004,32558,,,cms
+08EE017,538,,,cms
+08HD021,11593,,,cms
+08KH014,7220,,,cms
+08LG068,6818,,,cms
+08LF096,799,,,cms
+08LG042,101,,,cms
+08LG006,25126,,,cms
+08GA046,4180,,,cms
+08HA014,730,,,cms
+08LE040,54,,,cms
+08LE092,2176,,,cms
+08JA016,6465,,,cms
+08LB024,20372,,,cms
+08LE088,2247,,,cms
+08GB010,2380,,,cms
+08LG028,2901,,,cms
+08EC013,18877,,,cms
+07EC001,3392,,,cms
+08KH005,226,,,cms
+08LE020,27381,,,cms
+08HB079,461,,,cms
+08JA019,1347,,,cms
+08HE009,9649,,,cms
+08LE074,1048,,,cms
+08KH008,3053,,,cms
+08LF022,13819,,,cms
+08KC003,7830,,,cms
+08FB006,20499,,,cms
+07ED001,15282,,,cms
+08FB011,4664,,,cms
+08LG020,5208,,,cms
+08HB004,16096,,,cms
+08CG004,9939,,,cms
+08LF091,2300,,,cms
+08HB032,14718,,,cms
+08LC040,17878,,,cms
+08GA071,15966,,,cms
+08HD027,10146,,,cms
+08LA020,8103,,,cms
+08LF068,123,,,cms
+08LF083,2611,,,cms
+08JA010,714,,,cms
+08DB012,3162,,,cms
+08JB004,233,,,cms
+08HB006,24772,,,cms
+08LG070,993,,,cms
+08KE033,1129,,,cms
+08LE035,983,,,cms
+08LD004,2020,,,cms
+08FA009,376,,,cms
+08LB056,245,,,cms
+08LA023,192,,,cms
+08LA015,863,,,cms
+08LE019,3831,,,cms
+08MA003,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Read timed out. (read timeout=10)",,,
+08LC026,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LC026&ordering=-date&limit=1 (Caused by NewConnectionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to establish a new connection: [Errno 113] No route to host""))",,,
+08EE015,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08EE015&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LE064,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LE064&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08EE014,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08EE014&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HD026,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HD026&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08FE003,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08FE003&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08KH025,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08KH025&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08BB001,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08BB001&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HD029,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HD029&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08GA001,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08GA001&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08GB006,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08GB006&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LE051,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LE051&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LB016,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LB016&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LG008,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LG008&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08EF005,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08EF005&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LF020,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LF020&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08FB005,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08FB005&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08EB004,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08EB004&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HA016,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HA016&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+07EE010,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=07EE010&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LD001,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LD001&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LE011,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LE011&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08GE002,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08GE002&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08GA041,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08GA041&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08GD003,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08GD003&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HB086,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HB086&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08KF001,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08KF001&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LF027,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LF027&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08GA033,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08GA033&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08DA005,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08DA005&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LE017,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LE017&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HA040,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HA040&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LF063,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LF063&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08JA014,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08JA014&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08DB010,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08DB010&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08GC004,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08GC004&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HB017,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HB017&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08DC001,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08DC001&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HB095,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HB095&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LC010,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LC010&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HC003,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HC003&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HA004,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HA004&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08KH003,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08KH003&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08GA036,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08GA036&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08JA020,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08JA020&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08KH021,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08KH021&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+07EF001,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=07EF001&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LB049,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LB049&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08EE028,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08EE028&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HF015,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HF015&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LF050,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LF050&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08GC007,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08GC007&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08GB003,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08GB003&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LB006,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LB006&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08GF008,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08GF008&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HB046,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HB046&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08GA030,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08GA030&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08KH031,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08KH031&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08JD006,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08JD006&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LF094,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LF094&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08JA001,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08JA001&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08GA076,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08GA076&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08KE008,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08KE008&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HB068,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HB068&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LA007,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LA007&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HF013,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HF013&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+07EC002,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=07EC002&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HB022,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HB022&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08GA020,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08GA020&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08EG019,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08EG019&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08GA038,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08GA038&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08MA007,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08MA007&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08MC002,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08MC002&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08KE005,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08KE005&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LB077,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LB077&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08GA049,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08GA049&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+07FA004,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=07FA004&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08GA075,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08GA075&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LG024,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LG024&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08EB006,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08EB006&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08KA008,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08KA008&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HE003,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HE003&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LF042,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LF042&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LB057,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LB057&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LC025,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LC025&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08KD006,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08KD006&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LA006,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LA006&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LE008,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LE008&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HA046,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HA046&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+07FC001,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=07FC001&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HB035,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HB035&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08CG001,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08CG001&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08GA003,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08GA003&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LB083,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LB083&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HD030,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HD030&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LB079,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LB079&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HC008,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HC008&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+07FB005,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=07FB005&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HD017,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HD017&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08CC001,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08CC001&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08KA013,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08KA013&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+07FB010,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=07FB010&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08EF006,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08EF006&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08EF001,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08EF001&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LA018,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LA018&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LF023,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LF023&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HD012,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HD012&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HB043,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HB043&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08JA026,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08JA026&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LE102,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LE102&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HC010,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HC010&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+07FD002,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=07FD002&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HD035,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HD035&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08KH006,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08KH006&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+07EA007,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=07EA007&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LB047,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LB047&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08KE009,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08KE009&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HA066,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HA066&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HB074,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HB074&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HA033,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HA033&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LD002,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LD002&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08EB003,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08EB003&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08JC009,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08JC009&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LG017,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LG017&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LE031,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LE031&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08HD009,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08HD009&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LF011,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LF011&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LE108,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LE108&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08DD001,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08DD001&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08ED001,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08ED001&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08KH002,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08KH002&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08LF092,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08LF092&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,
+08JB014,"ERROR: HTTPSConnectionPool(host='streamflowops.3rdplaces.io', port=443): Max retries exceeded with url: /api/v1/observations/discharge/?station_number=08JB014&ordering=-date&limit=1 (Caused by NameResolutionError(""HTTPSConnection(host='streamflowops.3rdplaces.io', port=443): Failed to resolve 'streamflowops.3rdplaces.io' ([Errno -3] Temporary failure in name resolution)""))",,,

@@ -794,7 +794,7 @@ def load_gauge_data(pathname):
                 color="warning",
                 dismissable=True
             )
-            return [], alert, site_limit
+            return [], alert, 0
         
         print(f"Loaded {len(filters_df)} stations from DataOps API")
         
