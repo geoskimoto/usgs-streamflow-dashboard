@@ -89,7 +89,7 @@ class SimplifiedFilterPanel:
                             {"label": "Active (recent data)", "value": "active"},
                             {"label": "Inactive (no recent data)", "value": "inactive"},
                         ],
-                        value="all",
+                        value="active",
                         inline=True,
                         className="mb-2"
                     ),
