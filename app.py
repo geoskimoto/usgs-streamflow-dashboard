@@ -950,14 +950,20 @@ def load_gauge_data(pathname):
     Output('percentile-bands-store', 'data'),
     Input('percentile-refresh-interval', 'n_intervals'),
     Input('refresh-flow-conditions-btn', 'n_clicks'),
+    State('percentile-bands-store', 'data'),
     prevent_initial_call=False,
 )
-def refresh_percentile_bands(n_intervals, n_clicks):
-    """Poll cached percentile bands every 30 s. Button triggers immediate background refresh."""
+def refresh_percentile_bands(n_intervals, n_clicks, current_bands):
+    """Poll cached percentile bands every 30 s. Button triggers immediate background refresh.
+    Returns no_update when data is unchanged to avoid unnecessary map re-renders."""
     ctx = callback_context
     if ctx.triggered and ctx.triggered[0]['prop_id'] == 'refresh-flow-conditions-btn.n_clicks':
         data_manager.trigger_percentile_refresh()
-    return data_manager.get_cached_percentile_bands()
+    new_bands = data_manager.get_cached_percentile_bands()
+    # Only write to store if bands actually changed, preventing spurious map re-renders
+    if new_bands == (current_bands or {}):
+        return no_update
+    return new_bands
 
 
 @app.callback(
