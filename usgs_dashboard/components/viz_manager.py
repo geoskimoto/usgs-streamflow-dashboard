@@ -109,6 +109,11 @@ class VisualizationManager:
         if plot_type == 'water_year' and forecast_data:
             fig = self._add_forecast_overlay(fig, forecast_data)
         
+        # Add range slider and window buttons to water year plots
+        if plot_type == 'water_year':
+            current_day_of_wy = get_day_of_water_year(pd.Timestamp.now(), WATER_YEAR_START)
+            fig = self._add_range_controls(fig, current_day_of_wy)
+        
         return fig
     
     def _create_integrated_plot(self, site_id: str, data: pd.DataFrame,
@@ -772,6 +777,59 @@ class VisualizationManager:
         
         return fig
     
+    def _add_range_controls(self, fig: go.Figure, current_day: int) -> go.Figure:
+        """
+        Add a range slider and preset window buttons to a water year plot.
+
+        Buttons are centered on the current day of water year:
+          ±15 days, ±1 month, ±3 months, ±6 months, Full year.
+        """
+        windows = [
+            ('±15d',  15),
+            ('±1mo',  30),
+            ('±3mo',  91),
+            ('±6mo', 183),
+        ]
+
+        buttons = []
+        for label, half_span in windows:
+            x0 = max(1, current_day - half_span)
+            x1 = min(366, current_day + half_span)
+            buttons.append(dict(
+                label=label,
+                method='relayout',
+                args=[{'xaxis.range': [x0, x1]}]
+            ))
+
+        # Full year reset button
+        buttons.append(dict(
+            label='Full Year',
+            method='relayout',
+            args=[{'xaxis.range': [1, 366]}]
+        ))
+
+        fig.update_layout(
+            xaxis=dict(
+                rangeslider=dict(visible=True, thickness=0.05),
+            ),
+            updatemenus=[
+                dict(
+                    type='buttons',
+                    direction='right',
+                    x=0.0,
+                    xanchor='left',
+                    y=1.15,
+                    yanchor='top',
+                    showactive=True,
+                    buttons=buttons,
+                    bgcolor='white',
+                    bordercolor='#cccccc',
+                    font=dict(size=11),
+                )
+            ]
+        )
+        return fig
+
     def _create_basic_timeseries_plot(self, data: pd.DataFrame, value_col: str) -> go.Figure:
         """Create basic timeseries plot."""
         
