@@ -135,3 +135,201 @@ body {
 .status-fair { color: #FF8C00; }
 .status-poor { color: #DC143C; }
 .status-inactive { color: #808080; }
+
+/* =============================================
+   DARK MODE
+   ============================================= */
+body.dark-mode {
+    /* Bootstrap 5 CSS variable overrides */
+    --bs-body-bg: #1e1e1e;
+    --bs-body-bg-rgb: 30, 30, 30;
+    --bs-body-color: #e0e0e0;
+    --bs-body-color-rgb: 224, 224, 224;
+    --bs-border-color: #444444;
+    --bs-secondary-color: #aaaaaa;
+    --bs-link-color: #6ea8fe;
+    --bs-link-hover-color: #9ec5fe;
+    --bs-card-bg: #2d2d2d;
+    --bs-card-border-color: #444;
+    --bs-modal-bg: #2d2d2d;
+    --bs-modal-border-color: #444;
+    --bs-input-bg: #3a3a3a;
+    --bs-input-border-color: #555;
+    --bs-input-color: #e0e0e0;
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+}
+
+/* ---- Containers ---- */
+body.dark-mode .container-fluid,
+body.dark-mode .container {
+    background-color: #1e1e1e;
+}
+
+/* ---- Cards ---- */
+body.dark-mode .card {
+    background-color: #2d2d2d;
+    border-color: #444;
+    color: #e0e0e0;
+}
+body.dark-mode .card-header {
+    background-color: #252525;
+    border-bottom-color: #444;
+    color: #e0e0e0;
+}
+body.dark-mode .card-body {
+    background-color: #2d2d2d;
+    color: #e0e0e0;
+}
+body.dark-mode .card-footer {
+    background-color: #252525;
+    border-top-color: #444;
+}
+
+/* ---- Form inputs ---- */
+body.dark-mode .form-control,
+body.dark-mode .form-select,
+body.dark-mode input[type="text"],
+body.dark-mode input[type="password"],
+body.dark-mode input[type="number"],
+body.dark-mode input[type="email"],
+body.dark-mode select,
+body.dark-mode textarea {
+    background-color: #3a3a3a;
+    border-color: #555;
+    color: #e0e0e0;
+}
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus {
+    background-color: #3a3a3a;
+    color: #e0e0e0;
+    border-color: #6ea8fe;
+    box-shadow: 0 0 0 0.2rem rgba(110, 168, 254, 0.2);
+}
+body.dark-mode .form-control::placeholder { color: #888; }
+
+/* ---- Labels ---- */
+body.dark-mode label,
+body.dark-mode .form-label,
+body.dark-mode .form-check-label {
+    color: #cccccc;
+}
+
+/* ---- React-Select (Dash dcc.Dropdown) ---- */
+body.dark-mode .Select-control {
+    background-color: #3a3a3a !important;
+    border-color: #555 !important;
+}
+body.dark-mode .Select-value-label,
+body.dark-mode .Select-placeholder,
+body.dark-mode .Select-input > input {
+    color: #e0e0e0 !important;
+}
+body.dark-mode .Select-arrow { border-top-color: #aaa !important; }
+body.dark-mode .Select-clear { color: #aaa !important; }
+body.dark-mode .Select--single > .Select-control .Select-value { color: #e0e0e0; }
+body.dark-mode .Select-menu-outer {
+    background-color: #3a3a3a;
+    border-color: #555;
+}
+body.dark-mode .Select-option {
+    background-color: #3a3a3a;
+    color: #e0e0e0;
+}
+body.dark-mode .Select-option.is-focused,
+body.dark-mode .Select-option:hover {
+    background-color: #4a4a4a !important;
+    color: #ffffff !important;
+}
+body.dark-mode .Select-option.is-selected {
+    background-color: #2979c8 !important;
+    color: #fff !important;
+}
+
+/* ---- Buttons ---- */
+body.dark-mode .btn-outline-secondary {
+    color: #aaa;
+    border-color: #555;
+}
+body.dark-mode .btn-outline-secondary:hover,
+body.dark-mode .btn-outline-secondary:active {
+    background-color: #3a3a3a;
+    color: #e0e0e0;
+    border-color: #666;
+}
+body.dark-mode .btn-outline-primary {
+    color: #6ea8fe;
+    border-color: #6ea8fe;
+}
+body.dark-mode .btn-outline-primary:hover {
+    background-color: #2979c8;
+    color: #fff;
+}
+body.dark-mode .btn-secondary { background-color: #444; border-color: #555; }
+
+/* ---- Badges ---- */
+body.dark-mode .badge.bg-secondary { background-color: #555 !important; }
+body.dark-mode .badge.bg-light {
+    background-color: #3a3a3a !important;
+    color: #e0e0e0 !important;
+}
+
+/* ---- Alerts ---- */
+body.dark-mode .alert-info    { background-color: #1a3a5c; border-color: #2979c8; color: #9ecbff; }
+body.dark-mode .alert-success { background-color: #0d2b14; border-color: #1a7a2c; color: #87dfa5; }
+body.dark-mode .alert-warning { background-color: #3a2a00; border-color: #b37700; color: #ffd97d; }
+body.dark-mode .alert-danger  { background-color: #2b0d0d; border-color: #7a1a1a; color: #e48787; }
+
+/* ---- Tables ---- */
+body.dark-mode .table {
+    --bs-table-bg: #2d2d2d;
+    --bs-table-striped-bg: #333333;
+    --bs-table-hover-bg: #3a3a3a;
+    --bs-table-border-color: #444;
+    color: #e0e0e0;
+}
+body.dark-mode .table thead th { border-bottom-color: #555; }
+
+/* ---- Modal ---- */
+body.dark-mode .modal-content {
+    background-color: #2d2d2d;
+    color: #e0e0e0;
+    border-color: #444;
+}
+body.dark-mode .modal-header { border-bottom-color: #444; }
+body.dark-mode .modal-footer { border-top-color: #444; }
+body.dark-mode .modal-header .btn-close { filter: invert(1) grayscale(1) brightness(2); }
+
+/* ---- Bootstrap Dropdown menu ---- */
+body.dark-mode .dropdown-menu {
+    background-color: #2d2d2d;
+    border-color: #444;
+}
+body.dark-mode .dropdown-item { color: #e0e0e0; }
+body.dark-mode .dropdown-item:hover { background-color: #3a3a3a; }
+
+/* ---- HR / dividers ---- */
+body.dark-mode hr { border-color: #444; }
+
+/* ---- Text utilities ---- */
+body.dark-mode .text-muted    { color: #aaaaaa !important; }
+body.dark-mode .text-dark     { color: #e0e0e0 !important; }
+body.dark-mode .text-secondary { color: #aaaaaa !important; }
+
+/* ---- Scrollbar (Webkit) ---- */
+body.dark-mode ::-webkit-scrollbar         { background-color: #2d2d2d; width: 8px; }
+body.dark-mode ::-webkit-scrollbar-thumb   { background-color: #555; border-radius: 4px; }
+body.dark-mode ::-webkit-scrollbar-corner  { background-color: #2d2d2d; }
+
+/* ---- dbc Switch / Checklist ---- */
+body.dark-mode .form-check-input:not(:checked) {
+    background-color: #3a3a3a;
+    border-color: #555;
+}
+
+/* ---- List group ---- */
+body.dark-mode .list-group-item {
+    background-color: #2d2d2d;
+    border-color: #444;
+    color: #e0e0e0;
+}

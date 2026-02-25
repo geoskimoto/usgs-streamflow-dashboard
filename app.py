@@ -556,13 +556,20 @@ app.layout = dbc.Container([
             ])
         ], width="auto"),
         dbc.Col([
-            dbc.Button(
-                "◀️ Hide Sidebar", 
-                id="sidebar-toggle-btn", 
-                color="outline-secondary", 
-                size="sm",
-                className="float-end"
-            )
+            dbc.ButtonGroup([
+                dbc.Button(
+                    "☀️ Light Mode",
+                    id="dark-mode-btn",
+                    color="outline-secondary",
+                    size="sm",
+                ),
+                dbc.Button(
+                    "◀️ Hide Sidebar", 
+                    id="sidebar-toggle-btn", 
+                    color="outline-secondary", 
+                    size="sm",
+                ),
+            ], className="float-end")
         ], width="auto")
     ], className="mb-3 d-flex justify-content-between align-items-center"),
     
@@ -604,6 +611,8 @@ app.layout = dbc.Container([
     dcc.Store(id='streamflow-data-store'),
     dcc.Store(id='site-limit-store', data=300),
     dcc.Store(id='auth-store', data={'authenticated': False}),
+    dcc.Store(id='dark-mode-store', data=True),  # Default to dark mode
+    html.Div(id='dark-mode-dummy', style={'display': 'none'}),  # Clientside callback target
     
     # Toast container for notifications
     html.Div(id='toast-container', style={
@@ -1365,6 +1374,38 @@ def update_realtime_filter_info(gauges_data):
     except Exception as e:
         print(f"Error updating real-time filter info: {e}")
         return "Real-time data status unavailable"
+
+
+# Apply dark mode class to body via clientside callback
+app.clientside_callback(
+    """
+    function(darkMode) {
+        if (darkMode) {
+            document.body.classList.add('dark-mode');
+        } else {
+            document.body.classList.remove('dark-mode');
+        }
+        return '';
+    }
+    """,
+    Output('dark-mode-dummy', 'children'),
+    Input('dark-mode-store', 'data'),
+)
+
+
+@app.callback(
+    [Output('dark-mode-store', 'data'),
+     Output('dark-mode-btn', 'children')],
+    Input('dark-mode-btn', 'n_clicks'),
+    State('dark-mode-store', 'data'),
+    prevent_initial_call=False
+)
+def toggle_dark_mode(n_clicks, is_dark):
+    """Toggle dark/light mode."""
+    if n_clicks:
+        is_dark = not is_dark
+    label = "☀️ Light Mode" if is_dark else "🌙 Dark Mode"
+    return is_dark, label
 
 
 # Sidebar toggle callback
