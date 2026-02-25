@@ -686,8 +686,8 @@ class VisualizationManager:
         if not forecast_data:
             return fig
         
-        # Color gradient: newest=bright orange, older=progressively lighter
-        colors = ['#FF6600', '#FF8833', '#FFAA66', '#FFCC99', '#FFE0C0']
+        # Color gradient: newest=dark purple, older=progressively lighter
+        colors = ['#7B2D8E', '#9B59B6', '#B07CC6', '#C89DD6', '#DFC0E6']
         
         try:
             for i, run in enumerate(forecast_data):
@@ -711,10 +711,15 @@ class VisualizationManager:
                 if fc_data['datetime'].dt.tz is not None:
                     fc_data['datetime'] = fc_data['datetime'].dt.tz_localize(None)
                 
-                # Calculate day of water year
-                fc_data['day_of_wy'] = fc_data['datetime'].map(
-                    lambda d: get_day_of_water_year(d, WATER_YEAR_START)
-                )
+                # Calculate fractional day of water year (preserves sub-daily resolution)
+                def _fractional_day_of_wy(d):
+                    if d.month >= WATER_YEAR_START:
+                        wy_start = pd.Timestamp(d.year, WATER_YEAR_START, 1)
+                    else:
+                        wy_start = pd.Timestamp(d.year - 1, WATER_YEAR_START, 1)
+                    return (d - wy_start).total_seconds() / 86400.0 + 1.0
+
+                fc_data['day_of_wy'] = fc_data['datetime'].map(_fractional_day_of_wy)
                 
                 # Find discharge column
                 fc_value_col = None
@@ -751,7 +756,7 @@ class VisualizationManager:
                     y=fc_data[fc_value_col],
                     mode='lines',
                     name=name,
-                    line=dict(color=color, width=line_width, dash='dash'),
+                    line=dict(color=color, width=line_width),
                     visible=visible,
                     customdata=fc_data['hover_date'],
                     hovertemplate=(
