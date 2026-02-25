@@ -770,12 +770,14 @@ class USGSDataManager:
             return
 
         def _worker():
-            logger.info(f"Percentile background thread started (interval={interval_seconds}s)")
+            print(f"[percentile] Background thread started (interval={interval_seconds}s)", flush=True)
             while True:
                 try:
                     self.get_flow_percentile_bands(cache_ttl=0)  # force recompute
                 except Exception as e:
-                    logger.error(f"Background percentile refresh failed: {e}")
+                    import traceback
+                    print(f"[percentile] ERROR in background refresh: {e}", flush=True)
+                    print(traceback.format_exc(), flush=True)
                 # Sleep for interval, but wake immediately if event is set
                 self._refresh_event.wait(timeout=interval_seconds)
                 self._refresh_event.clear()
@@ -814,12 +816,20 @@ class USGSDataManager:
         ):
             return self._percentile_cache
 
-        logger.info("Computing flow percentile bands for map coloring ...")
+        print("[percentile] Computing flow percentile bands ...", flush=True)
 
         # 1. Get most recent daily-mean value per station within past 2 days
-        recent_values = self.adapter.get_recent_discharge_values(days_back=2)
+        try:
+            recent_values = self.adapter.get_recent_discharge_values(days_back=2)
+        except Exception as e:
+            print(f"[percentile] ERROR fetching recent discharge values: {e}", flush=True)
+            self._percentile_cache = {}
+            self._percentile_cache_time = now
+            return {}
+
+        print(f"[percentile] Got {len(recent_values)} stations with 2-day data", flush=True)
         if not recent_values:
-            logger.warning("No recent discharge values returned — percentile bands unavailable")
+            print("[percentile] No recent discharge values — bands unavailable", flush=True)
             self._percentile_cache = {}
             self._percentile_cache_time = now
             return {}
@@ -830,9 +840,11 @@ class USGSDataManager:
             if forecast_ids:
                 before = len(recent_values)
                 recent_values = {sn: v for sn, v in recent_values.items() if sn in forecast_ids}
-                logger.info(f"Filtered percentile candidates to forecast stations: {len(recent_values)}/{before}")
+                print(f"[percentile] Filtered to forecast stations: {len(recent_values)}/{before}", flush=True)
+            else:
+                print("[percentile] No forecast IDs returned — using all recent stations", flush=True)
         except Exception as e:
-            logger.warning(f"Could not filter to forecast stations: {e}")
+            print(f"[percentile] WARNING could not filter to forecast stations: {e}", flush=True)
 
         if not recent_values:
             self._percentile_cache = {}
@@ -902,11 +914,10 @@ class USGSDataManager:
                     if band:
                         bands[sn] = band
         except Exception as e:
-            logger.error(f"Error computing percentile bands: {e}")
+            print(f"[percentile] ERROR in thread pool: {e}", flush=True)
+            import traceback; print(traceback.format_exc(), flush=True)
 
-        logger.info(
-            f"Percentile bands computed for {len(bands)}/{len(recent_values)} stations"
-        )
+        print(f"[percentile] Done: {len(bands)}/{len(recent_values)} stations computed", flush=True)
         self._percentile_cache = bands
         self._percentile_cache_time = now
         return bands
