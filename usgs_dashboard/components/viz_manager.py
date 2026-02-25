@@ -1002,16 +1002,16 @@ class VisualizationManager:
         
         # Plot most recent discharge value from the past 7 days on the curve
         try:
-            cutoff = pd.Timestamp.now() - pd.Timedelta(days=7)
+            cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=7)
             # Data may use a 'datetime' column rather than a DatetimeIndex
             if 'datetime' in data.columns:
-                date_series = pd.to_datetime(data['datetime'])
+                date_series = pd.to_datetime(data['datetime'], utc=True)
                 mask = date_series >= cutoff
                 recent_vals = data.loc[mask, value_col].dropna()
                 recent_dates = date_series[recent_vals.index]
             else:
                 # Fallback: try the index if it's datetime-like
-                idx = pd.to_datetime(data.index, errors='coerce')
+                idx = pd.to_datetime(data.index, errors='coerce', utc=True)
                 mask = idx >= cutoff
                 recent_vals = data.loc[mask, value_col].dropna()
                 recent_dates = idx[recent_vals.index]
@@ -1027,10 +1027,10 @@ class VisualizationManager:
                     mode='markers',
                     name=f'Current ({current_date.strftime("%b %d")})',
                     marker=dict(
-                        symbol='star',
-                        size=16,
-                        color='red',
-                        line=dict(color='darkred', width=1.5),
+                        symbol='square',
+                        size=14,
+                        color='rgba(0, 160, 0, 0.9)',
+                        line=dict(color='darkgreen', width=1.5),
                     ),
                     hovertemplate=(
                         f"<b>Most Recent Reading</b><br>"
