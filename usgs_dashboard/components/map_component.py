@@ -17,6 +17,20 @@ from ..utils.config import (
     MIN_ZOOM_LEVEL, MAX_ZOOM_LEVEL, DEFAULT_ZOOM_LEVEL
 )
 
+# Percentile band configuration: (band_key, label, hex_color, opacity, marker_size_factor)
+PERCENTILE_GROUP_CONFIG = [
+    ('p0_4',    'Very Low',           '#880E4F', 0.92, 1.25),
+    ('p5_10',   'Low',                '#E64A19', 0.90, 1.15),
+    ('p11_25',  'Below Normal',       '#F9A825', 0.88, 1.05),
+    ('p26_50',  'Normal',             '#2E7D32', 0.88, 1.00),
+    ('p51_75',  'Above Normal',       '#1976D2', 0.90, 1.05),
+    ('p76_100', 'High',               '#0D47A1', 0.92, 1.15),
+    ('no_data', 'No Flow Data',       '#808080', 0.60, 0.90),
+    ('inactive','Inactive',           '#404040', 0.40, 0.80),
+]
+
+PERCENTILE_LABELS = {cfg[0]: cfg[1] for cfg in PERCENTILE_GROUP_CONFIG}
+
 
 class ModernMapComponent:
     """Modern map component using MapLibre (not deprecated mapbox)."""
@@ -33,11 +47,12 @@ class ModernMapComponent:
         self._basin_cache = {}
         self._basemaps_dir = Path(__file__).parent.parent.parent / "data" / "basemaps"
         
-    def create_gauge_map(self, gauges_df: pd.DataFrame, 
+    def create_gauge_map(self, gauges_df: pd.DataFrame,
                         selected_gauge: Optional[str] = None,
                         map_style: str = 'open-street-map',
                         height: int = 700,
-                        auto_fit_bounds: bool = True) -> go.Figure:
+                        auto_fit_bounds: bool = True,
+                        percentile_bands: dict = None) -> go.Figure:
         """
         Create interactive map using modern px.scatter_map (no deprecation warnings).
         
@@ -69,7 +84,7 @@ class ModernMapComponent:
             self._calculate_optimal_view(gauges_df)
         
         # Prepare data for px.scatter_map
-        map_data = self._prepare_map_data(gauges_df)
+        map_data = self._prepare_map_data(gauges_df, percentile_bands=percentile_bands)
         
         # Create modern map using px.scatter_map (NEW METHOD)
         # Prepare custom_data for tooltips
@@ -92,7 +107,7 @@ class ModernMapComponent:
             "State: %{customdata[1]}<br>"
             "Catchment Area: %{customdata[2]}<br>"
             "Years of Record: %{customdata[3]}<br>"
-            "Status: %{customdata[4]}<br>"
+            "Condition: <b>%{customdata[9]}</b><br>"
             "Lat: %{customdata[5]:.4f}, Lon: %{customdata[6]:.4f}<br>"
             "<extra></extra>"
         )
@@ -127,7 +142,7 @@ class ModernMapComponent:
             
         return fig
     
-    def _prepare_map_data(self, gauges_df: pd.DataFrame) -> pd.DataFrame:
+    def _prepare_map_data(self, gauges_df: pd.DataFrame, percentile_bands: dict = None) -> pd.DataFrame:
         """Prepare data for modern scatter_map visualization."""
         map_data = gauges_df.copy()
         
@@ -219,43 +234,52 @@ class ModernMapComponent:
             normalized_size = pd.Series([15] * len(map_data), index=map_data.index)
             
         map_data['size_value'] = normalized_size
-        
+
+        # Assign map_group: prefer percentile band, fall back to status
+        if percentile_bands:
+            station_col = 'station_number' if 'station_number' in map_data.columns else 'site_id'
+            map_data['map_group'] = map_data[station_col].map(percentile_bands)
+            no_band = map_data['map_group'].isna()
+            map_data.loc[no_band & (map_data['status'] == 'Inactive'), 'map_group'] = 'inactive'
+            map_data.loc[no_band & (map_data['status'] != 'Inactive'), 'map_group'] = 'no_data'
+        else:
+            map_data['map_group'] = map_data['status'].map(
+                {'Active': 'no_data', 'Inactive': 'inactive'}
+            ).fillna('no_data')
+
+        map_data['percentile_label'] = map_data['map_group'].map(PERCENTILE_LABELS).fillna('Unknown')
+
         return map_data
     
     def _create_usgs_national_map(self, map_data: pd.DataFrame, custom_data_fields: List, gauges_df: pd.DataFrame, height: int = 700) -> go.Figure:
         """Create map with USGS National Map basemap using custom tiles and go.Scattermapbox."""
         fig = go.Figure()
         
-        # Group by status for different traces
-        color_map = self._get_color_map()
-        
-        for status in map_data['status'].unique():
-            status_data = map_data[map_data['status'] == status]
-            
-            # Prepare custom data for this status group
-            custom_data = []
-            for _, row in status_data.iterrows():
-                custom_data.append([
-                    row['site_id'], row['state'], row['catchment_area_display'], 
-                    row['years_of_record_display'], row['status'], row['latitude'], 
-                    row['longitude'], row['size_value'], row['station_name']
-                ])
-            
-            # Inactive stations get smaller markers and lower opacity
-            marker_opacity = 0.4 if status == 'Inactive' else 0.8
-            marker_sizes = status_data['size_value'] * (0.6 if status == 'Inactive' else 1.0)
-            
+        # Render one trace per percentile band
+        for band_key, label, color, opacity, size_factor in PERCENTILE_GROUP_CONFIG:
+            group_df = map_data[map_data['map_group'] == band_key]
+            if group_df.empty:
+                continue
+
+            custom_data = [
+                [row['site_id'], row['state'], row['catchment_area_display'],
+                 row['years_of_record_display'], row['status'], row['latitude'],
+                 row['longitude'], row['size_value'], row['station_name'],
+                 row['percentile_label']]
+                for _, row in group_df.iterrows()
+            ]
+
             fig.add_trace(go.Scattermapbox(
-                lat=status_data['latitude'],
-                lon=status_data['longitude'],
+                lat=group_df['latitude'],
+                lon=group_df['longitude'],
                 mode='markers',
                 marker=dict(
-                    size=marker_sizes,
-                    color=color_map.get(status, '#808080'),
-                    opacity=marker_opacity
+                    size=group_df['size_value'] * size_factor,
+                    color=color,
+                    opacity=opacity,
                 ),
-                text=status_data['station_name'],
-                name=f"{status} ({len(status_data)})",
+                text=group_df['station_name'],
+                name=f"{label} ({len(group_df)})",
                 customdata=custom_data,
                 hovertemplate=(
                     "<b>%{customdata[8]}</b><br>"
@@ -263,12 +287,12 @@ class ModernMapComponent:
                     "State: %{customdata[1]}<br>"
                     "Catchment Area: %{customdata[2]}<br>"
                     "Years of Record: %{customdata[3]}<br>"
-                    "Status: %{customdata[4]}<br>"
+                    "Condition: <b>%{customdata[9]}</b><br>"
                     "Lat: %{customdata[5]:.4f}, Lon: %{customdata[6]:.4f}<br>"
                     "<extra></extra>"
                 )
             ))
-        
+
         # USGS National Map layers configuration matching your working example
         mapbox_layers = [
             {
@@ -316,36 +340,31 @@ class ModernMapComponent:
         """Create map with Stamen Terrain basemap using Stadia Maps hosted tiles."""
         fig = go.Figure()
         
-        # Group by status for different traces
-        color_map = self._get_color_map()
-        
-        for status in map_data['status'].unique():
-            status_data = map_data[map_data['status'] == status]
-            
-            # Prepare custom data for this status group
-            custom_data = []
-            for _, row in status_data.iterrows():
-                custom_data.append([
-                    row['site_id'], row['state'], row['catchment_area_display'], 
-                    row['years_of_record_display'], row['status'], row['latitude'], 
-                    row['longitude'], row['size_value'], row['station_name']
-                ])
-            
-            # Inactive stations get smaller markers and lower opacity
-            marker_opacity = 0.4 if status == 'Inactive' else 0.8
-            marker_sizes = status_data['size_value'] * (0.6 if status == 'Inactive' else 1.0)
-            
+        # Render one trace per percentile band
+        for band_key, label, color, opacity, size_factor in PERCENTILE_GROUP_CONFIG:
+            group_df = map_data[map_data['map_group'] == band_key]
+            if group_df.empty:
+                continue
+
+            custom_data = [
+                [row['site_id'], row['state'], row['catchment_area_display'],
+                 row['years_of_record_display'], row['status'], row['latitude'],
+                 row['longitude'], row['size_value'], row['station_name'],
+                 row['percentile_label']]
+                for _, row in group_df.iterrows()
+            ]
+
             fig.add_trace(go.Scattermapbox(
-                lat=status_data['latitude'],
-                lon=status_data['longitude'],
+                lat=group_df['latitude'],
+                lon=group_df['longitude'],
                 mode='markers',
                 marker=dict(
-                    size=marker_sizes,
-                    color=color_map.get(status, '#808080'),
-                    opacity=marker_opacity
+                    size=group_df['size_value'] * size_factor,
+                    color=color,
+                    opacity=opacity,
                 ),
-                text=status_data['station_name'],
-                name=f"{status} ({len(status_data)})",
+                text=group_df['station_name'],
+                name=f"{label} ({len(group_df)})",
                 customdata=custom_data,
                 hovertemplate=(
                     "<b>%{customdata[8]}</b><br>"
@@ -353,12 +372,12 @@ class ModernMapComponent:
                     "State: %{customdata[1]}<br>"
                     "Catchment Area: %{customdata[2]}<br>"
                     "Years of Record: %{customdata[3]}<br>"
-                    "Status: %{customdata[4]}<br>"
+                    "Condition: <b>%{customdata[9]}</b><br>"
                     "Lat: %{customdata[5]:.4f}, Lon: %{customdata[6]:.4f}<br>"
                     "<extra></extra>"
                 )
             ))
-        
+
         # Stamen Terrain tiles hosted by Stadia Maps
         mapbox_layers = [
             {

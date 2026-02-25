@@ -604,3 +604,31 @@ class DataOpsAdapter:
         except Exception as e:
             logger.warning(f"Error fetching forecast for {usgs_station_number}: {e}")
             return None
+
+    def get_flow_percentile_bands(self, days_back: int = 2) -> Dict[str, str]:
+        """
+        Fetch precomputed percentile bands from StreamflowOps.
+
+        Calls GET /api/v1/observations/discharge/percentile-bands/ and returns
+        a dict mapping station_number -> band_key.
+
+        Band keys: p0_4, p5_10, p11_25, p26_50, p51_75, p76_100
+
+        Returns empty dict on any error so callers degrade gracefully.
+        """
+        if not self.api_enabled or not self.api_client:
+            logger.warning("API not available; cannot fetch percentile bands")
+            return {}
+        try:
+            response = self.api_client._request(
+                'GET',
+                '/api/v1/observations/discharge/percentile-bands/',
+                params={'days_back': days_back}
+            )
+            results = response.get('results', [])
+            bands = {r['station_number']: r['band'] for r in results}
+            logger.info(f"Fetched percentile bands for {len(bands)} stations")
+            return bands
+        except Exception as e:
+            logger.error(f"Failed to fetch percentile bands: {e}")
+            return {}

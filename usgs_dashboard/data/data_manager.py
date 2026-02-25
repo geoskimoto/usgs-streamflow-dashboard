@@ -10,6 +10,8 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 import os
 import logging
+import threading
+import time
 
 from ..utils.config import TARGET_STATES, CACHE_DURATION, MAX_YEARS_LOAD, GAUGE_COLORS
 
@@ -49,6 +51,13 @@ class USGSDataManager:
         
         # Cached stations DataFrame (refreshed on load_regional_gauges)
         self._stations_cache = None
+
+        # Percentile bands cache
+        self._percentile_cache: dict = {}
+        self._percentile_cache_time: float = 0.0
+        self._percentile_cache_ttl: int = 1800        # 30 minutes
+        self._percentile_refresh_event = threading.Event()
+        self._percentile_bg_thread: threading.Thread = None
         
         logger.info(f"✅ USGSDataManager initialized with DataOps adapter")
         logger.info(f"   Mode: {self.adapter.mode}")
@@ -750,6 +759,53 @@ class USGSDataManager:
         except Exception as e:
             logger.warning(f"Error getting forecast station IDs: {e}")
             return set()
+
+
+    def get_cached_percentile_bands(self) -> dict:
+        """
+        Return the most recently fetched percentile bands dict.
+        Non-blocking. Returns {} if never fetched.
+        """
+        return self._percentile_cache.copy()
+
+    def trigger_percentile_refresh(self):
+        """Wake the background thread to refresh immediately."""
+        if self._percentile_refresh_event is not None:
+            self._percentile_refresh_event.set()
+
+    def start_percentile_background_refresh(self, interval_seconds: int = 1800):
+        """
+        Start a daemon thread that refreshes percentile bands periodically.
+        Call once at app startup.
+        """
+        if self._percentile_bg_thread and self._percentile_bg_thread.is_alive():
+            return  # Already running
+
+        def _loop():
+            while True:
+                try:
+                    bands = self.adapter.get_flow_percentile_bands(days_back=2)
+                    if bands:
+                        self._percentile_cache = bands
+                        self._percentile_cache_time = time.time()
+                        print(
+                            f"[percentile] Refreshed: {len(bands)} stations | "
+                            f"{datetime.now().strftime('%H:%M:%S')}",
+                            flush=True
+                        )
+                    else:
+                        print("[percentile] Fetch returned empty result", flush=True)
+                except Exception as e:
+                    print(f"[percentile] Background refresh error: {e}", flush=True)
+                # Wait for next interval or manual trigger
+                self._percentile_refresh_event.wait(timeout=interval_seconds)
+                self._percentile_refresh_event.clear()
+
+        self._percentile_bg_thread = threading.Thread(
+            target=_loop, daemon=True, name="percentile-refresh"
+        )
+        self._percentile_bg_thread.start()
+        print("[percentile] Background refresh thread started", flush=True)
 
 
 def get_data_manager() -> USGSDataManager:

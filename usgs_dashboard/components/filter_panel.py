@@ -157,6 +157,24 @@ class SimplifiedFilterPanel:
                     )
                 ]),
                 
+                # Flow Conditions
+                html.Div([
+                    html.Label("🌊 Flow Conditions:", className="fw-bold mb-2"),
+                    dbc.Button(
+                        "Load Flow Conditions",
+                        id="refresh-flow-conditions-btn",
+                        color="info",
+                        outline=True,
+                        size="sm",
+                        className="w-100",
+                        title="Color map markers by current flow percentile (auto-refreshes every 30 min)",
+                    ),
+                    html.Small(
+                        "Colors map by percentile vs. historical record",
+                        className="text-muted d-block mt-1"
+                    )
+                ], className="mb-3"),
+
                 # Results Summary
                 html.Hr(),
                 html.Div([

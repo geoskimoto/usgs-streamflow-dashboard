@@ -54,6 +54,9 @@ map_component = get_map_component()
 viz_manager = get_visualization_manager()
 filter_panel = SimplifiedFilterPanel()
 
+# Start percentile background refresh thread (fetches from StreamflowOps every 30 min)
+data_manager.start_percentile_background_refresh(interval_seconds=1800)
+
 # Initialize Dash app
 app = dash.Dash(
     __name__,
@@ -705,6 +708,12 @@ app.layout = dbc.Container([
     dcc.Store(id='streamflow-data-store'),
     dcc.Store(id='site-limit-store', data=300),
     dcc.Store(id='auth-store', data={'authenticated': False}),
+    dcc.Store(id='percentile-bands-store', data={}),
+    dcc.Interval(
+        id='percentile-refresh-interval',
+        interval=30_000,   # poll every 30 seconds
+        n_intervals=0,
+    ),
     
     
     # Toast container for notifications
@@ -938,6 +947,20 @@ def load_gauge_data(pathname):
 
 
 @app.callback(
+    Output('percentile-bands-store', 'data'),
+    Input('percentile-refresh-interval', 'n_intervals'),
+    Input('refresh-flow-conditions-btn', 'n_clicks'),
+    prevent_initial_call=False,
+)
+def refresh_percentile_bands(n_intervals, n_clicks):
+    """Poll cached percentile bands every 30 s. Button triggers immediate background refresh."""
+    ctx = callback_context
+    if ctx.triggered and ctx.triggered[0]['prop_id'] == 'refresh-flow-conditions-btn.n_clicks':
+        data_manager.trigger_percentile_refresh()
+    return data_manager.get_cached_percentile_bands()
+
+
+@app.callback(
     [Output('gauge-map', 'figure'),
      Output('gauge-count-badge', 'children'),
      Output('results-count', 'children')],
@@ -952,11 +975,13 @@ def load_gauge_data(pathname):
      Input('huc-filter', 'value'),
      Input('realtime-filter', 'value'),
      Input('station-status-filter', 'value'),
-     Input('forecast-filter', 'value')],
+     Input('forecast-filter', 'value'),
+     Input('percentile-bands-store', 'data')],
     [State('selected-gauge-store', 'data')]
 )
 def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin_boundaries, search_text, states, 
-                                     drainage_range, basins, hucs, show_realtime_only, station_status, show_forecast_only, selected_gauge):
+                                     drainage_range, basins, hucs, show_realtime_only, station_status, show_forecast_only,
+                                     percentile_bands, selected_gauge):
     """Update the gauge map based on simplified filters."""
     if not gauges_data:
         empty_fig = go.Figure()
@@ -974,7 +999,7 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
     if ctx.triggered:
         trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
         # Don't auto-fit for map style, height changes, or when map is just being built from store
-        if trigger_id in ['map-style-dropdown', 'map-height-dropdown', 'gauges-store']:
+        if trigger_id in ['map-style-dropdown', 'map-height-dropdown', 'gauges-store', 'percentile-bands-store']:
             auto_fit = False
     
     # Convert data to DataFrame
@@ -1055,7 +1080,8 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
             selected_gauge=selected_gauge,
             map_style=map_style,
             height=map_height,
-            auto_fit_bounds=auto_fit  # Only auto-fit when filters change, not on map style/height changes
+            auto_fit_bounds=auto_fit,
+            percentile_bands=percentile_bands or {}
         )
         
         # Add watershed boundaries if selected
