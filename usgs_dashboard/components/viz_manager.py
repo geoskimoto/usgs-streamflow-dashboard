@@ -1000,6 +1000,36 @@ class VisualizationManager:
                     annotation_text=f"{p}th percentile"
                 )
         
+        # Plot most recent discharge value from the past 7 days on the curve
+        try:
+            cutoff = pd.Timestamp.now() - pd.Timedelta(days=7)
+            recent = data.loc[data.index >= cutoff, value_col].dropna()
+            if not recent.empty:
+                current_val = recent.iloc[-1]
+                current_date = recent.index[-1]
+                # Exceedance probability: fraction of all historical values >= current value
+                current_exc = (flows >= current_val).sum() / n * 100
+                fig.add_trace(go.Scatter(
+                    x=[current_exc],
+                    y=[current_val],
+                    mode='markers',
+                    name=f'Current ({current_date.strftime("%b %d")})',
+                    marker=dict(
+                        symbol='star',
+                        size=16,
+                        color='red',
+                        line=dict(color='darkred', width=1.5),
+                    ),
+                    hovertemplate=(
+                        f"<b>Most Recent Reading</b><br>"
+                        f"Date: {current_date.strftime('%Y-%m-%d')}<br>"
+                        "Exceedance: %{x:.1f}%<br>"
+                        "Discharge: %{y:.1f} cfs<extra></extra>"
+                    )
+                ))
+        except Exception:
+            pass  # Never block the plot on a marker failure
+        
         fig.update_layout(
             title=f"Flow Duration Curve - Site {site_id}",
             xaxis_title="Exceedance Probability (%)",
