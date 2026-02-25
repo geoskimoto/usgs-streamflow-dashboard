@@ -454,7 +454,68 @@ class DataOpsAdapter:
         except Exception as e:
             logger.error(f"Error fetching active station numbers: {e}")
             return set()
-    
+
+    def get_recent_discharge_values(self, days_back: int = 2) -> dict:
+        """
+        Bulk-fetch the most recent daily_mean discharge value per station
+        for observations within the last `days_back` days.
+
+        Returns:
+            dict mapping station_number -> latest discharge float.
+            Only stations that actually have data within the window are included.
+        """
+        if not self.api_enabled or not self.api_client:
+            logger.warning("API not available for recent discharge values")
+            return {}
+
+        start_date = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
+        latest: dict = {}   # station_number -> (observed_at_str, discharge_float)
+        page_num = 1
+
+        while True:
+            try:
+                response = self.api_client._request(
+                    'GET',
+                    '/api/v1/observations/discharge/',
+                    params={
+                        'start_date': start_date,
+                        'limit': 1000,
+                        'page': page_num,
+                        'type': 'daily_mean',
+                        'ordering': '-observed_at',
+                    }
+                )
+            except Exception as exc:
+                logger.warning(f"Error fetching recent obs page {page_num}: {exc}")
+                break
+
+            if not isinstance(response, dict) or 'results' not in response:
+                break
+
+            results = response['results']
+            if not results:
+                break
+
+            for obs in results:
+                sn = obs.get('station_number', '')
+                raw_val = obs.get('discharge')
+                observed_at = obs.get('observed_at', '')
+                if sn and raw_val is not None:
+                    try:
+                        val = float(raw_val)
+                        if sn not in latest or observed_at > latest[sn][0]:
+                            latest[sn] = (observed_at, val)
+                    except (ValueError, TypeError):
+                        pass
+
+            if not response.get('next'):
+                break
+            page_num += 1
+
+        result = {sn: v for sn, (_, v) in latest.items()}
+        logger.info(f"Found {len(result)} stations with discharge data in last {days_back} days")
+        return result
+
     def clear_cache(self):
         """Clear local cache."""
         if self.cache:

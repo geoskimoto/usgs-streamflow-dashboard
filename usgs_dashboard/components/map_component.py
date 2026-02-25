@@ -17,6 +17,30 @@ from ..utils.config import (
     MIN_ZOOM_LEVEL, MAX_ZOOM_LEVEL, DEFAULT_ZOOM_LEVEL
 )
 
+# Ordered display groups for percentile-based map coloring.
+# Tuple: (map_group_key, legend_label, color, opacity, size_factor)
+PERCENTILE_GROUP_CONFIG = [
+    ('p76_100',          'High (76-100th pct)',         '#0D47A1', 0.85, 1.0),
+    ('p51_75',           'Above Normal (51-75th)',       '#1976D2', 0.85, 1.0),
+    ('p26_50',           'Normal (26-50th)',             '#2E7D32', 0.85, 1.0),
+    ('p11_25',           'Below Normal (11-25th)',       '#F9A825', 0.85, 1.0),
+    ('p5_10',            'Low (5-10th)',                 '#E64A19', 0.90, 1.0),
+    ('p0_4',             'Very Low (0-4th)',             '#880E4F', 0.90, 1.0),
+    ('active_no_recent', 'Active (no 2-day data)',       '#9E9E9E', 0.60, 1.0),
+    ('Inactive',         'Inactive',                    '#424242', 0.40, 0.6),
+]
+
+PERCENTILE_LABELS = {
+    'p76_100':          'High (76-100th percentile)',
+    'p51_75':           'Above Normal (51-75th percentile)',
+    'p26_50':           'Normal (26-50th percentile)',
+    'p11_25':           'Below Normal (11-25th percentile)',
+    'p5_10':            'Low (5-10th percentile)',
+    'p0_4':             'Very Low (0-4th percentile)',
+    'active_no_recent': 'No 2-day data',
+    'Inactive':         'Inactive',
+}
+
 
 class ModernMapComponent:
     """Modern map component using MapLibre (not deprecated mapbox)."""
@@ -37,7 +61,8 @@ class ModernMapComponent:
                         selected_gauge: Optional[str] = None,
                         map_style: str = 'open-street-map',
                         height: int = 700,
-                        auto_fit_bounds: bool = True) -> go.Figure:
+                        auto_fit_bounds: bool = True,
+                        percentile_bands: dict = None) -> go.Figure:
         """
         Create interactive map using modern px.scatter_map (no deprecation warnings).
         
@@ -69,7 +94,7 @@ class ModernMapComponent:
             self._calculate_optimal_view(gauges_df)
         
         # Prepare data for px.scatter_map
-        map_data = self._prepare_map_data(gauges_df)
+        map_data = self._prepare_map_data(gauges_df, percentile_bands=percentile_bands or {})
         
         # Create modern map using px.scatter_map (NEW METHOD)
         # Prepare custom_data for tooltips
@@ -85,7 +110,7 @@ class ModernMapComponent:
         else:
             # Default to USGS National Map
             fig = self._create_usgs_national_map(map_data, custom_data_fields, gauges_df, height)
-        # Set hovertemplate for each trace
+        # Set hovertemplate for each trace (10 customdata fields now)
         hovertemplate = (
             "<b>%{customdata[8]}</b><br>"
             "Site ID: %{customdata[0]}<br>"
@@ -93,6 +118,7 @@ class ModernMapComponent:
             "Catchment Area: %{customdata[2]}<br>"
             "Years of Record: %{customdata[3]}<br>"
             "Status: %{customdata[4]}<br>"
+            "Flow Condition: %{customdata[9]}<br>"
             "Lat: %{customdata[5]:.4f}, Lon: %{customdata[6]:.4f}<br>"
             "<extra></extra>"
         )
@@ -127,7 +153,7 @@ class ModernMapComponent:
             
         return fig
     
-    def _prepare_map_data(self, gauges_df: pd.DataFrame) -> pd.DataFrame:
+    def _prepare_map_data(self, gauges_df: pd.DataFrame, percentile_bands: dict = None) -> pd.DataFrame:
         """Prepare data for modern scatter_map visualization."""
         map_data = gauges_df.copy()
         
@@ -220,42 +246,49 @@ class ModernMapComponent:
             
         map_data['size_value'] = normalized_size
         
+        # Assign map_group and percentile_label for color-coded rendering
+        if percentile_bands is None:
+            percentile_bands = {}
+        
+        def _assign_map_group(row):
+            if row.get('status', 'Active') == 'Inactive':
+                return 'Inactive'
+            band = percentile_bands.get(row['site_id'])
+            return band if band else 'active_no_recent'
+        
+        map_data['map_group'] = map_data.apply(_assign_map_group, axis=1)
+        map_data['percentile_label'] = map_data['map_group'].map(PERCENTILE_LABELS).fillna('')
+        
         return map_data
     
     def _create_usgs_national_map(self, map_data: pd.DataFrame, custom_data_fields: List, gauges_df: pd.DataFrame, height: int = 700) -> go.Figure:
         """Create map with USGS National Map basemap using custom tiles and go.Scattermapbox."""
         fig = go.Figure()
         
-        # Group by status for different traces
-        color_map = self._get_color_map()
-        
-        for status in map_data['status'].unique():
-            status_data = map_data[map_data['status'] == status]
+        # Render traces per percentile group in defined order
+        for group_key, group_label, group_color, opacity, size_factor in PERCENTILE_GROUP_CONFIG:
+            group_data = map_data[map_data['map_group'] == group_key]
+            if group_data.empty:
+                continue
             
-            # Prepare custom data for this status group
             custom_data = []
-            for _, row in status_data.iterrows():
+            for _, row in group_data.iterrows():
                 custom_data.append([
-                    row['site_id'], row['state'], row['catchment_area_display'], 
-                    row['years_of_record_display'], row['status'], row['latitude'], 
-                    row['longitude'], row['size_value'], row['station_name']
+                    row['site_id'], row['state'], row['catchment_area_display'],
+                    row['years_of_record_display'], row['status'], row['latitude'],
+                    row['longitude'], row['size_value'], row['station_name'],
+                    row.get('percentile_label', '')
                 ])
             
-            # Inactive stations get smaller markers and lower opacity
-            marker_opacity = 0.4 if status == 'Inactive' else 0.8
-            marker_sizes = status_data['size_value'] * (0.6 if status == 'Inactive' else 1.0)
+            marker_sizes = group_data['size_value'] * size_factor
             
             fig.add_trace(go.Scattermapbox(
-                lat=status_data['latitude'],
-                lon=status_data['longitude'],
+                lat=group_data['latitude'],
+                lon=group_data['longitude'],
                 mode='markers',
-                marker=dict(
-                    size=marker_sizes,
-                    color=color_map.get(status, '#808080'),
-                    opacity=marker_opacity
-                ),
-                text=status_data['station_name'],
-                name=f"{status} ({len(status_data)})",
+                marker=dict(size=marker_sizes, color=group_color, opacity=opacity),
+                text=group_data['station_name'],
+                name=f"{group_label} ({len(group_data)})",
                 customdata=custom_data,
                 hovertemplate=(
                     "<b>%{customdata[8]}</b><br>"
@@ -264,6 +297,7 @@ class ModernMapComponent:
                     "Catchment Area: %{customdata[2]}<br>"
                     "Years of Record: %{customdata[3]}<br>"
                     "Status: %{customdata[4]}<br>"
+                    "Flow Condition: %{customdata[9]}<br>"
                     "Lat: %{customdata[5]:.4f}, Lon: %{customdata[6]:.4f}<br>"
                     "<extra></extra>"
                 )
@@ -316,36 +350,30 @@ class ModernMapComponent:
         """Create map with Stamen Terrain basemap using Stadia Maps hosted tiles."""
         fig = go.Figure()
         
-        # Group by status for different traces
-        color_map = self._get_color_map()
-        
-        for status in map_data['status'].unique():
-            status_data = map_data[map_data['status'] == status]
+        # Render traces per percentile group in defined order
+        for group_key, group_label, group_color, opacity, size_factor in PERCENTILE_GROUP_CONFIG:
+            group_data = map_data[map_data['map_group'] == group_key]
+            if group_data.empty:
+                continue
             
-            # Prepare custom data for this status group
             custom_data = []
-            for _, row in status_data.iterrows():
+            for _, row in group_data.iterrows():
                 custom_data.append([
-                    row['site_id'], row['state'], row['catchment_area_display'], 
-                    row['years_of_record_display'], row['status'], row['latitude'], 
-                    row['longitude'], row['size_value'], row['station_name']
+                    row['site_id'], row['state'], row['catchment_area_display'],
+                    row['years_of_record_display'], row['status'], row['latitude'],
+                    row['longitude'], row['size_value'], row['station_name'],
+                    row.get('percentile_label', '')
                 ])
             
-            # Inactive stations get smaller markers and lower opacity
-            marker_opacity = 0.4 if status == 'Inactive' else 0.8
-            marker_sizes = status_data['size_value'] * (0.6 if status == 'Inactive' else 1.0)
+            marker_sizes = group_data['size_value'] * size_factor
             
             fig.add_trace(go.Scattermapbox(
-                lat=status_data['latitude'],
-                lon=status_data['longitude'],
+                lat=group_data['latitude'],
+                lon=group_data['longitude'],
                 mode='markers',
-                marker=dict(
-                    size=marker_sizes,
-                    color=color_map.get(status, '#808080'),
-                    opacity=marker_opacity
-                ),
-                text=status_data['station_name'],
-                name=f"{status} ({len(status_data)})",
+                marker=dict(size=marker_sizes, color=group_color, opacity=opacity),
+                text=group_data['station_name'],
+                name=f"{group_label} ({len(group_data)})",
                 customdata=custom_data,
                 hovertemplate=(
                     "<b>%{customdata[8]}</b><br>"
@@ -354,6 +382,7 @@ class ModernMapComponent:
                     "Catchment Area: %{customdata[2]}<br>"
                     "Years of Record: %{customdata[3]}<br>"
                     "Status: %{customdata[4]}<br>"
+                    "Flow Condition: %{customdata[9]}<br>"
                     "Lat: %{customdata[5]:.4f}, Lon: %{customdata[6]:.4f}<br>"
                     "<extra></extra>"
                 )

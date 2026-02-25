@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import logging
 
@@ -49,6 +50,11 @@ class USGSDataManager:
         
         # Cached stations DataFrame (refreshed on load_regional_gauges)
         self._stations_cache = None
+
+        # Cached percentile bands {station_number -> band_key}
+        self._percentile_cache: Optional[dict] = None
+        self._percentile_cache_time: Optional[datetime] = None
+        self._percentile_cache_ttl: int = 900  # 15 minutes
         
         logger.info(f"✅ USGSDataManager initialized with DataOps adapter")
         logger.info(f"   Mode: {self.adapter.mode}")
@@ -750,6 +756,111 @@ class USGSDataManager:
         except Exception as e:
             logger.warning(f"Error getting forecast station IDs: {e}")
             return set()
+
+
+    def get_flow_percentile_bands(self, cache_ttl: int = None) -> dict:
+        """
+        Compute current-condition flow percentile band for each station that
+        has a daily mean discharge observation within the past 2 days.
+
+        Returns a dict {station_number: band_key} where band_key is one of:
+          'p76_100', 'p51_75', 'p26_50', 'p11_25', 'p5_10', 'p0_4'
+
+        Stations with no 2-day data are simply absent from the dict (the map
+        shows them as 'active_no_recent').
+
+        Results are cached for `_percentile_cache_ttl` seconds (default 15 min).
+        """
+        ttl = cache_ttl if cache_ttl is not None else self._percentile_cache_ttl
+        now = datetime.now()
+        if (
+            self._percentile_cache is not None
+            and self._percentile_cache_time is not None
+            and (now - self._percentile_cache_time).total_seconds() < ttl
+        ):
+            return self._percentile_cache
+
+        logger.info("Computing flow percentile bands for map coloring ...")
+
+        # 1. Get most recent daily-mean value per station within past 2 days
+        recent_values = self.adapter.get_recent_discharge_values(days_back=2)
+        if not recent_values:
+            logger.warning("No recent discharge values returned — percentile bands unavailable")
+            self._percentile_cache = {}
+            self._percentile_cache_time = now
+            return {}
+
+        # 2. For each station, fetch full history and compute percentile band
+        def _band_for_station(station_number: str, recent_val: float):
+            """Returns (station_number, band_key | None)."""
+            try:
+                start = (now - timedelta(days=365 * 30)).strftime('%Y-%m-%d')
+                end = now.strftime('%Y-%m-%d')
+                df = self.adapter.get_discharge_data(
+                    station_number=station_number,
+                    start_date=start,
+                    end_date=end,
+                    data_type='daily_mean',
+                )
+                if df.empty:
+                    return station_number, None
+
+                # Find discharge column
+                discharge_col = next(
+                    (c for c in df.columns
+                     if any(t in c.lower() for t in ('discharge', 'flow', '00060'))),
+                    None
+                )
+                if discharge_col is None:
+                    return station_number, None
+
+                flows = df[discharge_col].dropna()
+                if len(flows) < 30:
+                    return station_number, None
+
+                # Exceedance probability → percentile rank
+                exc = (flows >= recent_val).sum() / len(flows) * 100
+                pct = 100.0 - exc  # 0 = lowest, 100 = highest
+
+                if pct <= 4:
+                    band = 'p0_4'
+                elif pct <= 10:
+                    band = 'p5_10'
+                elif pct <= 25:
+                    band = 'p11_25'
+                elif pct <= 50:
+                    band = 'p26_50'
+                elif pct <= 75:
+                    band = 'p51_75'
+                else:
+                    band = 'p76_100'
+
+                return station_number, band
+            except Exception as exc_err:
+                logger.debug(f"Percentile error for {station_number}: {exc_err}")
+                return station_number, None
+
+        bands: dict = {}
+        max_workers = min(15, len(recent_values))
+        try:
+            with ThreadPoolExecutor(max_workers=max_workers) as pool:
+                futures = {
+                    pool.submit(_band_for_station, sn, val): sn
+                    for sn, val in recent_values.items()
+                }
+                for future in as_completed(futures, timeout=120):
+                    sn, band = future.result()
+                    if band:
+                        bands[sn] = band
+        except Exception as e:
+            logger.error(f"Error computing percentile bands: {e}")
+
+        logger.info(
+            f"Percentile bands computed for {len(bands)}/{len(recent_values)} stations"
+        )
+        self._percentile_cache = bands
+        self._percentile_cache_time = now
+        return bands
 
 
 def get_data_manager() -> USGSDataManager:

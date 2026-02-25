@@ -705,6 +705,8 @@ app.layout = dbc.Container([
     dcc.Store(id='streamflow-data-store'),
     dcc.Store(id='site-limit-store', data=300),
     dcc.Store(id='auth-store', data={'authenticated': False}),
+    dcc.Store(id='percentile-bands-store', data={}),
+    dcc.Interval(id='percentile-refresh-interval', interval=900000, n_intervals=0),
     
     
     # Toast container for notifications
@@ -938,6 +940,20 @@ def load_gauge_data(pathname):
 
 
 @app.callback(
+    Output('percentile-bands-store', 'data'),
+    Input('percentile-refresh-interval', 'n_intervals'),
+    prevent_initial_call=False
+)
+def refresh_percentile_bands(n_intervals):
+    """Background refresh of flow percentile bands for map coloring (runs every 15 min)."""
+    try:
+        return data_manager.get_flow_percentile_bands()
+    except Exception as e:
+        print(f"Warning: Could not refresh percentile bands: {e}")
+        return {}
+
+
+@app.callback(
     [Output('gauge-map', 'figure'),
      Output('gauge-count-badge', 'children'),
      Output('results-count', 'children')],
@@ -952,11 +968,12 @@ def load_gauge_data(pathname):
      Input('huc-filter', 'value'),
      Input('realtime-filter', 'value'),
      Input('station-status-filter', 'value'),
-     Input('forecast-filter', 'value')],
+     Input('forecast-filter', 'value'),
+     Input('percentile-bands-store', 'data')],
     [State('selected-gauge-store', 'data')]
 )
 def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin_boundaries, search_text, states, 
-                                     drainage_range, basins, hucs, show_realtime_only, station_status, show_forecast_only, selected_gauge):
+                                     drainage_range, basins, hucs, show_realtime_only, station_status, show_forecast_only, percentile_bands, selected_gauge):
     """Update the gauge map based on simplified filters."""
     if not gauges_data:
         empty_fig = go.Figure()
@@ -1055,7 +1072,8 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
             selected_gauge=selected_gauge,
             map_style=map_style,
             height=map_height,
-            auto_fit_bounds=auto_fit  # Only auto-fit when filters change, not on map style/height changes
+            auto_fit_bounds=auto_fit,  # Only auto-fit when filters change, not on map style/height changes
+            percentile_bands=percentile_bands or {}
         )
         
         # Add watershed boundaries if selected
