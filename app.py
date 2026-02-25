@@ -941,11 +941,12 @@ def load_gauge_data(pathname):
 
 @app.callback(
     Output('percentile-bands-store', 'data'),
-    Input('percentile-refresh-interval', 'n_intervals'),
-    prevent_initial_call=False
+    [Input('refresh-flow-conditions-btn', 'n_clicks'),
+     Input('percentile-refresh-interval', 'n_intervals')],
+    prevent_initial_call=True
 )
-def refresh_percentile_bands(n_intervals):
-    """Background refresh of flow percentile bands for map coloring (runs every 15 min)."""
+def refresh_percentile_bands(n_clicks, n_intervals):
+    """Compute flow percentile bands for map coloring. Triggered by button or every 15 min."""
     try:
         return data_manager.get_flow_percentile_bands()
     except Exception as e:

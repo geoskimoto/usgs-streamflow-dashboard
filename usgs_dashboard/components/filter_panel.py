@@ -100,6 +100,24 @@ class SimplifiedFilterPanel:
                     )
                 ], className="mb-3"),
                 
+                # Flow Conditions refresh
+                html.Div([
+                    html.Label("💧 Flow Conditions:", className="fw-bold mb-2"),
+                    dbc.Button(
+                        "Load Flow Conditions",
+                        id="refresh-flow-conditions-btn",
+                        size="sm",
+                        color="primary",
+                        outline=True,
+                        className="w-100 mb-1"
+                    ),
+                    html.Small(
+                        "Colors map stations by percentile (0-4th to 76-100th). "
+                        "Takes ~30-60 sec to compute.",
+                        className="text-muted d-block"
+                    )
+                ], className="mb-3"),
+                
                 # State Filter
                 html.Div([
                     html.Label("States/Provinces:", className="fw-bold"),
