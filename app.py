@@ -115,9 +115,103 @@ app.index_string = '''
                     font-size: 1rem;
                 }
             }
+
+            /* =============================================
+               DARK MODE
+               ============================================= */
+            body.dark-mode {
+                --bs-body-bg: #1e1e1e;
+                --bs-body-bg-rgb: 30, 30, 30;
+                --bs-body-color: #e0e0e0;
+                --bs-border-color: #444444;
+                --bs-card-bg: #2d2d2d;
+                --bs-card-border-color: #444;
+                background-color: #1e1e1e !important;
+                color: #e0e0e0;
+            }
+            body.dark-mode .container-fluid,
+            body.dark-mode .container { background-color: #1e1e1e; }
+
+            body.dark-mode .sidebar-col {
+                background-color: #252525 !important;
+                border-right-color: #444 !important;
+            }
+
+            body.dark-mode .card {
+                background-color: #2d2d2d !important;
+                border-color: #444 !important;
+                color: #e0e0e0 !important;
+            }
+            body.dark-mode .card-header {
+                background-color: #252525 !important;
+                border-bottom-color: #444 !important;
+                color: #e0e0e0 !important;
+            }
+            body.dark-mode .card-body { background-color: #2d2d2d !important; color: #e0e0e0; }
+            body.dark-mode .card-footer { background-color: #252525 !important; border-top-color: #444 !important; }
+
+            body.dark-mode .form-control,
+            body.dark-mode .form-select,
+            body.dark-mode input[type="text"],
+            body.dark-mode input[type="password"],
+            body.dark-mode input[type="number"],
+            body.dark-mode select,
+            body.dark-mode textarea {
+                background-color: #3a3a3a !important;
+                border-color: #555 !important;
+                color: #e0e0e0 !important;
+            }
+            body.dark-mode label,
+            body.dark-mode .form-label,
+            body.dark-mode .form-check-label { color: #cccccc; }
+
+            /* React-Select (dcc.Dropdown) */
+            body.dark-mode .Select-control { background-color: #3a3a3a !important; border-color: #555 !important; }
+            body.dark-mode .Select-value-label,
+            body.dark-mode .Select-placeholder,
+            body.dark-mode .Select-input > input { color: #e0e0e0 !important; }
+            body.dark-mode .Select-arrow { border-top-color: #aaa !important; }
+            body.dark-mode .Select--single > .Select-control .Select-value { color: #e0e0e0 !important; }
+            body.dark-mode .Select-menu-outer { background-color: #3a3a3a !important; border-color: #555 !important; }
+            body.dark-mode .Select-option { background-color: #3a3a3a !important; color: #e0e0e0 !important; }
+            body.dark-mode .Select-option.is-focused,
+            body.dark-mode .Select-option:hover { background-color: #4a4a4a !important; color: #fff !important; }
+            body.dark-mode .Select-option.is-selected { background-color: #2979c8 !important; color: #fff !important; }
+
+            body.dark-mode .btn-outline-secondary { color: #aaa; border-color: #555; }
+            body.dark-mode .btn-outline-secondary:hover { background-color: #3a3a3a; color: #e0e0e0; border-color: #666; }
+            body.dark-mode .btn-secondary { background-color: #444; border-color: #555; color: #e0e0e0; }
+
+            body.dark-mode .badge.bg-secondary { background-color: #555 !important; }
+            body.dark-mode .badge.bg-light { background-color: #3a3a3a !important; color: #e0e0e0 !important; }
+
+            body.dark-mode .alert-info    { background-color: #1a3a5c; border-color: #2979c8; color: #9ecbff; }
+            body.dark-mode .alert-success { background-color: #0d2b14; border-color: #1a7a2c; color: #87dfa5; }
+            body.dark-mode .alert-warning { background-color: #3a2a00; border-color: #b37700; color: #ffd97d; }
+            body.dark-mode .alert-danger  { background-color: #2b0d0d; border-color: #7a1a1a; color: #e48787; }
+
+            body.dark-mode .table { color: #e0e0e0; --bs-table-bg: #2d2d2d; --bs-table-striped-bg: #333; --bs-table-border-color: #444; }
+
+            body.dark-mode .modal-content { background-color: #2d2d2d; color: #e0e0e0; border-color: #444; }
+            body.dark-mode .modal-header { border-bottom-color: #444; }
+            body.dark-mode .modal-footer { border-top-color: #444; }
+            body.dark-mode .modal-header .btn-close { filter: invert(1) grayscale(1) brightness(2); }
+
+            body.dark-mode hr { border-color: #444; }
+            body.dark-mode .text-muted { color: #aaaaaa !important; }
+            body.dark-mode .text-secondary { color: #aaaaaa !important; }
+            body.dark-mode .list-group-item { background-color: #2d2d2d !important; border-color: #444 !important; color: #e0e0e0 !important; }
+
+            body.dark-mode ::-webkit-scrollbar { background-color: #2d2d2d; width: 8px; }
+            body.dark-mode ::-webkit-scrollbar-thumb { background-color: #555; border-radius: 4px; }
         </style>
     </head>
     <body>
+        <script>
+            /* Apply dark mode immediately on load, before React renders */
+            document.documentElement.classList.add('dark-mode-init');
+            document.body.classList.add('dark-mode');
+        </script>
         {%app_entry%}
         <footer>
             {%config%}
@@ -558,7 +652,7 @@ app.layout = dbc.Container([
         dbc.Col([
             dbc.ButtonGroup([
                 dbc.Button(
-                    "☀️ Light Mode",
+                    "Light Mode",
                     id="dark-mode-btn",
                     color="outline-secondary",
                     size="sm",
@@ -611,8 +705,7 @@ app.layout = dbc.Container([
     dcc.Store(id='streamflow-data-store'),
     dcc.Store(id='site-limit-store', data=300),
     dcc.Store(id='auth-store', data={'authenticated': False}),
-    dcc.Store(id='dark-mode-store', data=True),  # Default to dark mode
-    html.Div(id='dark-mode-dummy', style={'display': 'none'}),  # Clientside callback target
+    
     
     # Toast container for notifications
     html.Div(id='toast-container', style={
@@ -1376,36 +1469,19 @@ def update_realtime_filter_info(gauges_data):
         return "Real-time data status unavailable"
 
 
-# Apply dark mode class to body via clientside callback
+# Dark mode: pure clientside toggle — no server round-trip needed
 app.clientside_callback(
     """
-    function(darkMode) {
-        if (darkMode) {
-            document.body.classList.add('dark-mode');
-        } else {
-            document.body.classList.remove('dark-mode');
-        }
-        return '';
+    function(n_clicks) {
+        if (!n_clicks) { return window.dash_clientside.no_update; }
+        var isDark = document.body.classList.toggle('dark-mode');
+        return isDark ? 'Light Mode' : 'Dark Mode';
     }
     """,
-    Output('dark-mode-dummy', 'children'),
-    Input('dark-mode-store', 'data'),
-)
-
-
-@app.callback(
-    [Output('dark-mode-store', 'data'),
-     Output('dark-mode-btn', 'children')],
+    Output('dark-mode-btn', 'children'),
     Input('dark-mode-btn', 'n_clicks'),
-    State('dark-mode-store', 'data'),
-    prevent_initial_call=False
+    prevent_initial_call=True,
 )
-def toggle_dark_mode(n_clicks, is_dark):
-    """Toggle dark/light mode."""
-    if n_clicks:
-        is_dark = not is_dark
-    label = "☀️ Light Mode" if is_dark else "🌙 Dark Mode"
-    return is_dark, label
 
 
 # Sidebar toggle callback
