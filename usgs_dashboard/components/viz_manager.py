@@ -810,7 +810,7 @@ class VisualizationManager:
 
         fig.update_layout(
             xaxis=dict(
-                rangeslider=dict(visible=True, thickness=0.05),
+                rangeslider=dict(visible=True, thickness=0.10),
             ),
             updatemenus=[
                 dict(

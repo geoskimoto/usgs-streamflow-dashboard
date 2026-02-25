@@ -307,12 +307,12 @@ def create_sidebar():
                 dcc.Dropdown(
                     id="chart-height-dropdown",
                     options=[
-                        {"label": "📱 Compact (300px)", "value": 300},
-                        {"label": "📊 Standard (400px)", "value": 400},
+                        {"label": "📱 Compact (400px)", "value": 400},
+                        {"label": "📊 Standard (500px)", "value": 500},
                         {"label": "🖥️ Large (600px)", "value": 600},
                         {"label": "📺 Extra Large (800px)", "value": 800},
                     ],
-                    value=400,  # Default current size
+                    value=500,  # Default current size
                     className="mb-3"
                 ),
                 
@@ -423,12 +423,12 @@ def create_public_sidebar():
                 dcc.Dropdown(
                     id="chart-height-dropdown",
                     options=[
-                        {"label": "📱 Compact (300px)", "value": 300},
-                        {"label": "📊 Standard (400px)", "value": 400},
+                        {"label": "📱 Compact (400px)", "value": 400},
+                        {"label": "📊 Standard (500px)", "value": 500},
                         {"label": "🖥️ Large (600px)", "value": 600},
                         {"label": "📺 Extra Large (800px)", "value": 800},
                     ],
-                    value=400,
+                    value=500,
                     className="mb-3"
                 ),
                 
