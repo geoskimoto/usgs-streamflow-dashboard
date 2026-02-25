@@ -50,6 +50,7 @@ def verify_password(username, password):
 
 # Initialize components
 data_manager = get_data_manager()
+data_manager.start_background_refresh(1800)  # compute on startup, refresh every 30 min
 map_component = get_map_component()
 viz_manager = get_visualization_manager()
 filter_panel = SimplifiedFilterPanel()
@@ -706,7 +707,7 @@ app.layout = dbc.Container([
     dcc.Store(id='site-limit-store', data=300),
     dcc.Store(id='auth-store', data={'authenticated': False}),
     dcc.Store(id='percentile-bands-store', data={}),
-    dcc.Interval(id='percentile-refresh-interval', interval=900000, n_intervals=0),
+    dcc.Interval(id='percentile-refresh-interval', interval=30000, n_intervals=0),
     
     
     # Toast container for notifications
@@ -943,15 +944,17 @@ def load_gauge_data(pathname):
     Output('percentile-bands-store', 'data'),
     [Input('refresh-flow-conditions-btn', 'n_clicks'),
      Input('percentile-refresh-interval', 'n_intervals')],
-    prevent_initial_call=True
+    prevent_initial_call=False
 )
 def refresh_percentile_bands(n_clicks, n_intervals):
-    """Compute flow percentile bands for map coloring. Triggered by button or every 15 min."""
-    try:
-        return data_manager.get_flow_percentile_bands()
-    except Exception as e:
-        print(f"Warning: Could not refresh percentile bands: {e}")
-        return {}
+    """Push cached percentile bands to the store. Never blocks — computation
+    runs in a background thread started at app startup."""
+    ctx = callback_context
+    if ctx.triggered:
+        trigger = ctx.triggered[0]['prop_id'].split('.')[0]
+        if trigger == 'refresh-flow-conditions-btn' and n_clicks:
+            data_manager.trigger_background_refresh()
+    return data_manager.get_cached_percentile_bands()
 
 
 @app.callback(

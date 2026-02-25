@@ -10,6 +10,8 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
+import threading
+import time
 import logging
 
 from ..utils.config import TARGET_STATES, CACHE_DURATION, MAX_YEARS_LOAD, GAUGE_COLORS
@@ -54,7 +56,9 @@ class USGSDataManager:
         # Cached percentile bands {station_number -> band_key}
         self._percentile_cache: Optional[dict] = None
         self._percentile_cache_time: Optional[datetime] = None
-        self._percentile_cache_ttl: int = 900  # 15 minutes
+        self._percentile_cache_ttl: int = 1800  # 30 minutes
+        self._refresh_event = threading.Event()
+        self._bg_thread: Optional[threading.Thread] = None
         
         logger.info(f"✅ USGSDataManager initialized with DataOps adapter")
         logger.info(f"   Mode: {self.adapter.mode}")
@@ -757,6 +761,36 @@ class USGSDataManager:
             logger.warning(f"Error getting forecast station IDs: {e}")
             return set()
 
+
+    def start_background_refresh(self, interval_seconds: int = 1800) -> None:
+        """Spawn a daemon thread that computes percentile bands on startup then
+        re-runs every *interval_seconds*. The thread can be woken early by
+        calling trigger_background_refresh()."""
+        if self._bg_thread and self._bg_thread.is_alive():
+            return
+
+        def _worker():
+            logger.info(f"Percentile background thread started (interval={interval_seconds}s)")
+            while True:
+                try:
+                    self.get_flow_percentile_bands(cache_ttl=0)  # force recompute
+                except Exception as e:
+                    logger.error(f"Background percentile refresh failed: {e}")
+                # Sleep for interval, but wake immediately if event is set
+                self._refresh_event.wait(timeout=interval_seconds)
+                self._refresh_event.clear()
+
+        self._bg_thread = threading.Thread(target=_worker, daemon=True, name="percentile-refresh")
+        self._bg_thread.start()
+
+    def trigger_background_refresh(self) -> None:
+        """Signal the background thread to recompute immediately."""
+        self._refresh_event.set()
+
+    def get_cached_percentile_bands(self) -> dict:
+        """Return the most recently computed percentile bands without blocking.
+        Returns an empty dict if computation hasn't finished yet."""
+        return self._percentile_cache or {}
 
     def get_flow_percentile_bands(self, cache_ttl: int = None) -> dict:
         """
