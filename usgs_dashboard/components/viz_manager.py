@@ -1003,10 +1003,22 @@ class VisualizationManager:
         # Plot most recent discharge value from the past 7 days on the curve
         try:
             cutoff = pd.Timestamp.now() - pd.Timedelta(days=7)
-            recent = data.loc[data.index >= cutoff, value_col].dropna()
-            if not recent.empty:
-                current_val = recent.iloc[-1]
-                current_date = recent.index[-1]
+            # Data may use a 'datetime' column rather than a DatetimeIndex
+            if 'datetime' in data.columns:
+                date_series = pd.to_datetime(data['datetime'])
+                mask = date_series >= cutoff
+                recent_vals = data.loc[mask, value_col].dropna()
+                recent_dates = date_series[recent_vals.index]
+            else:
+                # Fallback: try the index if it's datetime-like
+                idx = pd.to_datetime(data.index, errors='coerce')
+                mask = idx >= cutoff
+                recent_vals = data.loc[mask, value_col].dropna()
+                recent_dates = idx[recent_vals.index]
+
+            if not recent_vals.empty:
+                current_val = recent_vals.iloc[-1]
+                current_date = pd.to_datetime(recent_dates.iloc[-1])
                 # Exceedance probability: fraction of all historical values >= current value
                 current_exc = (flows >= current_val).sum() / n * 100
                 fig.add_trace(go.Scatter(
