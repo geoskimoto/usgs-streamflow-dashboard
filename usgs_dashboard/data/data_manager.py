@@ -790,6 +790,21 @@ class USGSDataManager:
             self._percentile_cache_time = now
             return {}
 
+        # Limit to forecast stations only — dramatically reduces per-station API calls
+        try:
+            forecast_ids = self.get_forecast_station_ids()
+            if forecast_ids:
+                before = len(recent_values)
+                recent_values = {sn: v for sn, v in recent_values.items() if sn in forecast_ids}
+                logger.info(f"Filtered percentile candidates to forecast stations: {len(recent_values)}/{before}")
+        except Exception as e:
+            logger.warning(f"Could not filter to forecast stations: {e}")
+
+        if not recent_values:
+            self._percentile_cache = {}
+            self._percentile_cache_time = now
+            return {}
+
         # 2. For each station, fetch full history and compute percentile band
         def _band_for_station(station_number: str, recent_val: float):
             """Returns (station_number, band_key | None)."""
