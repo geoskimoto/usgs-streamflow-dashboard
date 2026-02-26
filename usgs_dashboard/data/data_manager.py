@@ -784,25 +784,17 @@ class USGSDataManager:
         def _loop():
             while True:
                 try:
-                    print("[percentile] Thread awake, fetching bands...", flush=True)
                     bands = self.adapter.get_flow_percentile_bands(days_back=2)
                     if bands:
                         self._percentile_cache = bands
                         self._percentile_cache_time = time.time()
-                        print(
-                            f"[percentile] Refreshed: {len(bands)} stations at "
-                            f"{datetime.now().strftime('%H:%M:%S')}",
-                            flush=True
-                        )
                         logger.info(
                             f"Percentile bands refreshed: {len(bands)} stations "
                             f"at {datetime.now().strftime('%H:%M:%S')}"
                         )
                     else:
-                        print("[percentile] Fetch returned empty result", flush=True)
                         logger.warning("Percentile bands fetch returned empty result")
                 except Exception as e:
-                    print(f"[percentile] Background refresh error: {e}", flush=True)
                     logger.error(f"Percentile background refresh error: {e}")
                 # Wait for next interval or manual trigger
                 self._percentile_refresh_event.wait(timeout=interval_seconds)
@@ -812,7 +804,6 @@ class USGSDataManager:
             target=_loop, daemon=True, name="percentile-refresh"
         )
         self._percentile_bg_thread.start()
-        print("[percentile] Background refresh thread started", flush=True)
         logger.info("Percentile background refresh thread started")
 
 
