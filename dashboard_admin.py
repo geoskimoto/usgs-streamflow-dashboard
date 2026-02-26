@@ -17,8 +17,8 @@ from datetime import datetime
 from typing import Dict, Any
 import os
 
-# Import adapter to check DataOps status
-from dataops_adapter import DataOpsAdapter
+# Import adapter factory for status checks
+from dataops_adapter import get_adapter
 
 logger = logging.getLogger(__name__)
 
@@ -211,7 +211,7 @@ def get_system_health_display():
         System health display
     """
     try:
-        adapter = DataOpsAdapter()
+        adapter = get_adapter()
         status = adapter.get_status()
         
         if status.get('api_connected', False):
@@ -277,7 +277,7 @@ def get_system_info():
         System info display
     """
     try:
-        adapter = DataOpsAdapter()
+        adapter = get_adapter()
         status = adapter.get_status()
         
         return dbc.Card([

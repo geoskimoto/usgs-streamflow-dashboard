@@ -16,7 +16,7 @@ import time
 from ..utils.config import TARGET_STATES, CACHE_DURATION, MAX_YEARS_LOAD, GAUGE_COLORS
 
 # Import DataOps adapter
-from dataops_adapter import DirectDBAdapter
+from dataops_adapter import get_adapter
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +46,8 @@ class USGSDataManager:
         self.cache_dir = cache_dir
         os.makedirs(cache_dir, exist_ok=True)
         
-        # Use direct PostgreSQL adapter (same-server deployment)
-        self.adapter = DirectDBAdapter()
+        # Select adapter based on USE_DATAOPS_API env var
+        self.adapter = get_adapter()
         
         # Cached stations DataFrame (refreshed on load_regional_gauges)
         self._stations_cache = None
