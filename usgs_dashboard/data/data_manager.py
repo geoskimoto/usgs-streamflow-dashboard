@@ -16,7 +16,7 @@ import time
 from ..utils.config import TARGET_STATES, CACHE_DURATION, MAX_YEARS_LOAD, GAUGE_COLORS
 
 # Import DataOps adapter
-from dataops_adapter import DataOpsAdapter
+from dataops_adapter import DirectDBAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +46,8 @@ class USGSDataManager:
         self.cache_dir = cache_dir
         os.makedirs(cache_dir, exist_ok=True)
         
-        # Initialize DataOps adapter (hybrid mode by default)
-        self.adapter = DataOpsAdapter()
+        # Use direct PostgreSQL adapter (same-server deployment)
+        self.adapter = DirectDBAdapter()
         
         # Cached stations DataFrame (refreshed on load_regional_gauges)
         self._stations_cache = None
@@ -719,43 +719,40 @@ class USGSDataManager:
     def get_forecast_station_ids(self) -> set:
         """
         Get the set of USGS station IDs that have NWRFC forecast data available.
-        
-        Queries the DataOps API for NOAA_RFC stations, then maps their codes
-        to USGS station IDs via the NWRFC crosswalk. Results are cached.
-        
+
+        Fetches NOAA_RFC stations from the adapter, then maps their codes to
+        USGS station IDs via the bundled NWRFC crosswalk JSON. Results are cached.
+
         Returns:
         --------
         set
             Set of USGS station ID strings that have NWRFC forecasts (~278 stations).
         """
-        # Return cached result if available
         if hasattr(self, '_forecast_station_ids_cache') and self._forecast_station_ids_cache:
             return self._forecast_station_ids_cache
-        
+
         try:
-            # Get all NOAA_RFC station codes from the API
-            if not self.adapter.api_client:
-                logger.warning("No API client available for forecast station lookup")
+            # Fetch NOAA_RFC stations via the adapter (works for both adapter types)
+            nwrfc_df = self.adapter.get_stations(agency='NOAA_RFC', limit=500)
+            if nwrfc_df.empty:
+                logger.warning("No NOAA_RFC stations returned by adapter")
                 return set()
-            
-            resp = self.adapter.api_client.get_stations(agency='NOAA_RFC', limit=500)
-            nwrfc_codes = {s.station_number for s in resp.results}
-            logger.info(f"Found {len(nwrfc_codes)} NOAA_RFC stations from API")
-            
-            # Load crosswalk and map NWRFC codes to USGS IDs
-            self.adapter._load_nwrfc_crosswalk()
-            nwrfc_to_usgs = self.adapter._nwrfc_to_usgs
-            
-            forecast_usgs_ids = set()
-            for code in nwrfc_codes:
-                usgs_id = nwrfc_to_usgs.get(code)
-                if usgs_id:
-                    forecast_usgs_ids.add(usgs_id)
-            
+            nwrfc_codes = set(nwrfc_df['station_number'].tolist())
+            logger.info(f"Found {len(nwrfc_codes)} NOAA_RFC stations")
+
+            # Load NWRFC→USGS crosswalk from bundled JSON file
+            crosswalk_path = os.path.join(
+                os.path.dirname(__file__), '../../data/nwrfc_usgs_crosswalk.json'
+            )
+            import json
+            with open(crosswalk_path) as f:
+                nwrfc_to_usgs = json.load(f)
+
+            forecast_usgs_ids = {nwrfc_to_usgs[c] for c in nwrfc_codes if c in nwrfc_to_usgs}
             logger.info(f"Mapped to {len(forecast_usgs_ids)} unique USGS station IDs with forecasts")
             self._forecast_station_ids_cache = forecast_usgs_ids
             return forecast_usgs_ids
-            
+
         except Exception as e:
             logger.warning(f"Error getting forecast station IDs: {e}")
             return set()

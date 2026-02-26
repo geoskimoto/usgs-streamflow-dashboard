@@ -8,8 +8,9 @@ Provides the same interface as DataOpsAdapter so it can be used
 as a drop-in replacement.
 """
 
+import json
 import os
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -302,6 +303,111 @@ class DirectDBAdapter:
             f"Found {len(result)} active stations in last {months_back} months (DB)"
         )
         return result
+
+    def _load_crosswalk(self) -> dict:
+        """Load NWRFC→USGS crosswalk from bundled JSON file."""
+        crosswalk_path = os.path.join(
+            os.path.dirname(__file__), '..', 'data', 'nwrfc_usgs_crosswalk.json'
+        )
+        try:
+            with open(crosswalk_path) as f:
+                return json.load(f)
+        except Exception as e:
+            logger.warning(f"Could not load NWRFC crosswalk: {e}")
+            return {}
+
+    def _get_nwrfc_code(self, usgs_station_number: str) -> Optional[str]:
+        """Return the NWRFC station code for a given USGS station number, or None."""
+        crosswalk = self._load_crosswalk()
+        # crosswalk is nwrfc_code -> usgs_id; build reverse map
+        usgs_to_nwrfc = {v: k for k, v in crosswalk.items()}
+        return usgs_to_nwrfc.get(usgs_station_number)
+
+    def get_flow_percentile_bands(self, days_back: int = 2) -> Dict[str, str]:
+        """
+        Fetch precomputed percentile bands directly from the DB.
+
+        Returns:
+            Dict mapping station_number -> band key (e.g. 'p26_50')
+        """
+        query = """
+            SELECT s.station_number, fpb.band
+            FROM flow_percentile_bands fpb
+            JOIN stations s ON fpb.station_id = s.id
+            WHERE fpb.observation_date >= CURRENT_DATE - (%s * INTERVAL '1 day')
+        """
+        try:
+            with self._get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query, [days_back])
+                    rows = cur.fetchall()
+            bands = {row[0]: row[1] for row in rows}
+            logger.info(f"Fetched percentile bands for {len(bands)} stations from DB")
+            return bands
+        except Exception as e:
+            logger.error(f"Error fetching percentile bands: {e}")
+            return {}
+
+    def get_forecast_data(
+        self, usgs_station_number: str, num_days: int = 5
+    ) -> Optional[List[Dict]]:
+        """
+        Fetch recent forecast runs for a USGS station directly from the DB.
+
+        Uses the NWRFC→USGS crosswalk to resolve the NWRFC station code,
+        then queries the forecast_runs table (one run per calendar day).
+
+        Returns:
+            List of dicts with 'run_date' (str) and 'data' (DataFrame),
+            ordered newest-first. None if no data available.
+        """
+        nwrfc_code = self._get_nwrfc_code(usgs_station_number)
+        if not nwrfc_code:
+            logger.debug(f"No NWRFC mapping for USGS station {usgs_station_number}")
+            return None
+
+        query = """
+            SELECT DISTINCT ON (fr.run_date::date)
+                fr.run_date,
+                fr.data
+            FROM forecast_runs fr
+            JOIN stations s ON fr.station_id = s.id
+            WHERE s.station_number = %s
+              AND fr.run_date >= NOW() - (%s * INTERVAL '1 day')
+            ORDER BY fr.run_date::date DESC, fr.run_date DESC
+            LIMIT %s
+        """
+        try:
+            with self._get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query, [nwrfc_code, num_days + 1, num_days])
+                    rows = cur.fetchall()
+        except Exception as e:
+            logger.error(f"Error fetching forecast for {usgs_station_number}: {e}")
+            return None
+
+        if not rows:
+            return None
+
+        result = []
+        for run_date, data_json in rows:
+            points = data_json if isinstance(data_json, list) else []
+            df_rows = []
+            for pt in points:
+                dt = pd.to_datetime(pt.get('date'), errors='coerce')
+                val = pt.get('value')
+                if pd.notna(dt) and val is not None:
+                    df_rows.append({'datetime': dt, 'discharge_cfs': float(val)})
+            if not df_rows:
+                continue
+            df = pd.DataFrame(df_rows).sort_values('datetime').reset_index(drop=True)
+            result.append({
+                'run_date': run_date.isoformat() if hasattr(run_date, 'isoformat') else str(run_date),
+                'data': df,
+            })
+
+        logger.info(f"Fetched {len(result)} forecast runs for {usgs_station_number} from DB")
+        return result if result else None
 
     def get_status(self) -> dict:
         """Get adapter status information."""
