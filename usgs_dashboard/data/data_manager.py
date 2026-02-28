@@ -52,12 +52,16 @@ class USGSDataManager:
         # Cached stations DataFrame (refreshed on load_regional_gauges)
         self._stations_cache = None
 
-        # Percentile bands cache
+        # Percentile bands cache (latest date, refreshed by background thread)
         self._percentile_cache: dict = {}
         self._percentile_cache_time: float = 0.0
         self._percentile_cache_ttl: int = 1800        # 30 minutes
         self._percentile_refresh_event = threading.Event()
         self._percentile_bg_thread: threading.Thread = None
+
+        # Date range cache (grows by one day each morning — refresh hourly)
+        self._date_range_cache: dict = {}
+        self._date_range_cache_time: float = 0.0
         
         logger.info(f"✅ USGSDataManager initialized with DataOps adapter")
         logger.info(f"   Mode: {self.adapter.mode}")
@@ -758,6 +762,46 @@ class USGSDataManager:
             return set()
 
 
+    def get_percentile_date_range(self) -> dict:
+        """
+        Return the min/max dates available in daily_flow_percentiles.
+
+        Cached for 1 hour (the range grows by one day each morning).
+        Returns {'min_date': 'YYYY-MM-DD', 'max_date': 'YYYY-MM-DD'} or
+        empty dict when data is not available.
+        """
+        now = time.time()
+        if self._date_range_cache and (now - self._date_range_cache_time) < 3600:
+            return self._date_range_cache.copy()
+        try:
+            result = self.adapter.get_percentile_date_range()
+            if result.get('min_date') and result.get('max_date'):
+                self._date_range_cache = result
+                self._date_range_cache_time = now
+                logger.info(
+                    f"Percentile date range: {result['min_date']} – {result['max_date']}"
+                )
+            return result
+        except Exception as e:
+            logger.error(f"Failed to fetch percentile date range: {e}")
+            return self._date_range_cache.copy()
+
+    def get_percentile_bands_for_date(self, target_date: Optional[str] = None) -> dict:
+        """
+        Return percentile bands for a specific date.
+
+        If target_date is None, returns the cached latest bands (non-blocking,
+        populated by the background thread).  Otherwise fetches the requested
+        historical date directly from the API.
+        """
+        if target_date is None:
+            return self.get_cached_percentile_bands()
+        try:
+            return self.adapter.get_flow_percentile_bands(target_date=target_date)
+        except Exception as e:
+            logger.error(f"Failed to fetch percentile bands for {target_date}: {e}")
+            return {}
+
     def get_cached_percentile_bands(self) -> dict:
         """
         Return the most recently fetched percentile bands dict.
@@ -781,7 +825,7 @@ class USGSDataManager:
         def _loop():
             while True:
                 try:
-                    bands = self.adapter.get_flow_percentile_bands(days_back=2)
+                    bands = self.adapter.get_flow_percentile_bands()
                     if bands:
                         self._percentile_cache = bands
                         self._percentile_cache_time = time.time()

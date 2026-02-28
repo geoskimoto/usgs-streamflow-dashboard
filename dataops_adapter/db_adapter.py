@@ -323,26 +323,59 @@ class DirectDBAdapter:
         usgs_to_nwrfc = {v: k for k, v in crosswalk.items()}
         return usgs_to_nwrfc.get(usgs_station_number)
 
-    def get_flow_percentile_bands(self, days_back: int = 2) -> Dict[str, str]:
-        """
-        Fetch precomputed percentile bands directly from the DB.
-
-        Returns:
-            Dict mapping station_number -> band key (e.g. 'p26_50')
-        """
+    def get_percentile_date_range(self) -> Dict[str, Optional[str]]:
+        """Return the min/max dates available in daily_flow_percentiles."""
         query = """
-            SELECT s.station_number, fpb.band
-            FROM flow_percentile_bands fpb
-            JOIN stations s ON fpb.station_id = s.id
-            WHERE fpb.observation_date >= CURRENT_DATE - (%s * INTERVAL '1 day')
+            SELECT MIN(date)::text, MAX(date)::text
+            FROM daily_flow_percentiles
         """
         try:
             with self._get_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute(query, [days_back])
+                    cur.execute(query)
+                    row = cur.fetchone()
+            return {'min_date': row[0], 'max_date': row[1]} if row else {}
+        except Exception as e:
+            logger.error(f"Error fetching percentile date range from DB: {e}")
+            return {}
+
+    def get_flow_percentile_bands(self, target_date: Optional[str] = None) -> Dict[str, str]:
+        """
+        Fetch precomputed percentile bands directly from the DB.
+
+        Parameters
+        ----------
+        target_date : str, optional
+            ISO date string (YYYY-MM-DD).  If None, uses the latest date
+            available in daily_flow_percentiles.
+
+        Returns:
+            Dict mapping station_number -> band key (e.g. 'p26_50')
+        """
+        if target_date:
+            query = """
+                SELECT s.station_number, dfp.band
+                FROM daily_flow_percentiles dfp
+                JOIN stations s ON dfp.station_id = s.id
+                WHERE dfp.date = %s
+            """
+            params = [target_date]
+        else:
+            query = """
+                SELECT s.station_number, dfp.band
+                FROM daily_flow_percentiles dfp
+                JOIN stations s ON dfp.station_id = s.id
+                WHERE dfp.date = (SELECT MAX(date) FROM daily_flow_percentiles)
+            """
+            params = []
+        try:
+            with self._get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query, params)
                     rows = cur.fetchall()
             bands = {row[0]: row[1] for row in rows}
-            logger.info(f"Fetched percentile bands for {len(bands)} stations from DB")
+            suffix = f" (date={target_date})" if target_date else " (latest)"
+            logger.info(f"Fetched percentile bands for {len(bands)} stations from DB{suffix}")
             return bands
         except Exception as e:
             logger.error(f"Error fetching percentile bands: {e}")

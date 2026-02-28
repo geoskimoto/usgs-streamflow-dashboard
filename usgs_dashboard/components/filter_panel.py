@@ -175,6 +175,35 @@ class SimplifiedFilterPanel:
                     )
                 ], className="mb-3"),
 
+                # Historical Date Slider
+                html.Div([
+                    html.Label("📅 Historical Date:", className="fw-bold mb-1"),
+                    html.Div(
+                        id="selected-date-display",
+                        className="text-muted small mb-2",
+                        children="Load flow conditions to enable",
+                    ),
+                    dcc.Slider(
+                        id="percentile-date-slider",
+                        min=0,
+                        max=1,
+                        value=1,
+                        step=1,
+                        marks={},
+                        tooltip={"placement": "bottom", "always_visible": False},
+                        updatemode="mouseup",
+                    ),
+                    dbc.Button(
+                        "↩ Latest",
+                        id="latest-date-btn",
+                        color="secondary",
+                        outline=True,
+                        size="sm",
+                        className="w-100 mt-2",
+                        title="Jump to the most recent date",
+                    ),
+                ], className="mb-3"),
+
                 # Results Summary
                 html.Hr(),
                 html.Div([

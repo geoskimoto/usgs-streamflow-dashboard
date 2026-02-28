@@ -11,7 +11,7 @@ import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -709,6 +709,8 @@ app.layout = dbc.Container([
     dcc.Store(id='site-limit-store', data=300),
     dcc.Store(id='auth-store', data={'authenticated': False}),
     dcc.Store(id='percentile-bands-store', data={}),
+    dcc.Store(id='percentile-date-range-store', data={}),
+    dcc.Store(id='selected-percentile-date-store', data=None),
     dcc.Interval(
         id='percentile-refresh-interval',
         interval=30_000,   # poll every 30 seconds
@@ -950,20 +952,127 @@ def load_gauge_data(pathname):
     Output('percentile-bands-store', 'data'),
     Input('percentile-refresh-interval', 'n_intervals'),
     Input('refresh-flow-conditions-btn', 'n_clicks'),
+    Input('selected-percentile-date-store', 'data'),
     State('percentile-bands-store', 'data'),
     prevent_initial_call=False,
 )
-def refresh_percentile_bands(n_intervals, n_clicks, current_bands):
-    """Poll cached percentile bands every 30 s. Button triggers immediate background refresh.
-    Returns no_update when data is unchanged to avoid unnecessary map re-renders."""
+def refresh_percentile_bands(n_intervals, n_clicks, selected_date, current_bands):
+    """Poll cached percentile bands every 30 s. Button triggers immediate background
+    refresh. When a historical date is selected via the slider, fetches that date's
+    bands on demand. Returns no_update when data is unchanged."""
     ctx = callback_context
-    if ctx.triggered and ctx.triggered[0]['prop_id'] == 'refresh-flow-conditions-btn.n_clicks':
+    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0] if ctx.triggered else None
+
+    if triggered_id == 'refresh-flow-conditions-btn':
         data_manager.trigger_percentile_refresh()
-    new_bands = data_manager.get_cached_percentile_bands()
-    # Only write to store if bands actually changed, preventing spurious map re-renders
+
+    # Historical date selected — fetch directly (not from background cache)
+    if selected_date:
+        new_bands = data_manager.get_percentile_bands_for_date(selected_date)
+    else:
+        # Latest / default — use the background-refresh cache
+        new_bands = data_manager.get_cached_percentile_bands()
+
     if new_bands == (current_bands or {}):
         return no_update
     return new_bands
+
+
+@app.callback(
+    Output('percentile-date-range-store', 'data'),
+    Input('percentile-refresh-interval', 'n_intervals'),
+    prevent_initial_call=False,
+)
+def load_percentile_date_range(n_intervals):
+    """Fetch the available date range once on page load (n_intervals == 0).
+    Used to configure the historical date slider bounds."""
+    if n_intervals != 0:
+        return no_update
+    range_data = data_manager.get_percentile_date_range()
+    if not range_data.get('min_date') or not range_data.get('max_date'):
+        return {}
+    min_d = date.fromisoformat(range_data['min_date'])
+    max_d = date.fromisoformat(range_data['max_date'])
+    return {
+        'min_date': range_data['min_date'],
+        'max_date': range_data['max_date'],
+        'num_days': (max_d - min_d).days,
+    }
+
+
+@app.callback(
+    [Output('percentile-date-slider', 'min'),
+     Output('percentile-date-slider', 'max'),
+     Output('percentile-date-slider', 'value'),
+     Output('percentile-date-slider', 'marks'),
+     Output('selected-date-display', 'children')],
+    Input('percentile-date-range-store', 'data'),
+    prevent_initial_call=True,
+)
+def init_date_slider(range_data):
+    """Set slider bounds and default label when the date range store populates."""
+    if not range_data or not range_data.get('min_date'):
+        return 0, 1, 1, {}, "No historical data available"
+
+    min_d = date.fromisoformat(range_data['min_date'])
+    max_d = date.fromisoformat(range_data['max_date'])
+    num_days = range_data['num_days']
+
+    # Year marks every decade
+    marks = {}
+    year = min_d.year
+    if year % 10 != 0:
+        year = (year // 10 + 1) * 10
+    while year <= max_d.year:
+        d = date(year, 1, 1)
+        offset = (d - min_d).days
+        if 0 <= offset <= num_days:
+            marks[offset] = str(year)
+        year += 10
+    marks[num_days] = str(max_d.year)
+
+    label = f"Latest — {max_d.strftime('%b %d, %Y')}"
+    return 0, num_days, num_days, marks, label
+
+
+@app.callback(
+    [Output('selected-percentile-date-store', 'data'),
+     Output('selected-date-display', 'children', allow_duplicate=True),
+     Output('percentile-date-slider', 'value', allow_duplicate=True)],
+    [Input('percentile-date-slider', 'value'),
+     Input('latest-date-btn', 'n_clicks')],
+    State('percentile-date-range-store', 'data'),
+    prevent_initial_call=True,
+)
+def update_selected_date(slider_value, latest_clicks, range_data):
+    """Translate slider position (days offset) to a calendar date.
+    Selecting the maximum position (or clicking Latest) reverts to the
+    background-cache path (target_date=None → latest available data)."""
+    if not range_data or not range_data.get('min_date'):
+        return no_update, no_update, no_update
+
+    ctx = callback_context
+    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0] if ctx.triggered else None
+
+    min_d = date.fromisoformat(range_data['min_date'])
+    max_d = date.fromisoformat(range_data['max_date'])
+    num_days = range_data['num_days']
+
+    if triggered_id == 'latest-date-btn':
+        label = f"Latest — {max_d.strftime('%b %d, %Y')}"
+        return None, label, num_days
+
+    if slider_value is None:
+        return no_update, no_update, no_update
+
+    offset = min(int(slider_value), num_days)
+    selected = min_d + timedelta(days=offset)
+
+    if selected >= max_d:
+        label = f"Latest — {max_d.strftime('%b %d, %Y')}"
+        return None, label, no_update
+
+    return selected.isoformat(), selected.strftime("%b %d, %Y"), no_update
 
 
 @app.callback(

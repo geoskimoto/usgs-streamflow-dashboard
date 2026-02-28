@@ -605,12 +605,43 @@ class DataOpsAdapter:
             logger.warning(f"Error fetching forecast for {usgs_station_number}: {e}")
             return None
 
-    def get_flow_percentile_bands(self, days_back: int = 2) -> Dict[str, str]:
+    def get_percentile_date_range(self) -> Dict[str, Optional[str]]:
+        """
+        Fetch the min/max dates available in daily_flow_percentiles.
+
+        Calls GET /api/v1/observations/discharge/percentile-date-range/
+
+        Returns {'min_date': 'YYYY-MM-DD', 'max_date': 'YYYY-MM-DD'} or
+        empty dict on any error.
+        """
+        if not self.api_enabled or not self.api_client:
+            logger.warning("API not available; cannot fetch percentile date range")
+            return {}
+        try:
+            response = self.api_client._request(
+                'GET',
+                '/api/v1/observations/discharge/percentile-date-range/',
+            )
+            return {
+                'min_date': response.get('min_date'),
+                'max_date': response.get('max_date'),
+            }
+        except Exception as e:
+            logger.error(f"Failed to fetch percentile date range: {e}")
+            return {}
+
+    def get_flow_percentile_bands(self, target_date: Optional[str] = None) -> Dict[str, str]:
         """
         Fetch precomputed percentile bands from StreamflowOps.
 
         Calls GET /api/v1/observations/discharge/percentile-bands/ and returns
         a dict mapping station_number -> band_key.
+
+        Parameters
+        ----------
+        target_date : str, optional
+            ISO date string (YYYY-MM-DD).  If None, the API returns the latest
+            available date.
 
         Band keys: p0_4, p5_10, p11_25, p26_50, p51_75, p76_100
 
@@ -620,14 +651,16 @@ class DataOpsAdapter:
             logger.warning("API not available; cannot fetch percentile bands")
             return {}
         try:
+            params = {'date': target_date} if target_date else {}
             response = self.api_client._request(
                 'GET',
                 '/api/v1/observations/discharge/percentile-bands/',
-                params={'days_back': days_back}
+                params=params or None,
             )
             results = response.get('results', [])
             bands = {r['station_number']: r['band'] for r in results}
-            logger.info(f"Fetched percentile bands for {len(bands)} stations")
+            suffix = f" (date={target_date})" if target_date else " (latest)"
+            logger.info(f"Fetched percentile bands for {len(bands)} stations{suffix}")
             return bands
         except Exception as e:
             logger.error(f"Failed to fetch percentile bands: {e}")
