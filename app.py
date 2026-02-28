@@ -615,64 +615,41 @@ def create_main_content():
                         width="auto",
                         className="d-flex align-items-center",
                     ),
-                    # Right: 30-day slider + calendar picker + Latest button
+                    # Right: [−] date picker [+]
                     dbc.Col(
-                        [
-                            dbc.Row(
-                                [
-                                    # Slider — past 30 days
-                                    dbc.Col(
-                                        dcc.Slider(
-                                            id="percentile-date-slider",
-                                            min=0,
-                                            max=30,
-                                            value=30,
-                                            step=1,
-                                            marks={},
-                                            tooltip={"placement": "top", "always_visible": False},
-                                            updatemode="mouseup",
-                                        ),
-                                        style={"minWidth": "200px"},
+                        dbc.Row(
+                            [
+                                dbc.Col(
+                                    dbc.Button(
+                                        "−", id="prev-date-btn",
+                                        color="secondary", outline=True, size="sm",
+                                        title="Previous day",
                                     ),
-                                    # Date picker — any historical date
-                                    dbc.Col(
-                                        dcc.DatePickerSingle(
-                                            id="percentile-date-picker",
-                                            placeholder="Older date…",
-                                            display_format="MMM D, YYYY",
-                                            clearable=True,
-                                            className="date-picker-compact",
-                                        ),
-                                        width="auto",
-                                        className="px-1",
+                                    width="auto",
+                                ),
+                                dbc.Col(
+                                    dcc.DatePickerSingle(
+                                        id="percentile-date-picker",
+                                        display_format="MMM D, YYYY",
+                                        className="date-picker-compact",
                                     ),
-                                    # Latest button
-                                    dbc.Col(
-                                        dbc.Button(
-                                            "↩",
-                                            id="latest-date-btn",
-                                            color="secondary",
-                                            outline=True,
-                                            size="sm",
-                                            title="Jump to latest date",
-                                        ),
-                                        width="auto",
-                                        className="px-0",
+                                    width="auto",
+                                ),
+                                dbc.Col(
+                                    dbc.Button(
+                                        "+", id="next-date-btn",
+                                        color="secondary", outline=True, size="sm",
+                                        title="Next day",
                                     ),
-                                ],
-                                align="center",
-                                className="g-1 flex-nowrap",
-                            ),
-                            html.Div(
-                                id="selected-date-display",
-                                className="text-muted text-end mt-1",
-                                style={"fontSize": "0.72rem"},
-                            ),
-                        ],
-                        className="flex-grow-1",
-                        style={"minWidth": "320px"},
+                                    width="auto",
+                                ),
+                            ],
+                            align="center",
+                            className="g-1 flex-nowrap",
+                        ),
+                        width="auto",
                     ),
-                ], align="center", className="g-0 flex-nowrap"),
+                ], align="center", className="g-0 flex-nowrap justify-content-between"),
                 className="py-2",
             ),
             dbc.CardBody([
@@ -1058,8 +1035,7 @@ def refresh_percentile_bands(n_intervals, n_clicks, selected_date, current_bands
     prevent_initial_call=False,
 )
 def load_percentile_date_range(n_intervals):
-    """Fetch the available date range once on page load (n_intervals == 0).
-    Used to configure the historical date slider bounds."""
+    """Fetch the available date range once on page load (n_intervals == 0)."""
     if n_intervals != 0:
         return no_update
     range_data = data_manager.get_percentile_date_range()
@@ -1075,104 +1051,66 @@ def load_percentile_date_range(n_intervals):
 
 
 @app.callback(
-    [Output('percentile-date-slider', 'min'),
-     Output('percentile-date-slider', 'max'),
-     Output('percentile-date-slider', 'value'),
-     Output('percentile-date-slider', 'marks'),
-     Output('selected-date-display', 'children'),
-     Output('percentile-date-picker', 'min_date_allowed'),
+    [Output('percentile-date-picker', 'min_date_allowed'),
      Output('percentile-date-picker', 'max_date_allowed'),
+     Output('percentile-date-picker', 'date'),
      Output('percentile-date-picker', 'initial_visible_month')],
     Input('percentile-date-range-store', 'data'),
     prevent_initial_call=True,
 )
-def init_date_slider(range_data):
-    """Configure the 30-day slider and calendar picker bounds when the date
-    range store populates. Slider covers the most recent 30 days; the calendar
-    picker allows selecting any date in the full historical record."""
-    empty = (0, 30, 30, {}, "No historical data available", None, None, None)
+def init_date_picker(range_data):
+    """Set picker bounds and default to the latest available date."""
     if not range_data or not range_data.get('max_date'):
-        return empty
-
-    max_d = date.fromisoformat(range_data['max_date'])
-    min_d = date.fromisoformat(range_data['min_date'])
-
-    # Slider marks: weekly intervals across the 30-day window
-    # value=0 → 30 days before max_d, value=30 → max_d
-    marks = {}
-    for step in range(0, 31, 7):
-        d = max_d - timedelta(days=30 - step)
-        marks[step] = d.strftime('%-m/%-d')
-    marks[30] = max_d.strftime('%-m/%-d')  # ensure right edge is labelled
-
-    label = f"Latest — {max_d.strftime('%b %-d, %Y')}"
+        return no_update, no_update, no_update, no_update
     return (
-        0, 30, 30, marks, label,
-        range_data['min_date'],   # picker lower bound
-        range_data['max_date'],   # picker upper bound
+        range_data['min_date'],
+        range_data['max_date'],
+        range_data['max_date'],   # default selection = latest
         range_data['max_date'],   # open calendar on latest month
     )
 
 
 @app.callback(
     [Output('selected-percentile-date-store', 'data'),
-     Output('selected-date-display', 'children', allow_duplicate=True),
-     Output('percentile-date-slider', 'value', allow_duplicate=True),
      Output('percentile-date-picker', 'date', allow_duplicate=True)],
-    [Input('percentile-date-slider', 'value'),
-     Input('percentile-date-picker', 'date'),
-     Input('latest-date-btn', 'n_clicks')],
+    [Input('prev-date-btn', 'n_clicks'),
+     Input('next-date-btn', 'n_clicks'),
+     Input('percentile-date-picker', 'date')],
     State('percentile-date-range-store', 'data'),
     prevent_initial_call=True,
 )
-def update_selected_date(slider_value, picker_date, latest_clicks, range_data):
-    """Coordinate the 30-day slider and calendar picker.
+def update_date_selection(prev_clicks, next_clicks, picker_date, range_data):
+    """Handle − / + buttons and direct calendar selection.
 
-    Slider  → derives date from days-before-max offset; clears picker.
-    Picker  → sets date directly; syncs slider position if within 30 days.
-    Latest  → resets both to the most recent available date.
-    Choosing the slider's rightmost position (30) or any date ≥ max_date
-    reverts to the background-cache path (selected_date = None).
+    The date picker is always the single source of truth for what date is
+    displayed. The − / + buttons shift it by one day and write back to it.
+    When the selected date equals max_date, selected-percentile-date-store is
+    set to None so the map uses the background-refresh cache instead of making
+    an extra API call.
     """
     if not range_data or not range_data.get('max_date'):
-        return no_update, no_update, no_update, no_update
+        return no_update, no_update
 
     ctx = callback_context
     triggered_id = ctx.triggered[0]['prop_id'].split('.')[0] if ctx.triggered else None
+
     max_d = date.fromisoformat(range_data['max_date'])
+    min_d = date.fromisoformat(range_data['min_date'])
+    current = date.fromisoformat(picker_date) if picker_date else max_d
 
-    # ── Latest button ──────────────────────────────────────────────────────
-    if triggered_id == 'latest-date-btn':
-        label = f"Latest — {max_d.strftime('%b %-d, %Y')}"
-        return None, label, 30, None   # reset slider to right edge, clear picker
+    if triggered_id == 'prev-date-btn':
+        selected = max(current - timedelta(days=1), min_d)
+    elif triggered_id == 'next-date-btn':
+        selected = min(current + timedelta(days=1), max_d)
+    elif triggered_id == 'percentile-date-picker':
+        selected = current
+    else:
+        return no_update, no_update
 
-    # ── Calendar picker ────────────────────────────────────────────────────
-    if triggered_id == 'percentile-date-picker':
-        if not picker_date:
-            # Picker cleared → revert to latest
-            label = f"Latest — {max_d.strftime('%b %-d, %Y')}"
-            return None, label, 30, no_update
-        selected = date.fromisoformat(picker_date)
-        if selected >= max_d:
-            label = f"Latest — {max_d.strftime('%b %-d, %Y')}"
-            return None, label, 30, None
-        label = selected.strftime("%b %-d, %Y")
-        # Sync slider to matching position if the date falls within 30 days
-        days_ago = (max_d - selected).days
-        slider_pos = max(0, 30 - days_ago) if days_ago <= 30 else 0
-        return selected.isoformat(), label, slider_pos, no_update
-
-    # ── Slider ─────────────────────────────────────────────────────────────
-    if triggered_id == 'percentile-date-slider' and slider_value is not None:
-        days_ago = 30 - int(slider_value)
-        selected = max_d - timedelta(days=days_ago)
-        if int(slider_value) >= 30 or selected >= max_d:
-            label = f"Latest — {max_d.strftime('%b %-d, %Y')}"
-            return None, label, no_update, None   # clear picker
-        label = selected.strftime("%b %-d, %Y")
-        return selected.isoformat(), label, no_update, None   # clear picker
-
-    return no_update, no_update, no_update, no_update
+    date_str = selected.isoformat()
+    # Use background cache (None) when at the latest date
+    store_val = None if selected >= max_d else date_str
+    return store_val, date_str
 
 
 @app.callback(
