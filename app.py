@@ -78,35 +78,48 @@ app.index_string = '''
         {%favicon%}
         {%css%}
         <style>
-            /* Force side-by-side layout */
+            /* Sidebar base styles */
             .sidebar-col {
                 background-color: #f8f9fa;
                 border-right: 1px solid #dee2e6;
-                min-height: 100vh;
                 padding: 1rem;
-                flex: 0 0 auto !important;  /* Don't grow or shrink, fixed size */
                 overflow-y: auto;
             }
-            
+
             .main-content-col {
                 padding: 1rem;
                 transition: all 0.3s ease-in-out;
-                overflow-x: auto;  /* Allow horizontal scrolling if needed */
                 min-width: 0;  /* Allow shrinking */
             }
-            
-            /* Force flexbox row layout */
-            .flex-nowrap {
-                flex-wrap: nowrap !important;
-                display: flex !important;
+
+            /* Desktop: side-by-side layout */
+            @media (min-width: 992px) {
+                .sidebar-col {
+                    min-height: 100vh;
+                    flex: 0 0 auto !important;
+                }
+                .layout-row {
+                    flex-wrap: nowrap !important;
+                    display: flex !important;
+                }
             }
-            
+
+            /* Mobile: stack and hide sidebar */
+            @media (max-width: 991.98px) {
+                .sidebar-col {
+                    border-right: none;
+                }
+                .main-content-col {
+                    padding: 0.5rem;
+                }
+            }
+
             /* Ensure plots scale properly */
             .plotly-graph-div {
                 width: 100% !important;
                 height: auto !important;
             }
-            
+
             /* Card spacing */
             .main-content-col .card {
                 margin-bottom: 1rem;
@@ -122,7 +135,7 @@ app.index_string = '''
             .date-picker-compact .SingleDatePickerInput {
                 border-radius: 4px;
             }
-            
+
             /* Ensure responsive text on smaller screens */
             @media (max-width: 992px) {
                 .sidebar-col {
@@ -727,22 +740,22 @@ app.layout = dbc.Container([
     # Dashboard content (always exists, just hidden/shown)
     html.Div([
         dbc.Row([
-            # Sidebar - always present, visibility controlled by CSS
+            # Sidebar - hidden on mobile by default, visible on lg+
             dbc.Col(
                 create_public_sidebar(),
-                width=3,  # Fixed 3 columns when visible
-                className="sidebar-col flex-shrink-0",
+                xs=12, lg=3,
+                className="sidebar-col d-none d-lg-block",
                 id="sidebar-col",
-                style={"minWidth": "250px", "maxWidth": "300px", "display": "block"}  # Start visible
             ),
             # Main content - takes remaining space
             dbc.Col(
                 create_main_content(),
+                xs=12, lg=True,
                 id="main-content-wrapper",
-                className="main-content-col flex-grow-1",  # Initial state: sidebar open
+                className="main-content-col flex-grow-1",
                 style={"minWidth": "0"}  # Allow shrinking
             )
-        ], className="flex-nowrap g-0", style={"minHeight": "100vh"})
+        ], className="layout-row g-0", style={"minHeight": "100vh"})
     ], id="dashboard-content", style={"display": "block"}),
     
     # Admin content (always exists, just hidden/shown) 
@@ -1668,7 +1681,7 @@ app.clientside_callback(
 
 # Sidebar toggle callback
 @app.callback(
-    [Output("sidebar-col", "style"),
+    [Output("sidebar-col", "className"),
      Output("sidebar-toggle-btn", "children"),
      Output("main-content-wrapper", "className")],
     [Input("sidebar-toggle-btn", "n_clicks")],
@@ -1678,21 +1691,17 @@ def toggle_sidebar(n_clicks):
     """Toggle sidebar visibility and adjust main content width."""
     # Determine if sidebar should be hidden (odd number of clicks means hidden)
     is_hidden = n_clicks and (n_clicks % 2 == 1)
-    
+
     if is_hidden:
         button_text = "▶️ Show Sidebar"
-        # Hide sidebar completely
-        sidebar_style = {"display": "none"}
-        # Main content takes full width
+        sidebar_class = "sidebar-col d-none"
         main_content_class = "main-content-col w-100"
     else:
         button_text = "◀️ Hide Sidebar"
-        # Show sidebar with fixed width
-        sidebar_style = {"minWidth": "250px", "maxWidth": "300px", "display": "block"}
-        # Main content takes remaining space
+        sidebar_class = "sidebar-col d-none d-lg-block"
         main_content_class = "main-content-col flex-grow-1"
-    
-    return sidebar_style, button_text, main_content_class
+
+    return sidebar_class, button_text, main_content_class
 
 
 # =============================================

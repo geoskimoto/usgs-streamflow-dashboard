@@ -77,19 +77,39 @@ body {
     font-size: 0.9rem;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .display-4 {
-        font-size: 2rem;
-    }
-    
-    .lead {
-        font-size: 1rem;
-    }
-    
-    #gauge-map {
-        height: 400px !important;
-    }
+/* =============================================
+   RESPONSIVE BREAKPOINTS
+   ============================================= */
+
+/* Phones (max 480px) */
+@media (max-width: 480px) {
+    .display-4, .display-3 { font-size: 1.5rem; }
+    .lead { font-size: 0.9rem; }
+    #gauge-map { height: 300px !important; }
+    .card-header { padding: 0.5rem 0.75rem; }
+    .card-body { padding: 0.75rem; }
+}
+
+/* Phablets (481-600px) */
+@media (min-width: 481px) and (max-width: 600px) {
+    .display-4, .display-3 { font-size: 1.75rem; }
+    .lead { font-size: 0.95rem; }
+    #gauge-map { height: 350px !important; }
+    .card-header { padding: 0.5rem 0.75rem; }
+    .card-body { padding: 0.75rem; }
+}
+
+/* Tablets (601-768px) */
+@media (min-width: 601px) and (max-width: 768px) {
+    .display-4, .display-3 { font-size: 2rem; }
+    .lead { font-size: 1rem; }
+    #gauge-map { height: 400px !important; }
+}
+
+/* Small desktops (769-992px) */
+@media (min-width: 769px) and (max-width: 992px) {
+    .display-4, .display-3 { font-size: 2.25rem; }
+    #gauge-map { height: 500px !important; }
 }
 
 /* Plotly figure styling */
