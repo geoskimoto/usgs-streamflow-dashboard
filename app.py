@@ -287,8 +287,8 @@ def create_header():
                                "backgroundClip": "text",
                                "textAlign": "center"
                            }),
-                    html.P(APP_DESCRIPTION, 
-                           className="lead mb-3 text-center",
+                    html.P(APP_DESCRIPTION,
+                           className="lead mb-3 text-center d-none d-md-block",
                            style={
                                "fontSize": "1.1rem",
                                "color": "#6c757d",
@@ -296,10 +296,11 @@ def create_header():
                                "margin": "0 auto",
                                "lineHeight": "1.6"
                            }),
-                    html.Hr(style={"width": "60%", "margin": "1.5rem auto", "border": "2px solid #e9ecef"}),
+                    html.Hr(className="d-none d-md-block",
+                            style={"width": "60%", "margin": "1.5rem auto", "border": "2px solid #e9ecef"}),
                 ], style={
                     "background": "linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)",
-                    "padding": "2rem 1rem",
+                    "padding": "1rem",
                     "borderRadius": "15px",
                     "boxShadow": "0 4px 6px rgba(0, 0, 0, 0.07)",
                     "border": "1px solid rgba(0, 0, 0, 0.05)",
@@ -625,7 +626,9 @@ def create_main_content():
                     # Left: title + station count
                     dbc.Col(
                         [
-                            html.Span("🗺️ Streamflow Gauges Map", className="fw-semibold me-2"),
+                            html.Span("🗺️ ", className="fw-semibold"),
+                            html.Span("Map", className="fw-semibold me-2 d-sm-none"),
+                            html.Span("Streamflow Gauges Map", className="fw-semibold me-2 d-none d-sm-inline"),
                             dbc.Badge(id="gauge-count-badge", color="info", className="align-middle"),
                         ],
                         width="auto",
@@ -640,6 +643,7 @@ def create_main_content():
                                         "−", id="prev-date-btn",
                                         color="secondary", outline=True, size="sm",
                                         title="Previous day",
+                                        style={"minWidth": "32px", "minHeight": "32px"},
                                     ),
                                     width="auto",
                                 ),
@@ -656,6 +660,7 @@ def create_main_content():
                                         "+", id="next-date-btn",
                                         color="secondary", outline=True, size="sm",
                                         title="Next day",
+                                        style={"minWidth": "32px", "minHeight": "32px"},
                                     ),
                                     width="auto",
                                 ),
@@ -676,7 +681,7 @@ def create_main_content():
                         dcc.Graph(
                             id="gauge-map",
                             style={"height": "700px"},  # This will be updated dynamically
-                            config={"displayModeBar": True, "displaylogo": False}
+                            config={"displayModeBar": "hover", "displaylogo": False}
                         )
                     ]
                 )
@@ -800,7 +805,7 @@ app.layout = dbc.Container([
         'top': '80px',
         'right': '20px',
         'zIndex': '9999',
-        'width': '350px'
+        'width': 'min(350px, calc(100vw - 20px))'
     }),
     
 ], fluid=True)
