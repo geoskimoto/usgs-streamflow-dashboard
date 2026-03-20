@@ -182,7 +182,7 @@ class SimplifiedFilterPanel:
                     html.Div(id="filter-summary", className="small text-muted mt-1")
                 ])
             ])
-        ], className="h-100", style={'maxHeight': '85vh', 'overflowY': 'auto'})
+        ], className="h-100", style={'maxHeight': '85vh', 'overflowY': 'auto', 'WebkitOverflowScrolling': 'touch'})
     
     def create_filter_status_bar(self) -> html.Div:
         """Create a compact status bar showing current filters."""

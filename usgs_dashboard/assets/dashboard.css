@@ -4,6 +4,10 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f8f9fa;
+    overflow-x: hidden;
+}
+.sidebar-col {
+    transition: all 0.3s ease-in-out;
 }
 
 /* Header styling */
@@ -169,6 +173,16 @@ body.dark-mode .sidebar-col.d-block {
 .status-fair { color: #FF8C00; }
 .status-poor { color: #DC143C; }
 .status-inactive { color: #808080; }
+
+/* Mobile touch targets */
+@media (max-width: 991.98px) {
+    .form-check-input { width: 1.25em; height: 1.25em; }
+    .form-check-label { padding-left: 0.25em; line-height: 1.6; }
+    .form-control, .form-select { min-height: 44px; font-size: 16px; }  /* Prevents iOS zoom */
+    .form-check { padding-top: 0.375rem; padding-bottom: 0.375rem; }
+    .rc-slider-handle { width: 24px; height: 24px; margin-top: -10px; }
+    .btn-sm { min-height: 36px; min-width: 36px; }
+}
 
 /* =============================================
    DARK MODE

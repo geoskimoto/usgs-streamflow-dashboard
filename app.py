@@ -1506,7 +1506,7 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
             # Set up graph configuration based on user options
             graph_config = {
                 "displaylogo": False,
-                "displayModeBar": "show_toolbar" in selected_options,
+                "displayModeBar": "hover" if "show_toolbar" in selected_options else False,
                 "scrollZoom": "enable_zoom" in selected_options,
                 "doubleClick": "autosize" if "enable_zoom" in selected_options else "reset"
             }
