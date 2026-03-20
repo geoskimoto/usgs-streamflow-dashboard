@@ -720,6 +720,14 @@ app.layout = dbc.Container([
             ])
         ], width="auto"),
         dbc.Col([
+            dbc.Button(
+                "Filters",
+                id="mobile-sidebar-btn",
+                color="outline-primary",
+                size="sm",
+                className="d-lg-none me-2",
+                n_clicks=0,
+            ),
             dbc.ButtonGroup([
                 dbc.Button(
                     "Light Mode",
@@ -728,10 +736,11 @@ app.layout = dbc.Container([
                     size="sm",
                 ),
                 dbc.Button(
-                    "◀️ Hide Sidebar", 
-                    id="sidebar-toggle-btn", 
-                    color="outline-secondary", 
+                    "◀️ Hide Sidebar",
+                    id="sidebar-toggle-btn",
+                    color="outline-secondary",
                     size="sm",
+                    className="d-none d-lg-inline-block",
                 ),
             ], className="float-end")
         ], width="auto")
@@ -1679,29 +1688,47 @@ app.clientside_callback(
 )
 
 
-# Sidebar toggle callback
+# Sidebar toggle callback (desktop + mobile)
 @app.callback(
     [Output("sidebar-col", "className"),
      Output("sidebar-toggle-btn", "children"),
-     Output("main-content-wrapper", "className")],
-    [Input("sidebar-toggle-btn", "n_clicks")],
+     Output("main-content-wrapper", "className"),
+     Output("mobile-sidebar-btn", "children")],
+    [Input("sidebar-toggle-btn", "n_clicks"),
+     Input("mobile-sidebar-btn", "n_clicks")],
+    [State("sidebar-col", "className")],
     prevent_initial_call=False
 )
-def toggle_sidebar(n_clicks):
-    """Toggle sidebar visibility and adjust main content width."""
-    # Determine if sidebar should be hidden (odd number of clicks means hidden)
-    is_hidden = n_clicks and (n_clicks % 2 == 1)
+def toggle_sidebar(desktop_clicks, mobile_clicks, current_class):
+    """Toggle sidebar visibility for desktop and mobile."""
+    ctx = callback_context
+    trigger = ctx.triggered[0]['prop_id'].split('.')[0] if ctx.triggered else None
 
-    if is_hidden:
-        button_text = "▶️ Show Sidebar"
-        sidebar_class = "sidebar-col d-none"
-        main_content_class = "main-content-col w-100"
-    else:
-        button_text = "◀️ Hide Sidebar"
-        sidebar_class = "sidebar-col d-none d-lg-block"
-        main_content_class = "main-content-col flex-grow-1"
+    if trigger == "mobile-sidebar-btn":
+        # Mobile toggle: show full-width or hide
+        current_class = current_class or ""
+        if "d-block" in current_class and "d-none" not in current_class:
+            # Currently visible on mobile -> hide
+            return ("sidebar-col d-none d-lg-block",
+                    "◀️ Hide Sidebar", "main-content-col flex-grow-1", "Filters")
+        else:
+            # Currently hidden on mobile -> show full-width
+            return ("sidebar-col d-block",
+                    "◀️ Hide Sidebar", "main-content-col flex-grow-1", "Close")
 
-    return sidebar_class, button_text, main_content_class
+    if trigger == "sidebar-toggle-btn":
+        # Desktop toggle
+        is_hidden = desktop_clicks and (desktop_clicks % 2 == 1)
+        if is_hidden:
+            return ("sidebar-col d-none",
+                    "▶️ Show Sidebar", "main-content-col w-100", "Filters")
+        else:
+            return ("sidebar-col d-none d-lg-block",
+                    "◀️ Hide Sidebar", "main-content-col flex-grow-1", "Filters")
+
+    # Default state (initial load)
+    return ("sidebar-col d-none d-lg-block",
+            "◀️ Hide Sidebar", "main-content-col flex-grow-1", "Filters")
 
 
 # =============================================
