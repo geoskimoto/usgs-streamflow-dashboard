@@ -116,7 +116,7 @@ class ModernMapComponent:
         
         # Update layout with modern map configuration
         fig.update_layout(
-            margin=dict(r=0, t=50, l=0, b=0),
+            margin=dict(r=0, t=30, l=0, b=0),
             font=dict(family="Arial", size=12),
             legend=dict(
                 orientation="v",
@@ -126,7 +126,8 @@ class ModernMapComponent:
                 x=0.01,
                 bgcolor="rgba(255, 255, 255, 0.9)",
                 bordercolor="black",
-                borderwidth=1
+                borderwidth=1,
+                font=dict(size=10),
             ),
             # NEW: hover configuration for modern maps
             hoverlabel=dict(
