@@ -494,6 +494,7 @@ class VisualizationManager:
                 showlegend = True
                 name = f"WY {year} (Current)"
                 legendgroup = None
+                trace_visible = True
             elif highlight_years and year in highlight_years:
                 # Other highlighted years (not current) get different colors
                 highlight_index = highlight_years.index(year)
@@ -504,6 +505,7 @@ class VisualizationManager:
                 showlegend = True
                 name = f"WY {year}"
                 legendgroup = None
+                trace_visible = True
             else:
                 # All other historical years grouped together
                 line_color = 'lightgray'
@@ -513,6 +515,9 @@ class VisualizationManager:
                 name = "All Historical Years"
                 legendgroup = "historical"
                 shown_historical_legend = True
+                # Default the historical years to hidden; users can toggle
+                # them on via the legend entry.
+                trace_visible = 'legendonly'
             
             # Create custom data for tooltip with percentile info
             customdata = []
@@ -553,6 +558,7 @@ class VisualizationManager:
                 line=dict(color=line_color, width=line_width),
                 opacity=opacity,
                 showlegend=showlegend,
+                visible=trace_visible,
                 customdata=customdata if show_percentiles else None,
                 hovertemplate=hovertemplate
             )

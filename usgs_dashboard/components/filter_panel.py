@@ -39,7 +39,12 @@ class SimplifiedFilterPanel:
                     ], className="mb-3")
                 ]),
                 
-                # Real-time Data Filter
+                # Real-time Data Filter — TEMPORARILY HIDDEN
+                # Real-time data ingestion is not yet wired up. The toggle and
+                # its info element are kept in the tree (hidden) so that the
+                # existing Dash callbacks wired to `realtime-filter` /
+                # `realtime-filter-info` continue to resolve. Remove the
+                # surrounding display:none wrapper to re-enable the UI.
                 html.Div([
                     html.Div([
                         html.Label("📊 Real-time Data:", className="fw-bold mb-2"),
@@ -57,7 +62,7 @@ class SimplifiedFilterPanel:
                             )
                         ])
                     ], className="mb-3")
-                ]),
+                ], style={'display': 'none'}),
                 
                 # Forecast Data Filter
                 html.Div([
@@ -157,24 +162,6 @@ class SimplifiedFilterPanel:
                     )
                 ]),
                 
-                # Flow Conditions
-                html.Div([
-                    html.Label("🌊 Flow Conditions:", className="fw-bold mb-2"),
-                    dbc.Button(
-                        "Load Flow Conditions",
-                        id="refresh-flow-conditions-btn",
-                        color="info",
-                        outline=True,
-                        size="sm",
-                        className="w-100",
-                        title="Color map markers by current flow percentile (auto-refreshes every 30 min)",
-                    ),
-                    html.Small(
-                        "Colors map by percentile vs. historical record",
-                        className="text-muted d-block mt-1"
-                    )
-                ], className="mb-3"),
-
                 # Results Summary
                 html.Hr(),
                 html.Div([

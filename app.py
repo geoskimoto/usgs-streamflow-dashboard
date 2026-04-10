@@ -1032,21 +1032,14 @@ def load_gauge_data(pathname):
 @app.callback(
     Output('percentile-bands-store', 'data'),
     Input('percentile-refresh-interval', 'n_intervals'),
-    Input('refresh-flow-conditions-btn', 'n_clicks'),
     Input('selected-percentile-date-store', 'data'),
     State('percentile-bands-store', 'data'),
     prevent_initial_call=False,
 )
-def refresh_percentile_bands(n_intervals, n_clicks, selected_date, current_bands):
-    """Poll cached percentile bands every 30 s. Button triggers immediate background
-    refresh. When a historical date is selected via the slider, fetches that date's
-    bands on demand. Returns no_update when data is unchanged."""
-    ctx = callback_context
-    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0] if ctx.triggered else None
-
-    if triggered_id == 'refresh-flow-conditions-btn':
-        data_manager.trigger_percentile_refresh()
-
+def refresh_percentile_bands(n_intervals, selected_date, current_bands):
+    """Poll cached percentile bands every 30 s. When a historical date is
+    selected via the slider, fetches that date's bands on demand. Returns
+    no_update when data is unchanged."""
     # Historical date selected — fetch directly (not from background cache)
     if selected_date:
         new_bands = data_manager.get_percentile_bands_for_date(selected_date)
