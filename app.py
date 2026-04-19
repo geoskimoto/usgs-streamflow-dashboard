@@ -1152,12 +1152,13 @@ def update_date_selection(prev_clicks, next_clicks, picker_date, range_data):
      Input('realtime-filter', 'value'),
      Input('station-status-filter', 'value'),
      Input('forecast-filter', 'value'),
+     Input('resid-cast-filter', 'value'),
      Input('percentile-bands-store', 'data')],
     [State('selected-gauge-store', 'data')]
 )
-def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin_boundaries, search_text, states, 
+def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin_boundaries, search_text, states,
                                      drainage_range, basins, hucs, show_realtime_only, station_status, show_forecast_only,
-                                     percentile_bands, selected_gauge):
+                                     show_resid_cast_only, percentile_bands, selected_gauge):
     """Update the gauge map based on simplified filters."""
     if not gauges_data:
         empty_fig = go.Figure()
@@ -1238,7 +1239,7 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
         except Exception as e:
             print(f"Error filtering by real-time data: {e}")
     
-    # Forecast data filter
+    # Forecast data filter (NWRFC + ResidCast)
     if show_forecast_only:
         try:
             forecast_site_ids = data_manager.get_forecast_station_ids()
@@ -1248,7 +1249,18 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
                 filtered_gauges = pd.DataFrame()
         except Exception as e:
             print(f"Error filtering by forecast data: {e}")
-    
+
+    # ResidCast ML forecast filter
+    if show_resid_cast_only:
+        try:
+            rc_ids = data_manager.get_resid_cast_station_ids()
+            if rc_ids:
+                filtered_gauges = filtered_gauges[filtered_gauges['site_id'].isin(rc_ids)]
+            else:
+                filtered_gauges = pd.DataFrame()
+        except Exception as e:
+            print(f"Error filtering by ResidCast stations: {e}")
+
     # Create map figure
     if len(filtered_gauges) > 0:
         fig = map_component.create_gauge_map(

@@ -735,6 +735,16 @@ class USGSDataManager:
             logger.warning(f"Error getting forecast data for {site_id}: {e}")
             return None
 
+    def get_resid_cast_station_ids(self) -> set:
+        """Return the set of USGS station IDs that have ResidCast ML forecasts."""
+        if self._resid_cast is None:
+            return set()
+        try:
+            return self._resid_cast.station_usgs_ids()
+        except Exception as e:
+            logger.warning(f"Error getting ResidCast station IDs: {e}")
+            return set()
+
     def get_resid_cast_forecasts(
         self, site_id: str, num_runs: int = 5
     ) -> List[Dict]:
