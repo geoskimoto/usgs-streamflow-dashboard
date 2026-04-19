@@ -1447,6 +1447,9 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
             print(f"DEBUG: No forecast data available for {selected_gauge}")
     except Exception as e:
         print(f"DEBUG: Error fetching forecast data: {e}")
+
+    # Fetch ResidCast ML forecast data (last 5 runs, if enabled and available)
+    resid_cast_data = data_manager.get_resid_cast_forecasts(selected_gauge, num_runs=5)
     
     # Generate all plots
     plot_types = [
@@ -1480,7 +1483,8 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
                     show_percentiles=show_percentiles,
                     show_statistics=show_statistics,
                     data_manager=data_manager,
-                    forecast_data=forecast_data
+                    forecast_data=forecast_data,
+                    resid_cast_data=resid_cast_data,
                 )
             else:
                 fig = viz_manager.create_streamflow_plot(

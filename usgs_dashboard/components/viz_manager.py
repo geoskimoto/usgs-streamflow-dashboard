@@ -44,7 +44,8 @@ class VisualizationManager:
                              show_percentiles: bool = True,
                              show_statistics: bool = True,
                              data_manager=None,
-                             forecast_data: pd.DataFrame = None) -> go.Figure:
+                             forecast_data: pd.DataFrame = None,
+                             resid_cast_data: list = None) -> go.Figure:
         """
         Create streamflow visualization plot.
         
@@ -108,7 +109,11 @@ class VisualizationManager:
         # Add NWRFC forecast overlay on water year plots (works for both integrated and fallback)
         if plot_type == 'water_year' and forecast_data:
             fig = self._add_forecast_overlay(fig, forecast_data)
-        
+
+        # Add ResidCast ML forecast overlay
+        if plot_type == 'water_year' and resid_cast_data:
+            fig = self._add_resid_cast_overlay(fig, resid_cast_data)
+
         # Add range slider and window buttons to water year plots
         if plot_type == 'water_year':
             current_day_of_wy = get_day_of_water_year(pd.Timestamp.now(), WATER_YEAR_START)
@@ -783,6 +788,113 @@ class VisualizationManager:
         
         return fig
     
+    def _add_resid_cast_overlay(self, fig: go.Figure, resid_cast_data: list) -> go.Figure:
+        """Add ResidCast ML forecast series to a water year plot.
+
+        Each model variant gets its own colour. Multiple runs per variant are
+        shown newest-visible / older-legendonly, using dashed lines to
+        distinguish from the solid NWRFC forecast traces.
+
+        Parameters:
+        -----------
+        fig : go.Figure
+        resid_cast_data : list
+            List of dicts from ResidCastAdapter.get_forecasts():
+            run_date, model_label, model_key, source, data (DataFrame).
+            Flat list ordered newest-first across all variants.
+        """
+        if not resid_cast_data:
+            return fig
+
+        # One base colour per model variant (dark → light for run age)
+        _MODEL_COLORS: dict[str, list[str]] = {
+            "xgboost/raw":       ["#0D6B5E", "#2A9D8F", "#76C7BD", "#B2E4DF", "#D9F2F0"],
+            "muthre/standalone": ["#1A6B2F", "#2D9B4E", "#68C480", "#A8DDB5", "#D4EED9"],
+            "lstm/raw/general":  ["#1F5C8B", "#2E86C1", "#72B6DA", "#AED6F1", "#D6EAF8"],
+        }
+        _DEFAULT_COLORS = ["#555555", "#888888", "#AAAAAA", "#CCCCCC", "#EEEEEE"]
+
+        # Track per-model run index (newest = 0, oldest = N)
+        model_run_index: dict[str, int] = {}
+
+        try:
+            for entry in resid_cast_data:
+                model_key   = entry.get("model_key", "")
+                model_label = entry.get("model_label", model_key)
+                run_date    = entry.get("run_date", "")
+                fc_df       = entry.get("data")
+
+                if fc_df is None or fc_df.empty:
+                    continue
+                if "datetime" not in fc_df.columns:
+                    continue
+
+                fc_data = fc_df.copy()
+                fc_data["datetime"] = pd.to_datetime(fc_data["datetime"], errors="coerce")
+                fc_data = fc_data.dropna(subset=["datetime"])
+                if fc_data.empty:
+                    continue
+
+                if fc_data["datetime"].dt.tz is not None:
+                    fc_data["datetime"] = fc_data["datetime"].dt.tz_localize(None)
+
+                def _fractional_day_of_wy(d):
+                    if d.month >= WATER_YEAR_START:
+                        wy_start = pd.Timestamp(d.year, WATER_YEAR_START, 1)
+                    else:
+                        wy_start = pd.Timestamp(d.year - 1, WATER_YEAR_START, 1)
+                    return (d - wy_start).total_seconds() / 86400.0 + 1.0
+
+                fc_data["day_of_wy"] = fc_data["datetime"].map(_fractional_day_of_wy)
+
+                discharge_col = next(
+                    (c for c in fc_data.columns
+                     if any(t in c.lower() for t in ["discharge", "flow", "cfs"])),
+                    None,
+                )
+                if discharge_col is None or discharge_col not in fc_data.columns:
+                    continue
+
+                fc_data = fc_data.sort_values("day_of_wy")
+                fc_data["hover_date"] = fc_data["datetime"].dt.strftime("%b %-d")
+
+                run_idx = model_run_index.get(model_key, 0)
+                model_run_index[model_key] = run_idx + 1
+
+                palette = _MODEL_COLORS.get(model_key, _DEFAULT_COLORS)
+                color = palette[min(run_idx, len(palette) - 1)]
+                line_width = 2.5 if run_idx == 0 else 1.5
+                visible = True if run_idx == 0 else "legendonly"
+
+                try:
+                    from datetime import datetime as _dt
+                    run_dt = _dt.fromisoformat(run_date)
+                    date_label = run_dt.strftime("%b %-d")
+                except (ValueError, AttributeError):
+                    date_label = run_date[:10] if run_date else f"Run {run_idx + 1}"
+
+                name = f"{model_label} – {date_label}"
+
+                fig.add_trace(go.Scatter(
+                    x=fc_data["day_of_wy"],
+                    y=fc_data[discharge_col],
+                    mode="lines",
+                    name=name,
+                    line=dict(color=color, width=line_width, dash="dash"),
+                    visible=visible,
+                    customdata=fc_data["hover_date"],
+                    hovertemplate=(
+                        f"<b>{name}</b><br>"
+                        "%{customdata}<br>"
+                        "Discharge: %{y:,.0f} cfs<extra></extra>"
+                    ),
+                ))
+
+        except Exception as e:
+            print(f"[WARNING] Error adding ResidCast overlay: {e}")
+
+        return fig
+
     def _add_range_controls(self, fig: go.Figure, current_day: int) -> go.Figure:
         """
         Add a range slider and preset window buttons to a water year plot.

@@ -78,7 +78,7 @@ class SimplifiedFilterPanel:
                             html.Small(
                                 id="forecast-filter-info",
                                 className="text-muted d-block",
-                                children="NWRFC forecast stations (~290 sites)"
+                                children="NWRFC + ML forecast stations"
                             )
                         ])
                     ], className="mb-3")
