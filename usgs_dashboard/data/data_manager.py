@@ -18,6 +18,12 @@ from ..utils.config import TARGET_STATES, CACHE_DURATION, MAX_YEARS_LOAD, GAUGE_
 # Import DataOps adapter
 from dataops_adapter import get_adapter
 
+# Import ResidCast adapter (optional — only active when USE_RESID_CAST=true)
+import os as _os
+_USE_RESID_CAST = _os.environ.get("USE_RESID_CAST", "false").lower() == "true"
+if _USE_RESID_CAST:
+    from resid_cast import ResidCastAdapter
+
 logger = logging.getLogger(__name__)
 
 
@@ -62,7 +68,16 @@ class USGSDataManager:
         # Date range cache (grows by one day each morning — refresh hourly)
         self._date_range_cache: dict = {}
         self._date_range_cache_time: float = 0.0
-        
+
+        # ResidCast ML forecast adapter (None when USE_RESID_CAST is false)
+        self._resid_cast: Optional[Any] = None
+        if _USE_RESID_CAST:
+            try:
+                self._resid_cast = ResidCastAdapter()
+                logger.info("ResidCast adapter initialised")
+            except Exception as e:
+                logger.warning(f"ResidCast adapter failed to initialise: {e}")
+
         logger.info(f"✅ USGSDataManager initialized with DataOps adapter")
         logger.info(f"   Mode: {self.adapter.mode}")
         logger.info(f"   API enabled: {self.adapter.api_enabled}")
@@ -720,46 +735,87 @@ class USGSDataManager:
             logger.warning(f"Error getting forecast data for {site_id}: {e}")
             return None
 
+    def get_resid_cast_forecasts(
+        self, site_id: str, num_runs: int = 5
+    ) -> List[Dict]:
+        """
+        Get ResidCast ML forecast runs for a USGS station.
+
+        Parameters:
+        -----------
+        site_id : str
+            USGS station number (e.g., '14187500')
+        num_runs : int
+            Number of recent forecast runs to return (default: 5)
+
+        Returns:
+        --------
+        list
+            List of dicts with keys: run_date, model_label, model_key,
+            source ('resid_cast'), data (DataFrame with datetime/discharge_cfs).
+            Empty list if ResidCast is disabled or no data available.
+        """
+        if self._resid_cast is None:
+            return []
+        try:
+            runs = self._resid_cast.get_forecasts(site_id, num_runs=num_runs)
+            if runs:
+                logger.info(f"Got {len(runs)} ResidCast forecast series for {site_id}")
+            return runs
+        except Exception as e:
+            logger.warning(f"Error getting ResidCast forecasts for {site_id}: {e}")
+            return []
+
     def get_forecast_station_ids(self) -> set:
         """
-        Get the set of USGS station IDs that have NWRFC forecast data available.
+        Get the set of USGS station IDs that have any forecast data available.
 
-        Fetches NOAA_RFC stations from the adapter, then maps their codes to
-        USGS station IDs via the bundled NWRFC crosswalk JSON. Results are cached.
+        Unions NWRFC forecast stations (from the DataOps adapter crosswalk) with
+        ResidCast stations (from resid_cast_stations.json). Results are cached.
 
         Returns:
         --------
         set
-            Set of USGS station ID strings that have NWRFC forecasts (~278 stations).
+            Set of USGS station ID strings that have at least one forecast source.
         """
         if hasattr(self, '_forecast_station_ids_cache') and self._forecast_station_ids_cache:
             return self._forecast_station_ids_cache
 
+        forecast_usgs_ids: set = set()
+
+        # NWRFC stations via DataOps adapter crosswalk
         try:
-            # Fetch NOAA_RFC stations via the adapter (works for both adapter types)
             nwrfc_df = self.adapter.get_stations(agency='NOAA_RFC', limit=500)
-            if nwrfc_df.empty:
+            if not nwrfc_df.empty:
+                nwrfc_codes = set(nwrfc_df['station_number'].tolist())
+                logger.info(f"Found {len(nwrfc_codes)} NOAA_RFC stations")
+
+                crosswalk_path = os.path.join(
+                    os.path.dirname(__file__), '../../data/nwrfc_usgs_crosswalk.json'
+                )
+                import json
+                with open(crosswalk_path) as f:
+                    nwrfc_to_usgs = json.load(f)
+
+                nwrfc_usgs_ids = {nwrfc_to_usgs[c] for c in nwrfc_codes if c in nwrfc_to_usgs}
+                logger.info(f"Mapped to {len(nwrfc_usgs_ids)} USGS IDs with NWRFC forecasts")
+                forecast_usgs_ids |= nwrfc_usgs_ids
+            else:
                 logger.warning("No NOAA_RFC stations returned by adapter")
-                return set()
-            nwrfc_codes = set(nwrfc_df['station_number'].tolist())
-            logger.info(f"Found {len(nwrfc_codes)} NOAA_RFC stations")
-
-            # Load NWRFC→USGS crosswalk from bundled JSON file
-            crosswalk_path = os.path.join(
-                os.path.dirname(__file__), '../../data/nwrfc_usgs_crosswalk.json'
-            )
-            import json
-            with open(crosswalk_path) as f:
-                nwrfc_to_usgs = json.load(f)
-
-            forecast_usgs_ids = {nwrfc_to_usgs[c] for c in nwrfc_codes if c in nwrfc_to_usgs}
-            logger.info(f"Mapped to {len(forecast_usgs_ids)} unique USGS station IDs with forecasts")
-            self._forecast_station_ids_cache = forecast_usgs_ids
-            return forecast_usgs_ids
-
         except Exception as e:
-            logger.warning(f"Error getting forecast station IDs: {e}")
-            return set()
+            logger.warning(f"Error getting NWRFC forecast station IDs: {e}")
+
+        # ResidCast stations from config
+        if self._resid_cast is not None:
+            try:
+                rc_ids = self._resid_cast.station_usgs_ids()
+                logger.info(f"Found {len(rc_ids)} ResidCast station IDs")
+                forecast_usgs_ids |= rc_ids
+            except Exception as e:
+                logger.warning(f"Error getting ResidCast station IDs: {e}")
+
+        self._forecast_station_ids_cache = forecast_usgs_ids
+        return forecast_usgs_ids
 
 
     def get_percentile_date_range(self) -> dict:
