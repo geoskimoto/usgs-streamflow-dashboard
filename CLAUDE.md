@@ -14,10 +14,14 @@ A Plotly Dash dashboard visualizing USGS streamflow data for the Pacific Northwe
 
 ```
 app.py  (Dash app, callbacks, layout)
+manage_cache.py  (CLI for rebuilding/clearing the stats cache)
+assets/
+  └─ spinner.css   ← hydrology wave loading spinner
   └─ usgs_dashboard/
-       ├─ data/data_manager.py      ← USGSDataManager (public API to callbacks)
-       │     └─ dataops_adapter/    ← abstract data source (API / cache / PostgreSQL)
-       │           └─ dataops_client/  ← HTTP client for StreamflowOps REST API
+       ├─ data/data_manager.py          ← USGSDataManager (public API to callbacks)
+       │     ├─ stats_cache_manager.py  ← parquet cache for per-day-of-WY statistics
+       │     └─ dataops_adapter/        ← abstract data source (API / cache / PostgreSQL)
+       │           └─ dataops_client/   ← HTTP client for StreamflowOps REST API
        ├─ components/
        │     ├─ map_component.py    ← Plotly scatter_map with percentile coloring
        │     ├─ viz_manager.py      ← orchestrates water-year plots
@@ -26,6 +30,8 @@ app.py  (Dash app, callbacks, layout)
              ├─ water_year_calculator.py  ← SINGLE SOURCE OF TRUTH for water-year logic
              ├─ water_year_datetime.py    ← Plotly-aware water-year datetime helpers
              └─ config.py                ← constants, colors, state list, etc.
+data/
+  └─ stats_cache/  ← parquet files: <site_id>_WY<year>.parquet (gitignored)
 ```
 
 Key standalone file:
@@ -39,7 +45,11 @@ Key standalone file:
 2. The adapter hits the StreamflowOps REST API (or local cache / PostgreSQL depending on env).
 3. Stations are enriched with CSV metadata and returned as a DataFrame.
 4. Background thread refreshes percentile bands every 30 min.
-5. Clicking a station triggers `get_streamflow_data()` → `viz_manager` builds a water-year overlay plot.
+5. Clicking a station triggers the **fast plot path** by default:
+   - `get_current_year_data()` fetches only the current water year (~200 rows).
+   - `get_flow_statistics()` loads pre-computed per-day-of-WY stats from `data/stats_cache/` (parquet). On cache miss, fetches full history, computes stats, and writes the cache.
+   - `viz_manager.create_fast_water_year_plot()` renders current year + percentile bands + forecasts with no historical year trace loop.
+6. "Last 30 Years" / "Full Period of Record" buttons trigger the full history path: `get_streamflow_data()` → `create_streamflow_plot()` with `history_mode='30yr'` or `'all'`.
 
 ---
 
@@ -63,15 +73,57 @@ Never hardcode these. Never commit `.env`.
 
 ## Deployment
 
-**Live server** (VPS via CloudPanel + systemd):
+**How this is currently deployed:**
+The dev repo and the deployed app live on the **same VPS**. Files are copied manually from the dev directory to the htdocs directory — there is no `git pull` on the deployed side.
+
+| Path | Purpose |
+|---|---|
+| `/home/geoskimoto/projects/usgs-streamflow-dashboard/` | Dev working directory (this repo) |
+| `/home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/` | Live deployed app |
+
+The deployed app runs under the `streamflowdash` system user via systemd + gunicorn, proxied through nginx. It uses `.venv/` (not `venv/`) as its virtualenv.
+
+**Deploy steps — run as root or sudo:**
+
 ```bash
-# On the VPS as root or sudo user:
-cd /home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io
-sudo -u streamflowdash git pull origin main
+DEV=/home/geoskimoto/projects/usgs-streamflow-dashboard
+DEPLOY=/home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io
+
+# 1. Copy every changed file (mirror the list below as files are added/changed)
+sudo cp $DEV/app.py                                          $DEPLOY/app.py
+sudo cp $DEV/requirements.txt                               $DEPLOY/requirements.txt
+sudo cp $DEV/manage_cache.py                                $DEPLOY/manage_cache.py
+sudo cp $DEV/usgs_dashboard/components/viz_manager.py       $DEPLOY/usgs_dashboard/components/viz_manager.py
+sudo cp $DEV/usgs_dashboard/data/data_manager.py            $DEPLOY/usgs_dashboard/data/data_manager.py
+sudo cp $DEV/usgs_dashboard/data/stats_cache_manager.py     $DEPLOY/usgs_dashboard/data/stats_cache_manager.py
+# For new directories, create them first, then copy:
+# sudo mkdir -p $DEPLOY/<new_dir> && sudo cp -r $DEV/<new_dir>/. $DEPLOY/<new_dir>/
+
+# 2. Fix ownership so the service user can read/write the files
+sudo chown -R streamflowdash:streamflowdash $DEPLOY
+
+# 3. Install any new Python dependencies (uses .venv, not venv)
+sudo -u streamflowdash $DEPLOY/.venv/bin/pip install -r $DEPLOY/requirements.txt -q
+
+# 4. Restart and verify
 sudo systemctl restart streamflow-dashboard.service
-sudo systemctl status streamflow-dashboard.service
-journalctl -u streamflow-dashboard.service -f
+sudo systemctl status streamflow-dashboard.service --no-pager
+journalctl -u streamflow-dashboard.service -f   # tail logs
 ```
+
+**New directories or files added since last deploy** must be explicitly created/copied — rsync is safer for large changes:
+```bash
+sudo rsync -av --chown=streamflowdash:streamflowdash \
+  --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' \
+  --exclude='.env' --exclude='venv/' --exclude='data/stats_cache/' \
+  $DEV/ $DEPLOY/
+sudo systemctl restart streamflow-dashboard.service
+```
+
+**Known layout quirks:**
+- Deployed venv is `.venv/` — the `venv/` directory in htdocs is unused.
+- `data/stats_cache/` holds the water-year statistics parquet cache — do **not** rsync this from dev; let it build on the server.
+- The deployed `.env` has production credentials and must never be overwritten from dev.
 
 **Render.com** (alt deployment — see `render.yaml`):
 ```bash
@@ -105,6 +157,7 @@ pytest -v -s tests/test_data_manager.py   # Specific file
 - **Callbacks stay lean.** All data logic belongs in `data_manager.py` or the adapter, not in `app.py` callbacks.
 - **Single source of truth:** if a utility exists in `utils/`, use it — do not reimplement in `app.py` or a component.
 - **Fallback plots:** `viz_manager` tries `streamflow_analyzer` first, then falls back to `water_year_datetime`. Do not remove the fallback.
+- **Stats cache:** `data/stats_cache/<site_id>_WY<year>.parquet` holds per-day-of-WY percentile bands + mean/median. Valid for the entire current water year; auto-rebuilds at Oct 1. Use `manage_cache.py rebuild_stats` to pre-warm. Never commit or rsync this directory — let it build on each environment independently.
 
 ---
 

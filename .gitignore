@@ -146,6 +146,9 @@ data/usgs_cache.db
 data/*.sqlite
 data/*.db
 
+# Stats cache (per-day-of-WY parquet files; environment-specific, never commit)
+data/stats_cache/
+
 # Large CSV files (can be regenerated)
 # Uncomment if these become too large:
 # *.csv
