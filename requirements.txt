@@ -33,6 +33,7 @@ scipy>=1.8.0
 
 # Performance & Caching
 diskcache>=5.6.0
+pyarrow>=14.0.0
 
 # Additional utilities
 python-dateutil>=2.8.0

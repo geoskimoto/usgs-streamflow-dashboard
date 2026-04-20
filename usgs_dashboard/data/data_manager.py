@@ -509,7 +509,46 @@ class USGSDataManager:
         except Exception as e:
             logger.error(f"Error fetching streamflow data for {site_id}: {e}")
             return pd.DataFrame()
-    
+
+    def get_current_year_data(self, site_id: str) -> pd.DataFrame:
+        """
+        Return daily mean discharge for the current water year only (Oct 1 → today).
+
+        Much faster than get_streamflow_data() because it fetches ~200 rows
+        instead of the full historical record.
+        """
+        from ..utils.water_year_calculator import get_water_year
+        from ..utils.config import WATER_YEAR_START
+        now = datetime.now()
+        current_wy = get_water_year(now, WATER_YEAR_START)
+        wy_start = datetime(current_wy - 1, WATER_YEAR_START, 1)
+        return self.get_streamflow_data(
+            site_id,
+            start_date=wy_start.strftime("%Y-%m-%d"),
+            end_date=now.strftime("%Y-%m-%d"),
+        )
+
+    def get_flow_statistics(self, site_id: str) -> pd.DataFrame:
+        """
+        Return cached per-day-of-water-year statistics for site_id.
+
+        On cache hit (same water year): returns in milliseconds.
+        On cache miss: fetches full historical discharge, computes
+        percentile bands + mean/median, writes parquet cache, and returns.
+        Cache is valid for the entire current water year and rebuilt
+        automatically each Oct 1 when a new completed year is available.
+
+        Returns
+        -------
+        pd.DataFrame with columns: day_of_wy, q10, q25, q50, q75, q90, mean, median
+        Empty DataFrame if insufficient historical data.
+        """
+        from .stats_cache_manager import get_statistics
+        full_data = self.get_streamflow_data(site_id)
+        if full_data.empty:
+            return pd.DataFrame()
+        return get_statistics(site_id, full_data)
+
     def _format_streamflow_data(self, df: pd.DataFrame, site_id: str) -> pd.DataFrame:
         """
         Format discharge data for dashboard compatibility.

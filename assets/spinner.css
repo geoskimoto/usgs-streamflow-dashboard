@@ -1,0 +1,44 @@
+/* Hydrology-themed loading spinner */
+
+.hydro-loading-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    gap: 14px;
+}
+
+.hydro-wave-container {
+    display: flex;
+    align-items: flex-end;
+    gap: 5px;
+    height: 40px;
+}
+
+.hydro-wave-bar {
+    width: 7px;
+    border-radius: 4px 4px 0 0;
+    background: linear-gradient(180deg, #1a7fc1 0%, #5ab4d6 60%, #a8d8ea 100%);
+    animation: hydro-wave 1.1s ease-in-out infinite;
+}
+
+.hydro-wave-bar:nth-child(1) { animation-delay: 0.0s; }
+.hydro-wave-bar:nth-child(2) { animation-delay: 0.1s; }
+.hydro-wave-bar:nth-child(3) { animation-delay: 0.2s; }
+.hydro-wave-bar:nth-child(4) { animation-delay: 0.3s; }
+.hydro-wave-bar:nth-child(5) { animation-delay: 0.4s; }
+.hydro-wave-bar:nth-child(6) { animation-delay: 0.3s; }
+.hydro-wave-bar:nth-child(7) { animation-delay: 0.2s; }
+
+@keyframes hydro-wave {
+    0%, 100% { height: 8px;  opacity: 0.5; }
+    50%       { height: 36px; opacity: 1.0; }
+}
+
+.hydro-loading-label {
+    font-size: 13px;
+    color: #4a90b8;
+    letter-spacing: 0.04em;
+    font-family: sans-serif;
+}

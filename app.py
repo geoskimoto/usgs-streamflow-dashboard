@@ -700,9 +700,54 @@ def create_main_content():
                 )
             ]),
             dbc.CardBody([
+                # History-load buttons (hidden until a station is selected)
+                html.Div(
+                    id="history-buttons-row",
+                    style={"display": "none"},
+                    children=[
+                        html.Small(
+                            "Water Year Plot shows current year + historical statistics. "
+                            "Load additional history on demand:",
+                            className="text-muted d-block mb-2",
+                        ),
+                        dbc.ButtonGroup([
+                            dbc.Button(
+                                "📈 Last 30 Years",
+                                id="show-30yr-history-btn",
+                                color="outline-primary",
+                                size="sm",
+                                n_clicks=0,
+                            ),
+                            dbc.Button(
+                                "📜 Full Period of Record",
+                                id="show-full-history-btn",
+                                color="outline-secondary",
+                                size="sm",
+                                n_clicks=0,
+                            ),
+                            dbc.Button(
+                                "↩ Current Year Only",
+                                id="show-fast-plot-btn",
+                                color="outline-success",
+                                size="sm",
+                                n_clicks=0,
+                            ),
+                        ], className="mb-3"),
+                    ],
+                ),
                 dcc.Loading(
                     id="loading-multiplot",
                     type="default",
+                    custom_spinner=html.Div(
+                        className="hydro-loading-wrapper",
+                        children=[
+                            html.Div(
+                                className="hydro-wave-container",
+                                children=[html.Div(className="hydro-wave-bar") for _ in range(7)],
+                            ),
+                            html.Div("Loading streamflow data…", className="hydro-loading-label"),
+                        ],
+                    ),
                     children=[
                         html.Div(id="multi-plot-container", style={"maxHeight": "1200px", "overflowY": "auto"})
                     ]
@@ -786,6 +831,7 @@ app.layout = dbc.Container([
     # Store components for data persistence and authentication
     dcc.Store(id='gauges-store'),
     dcc.Store(id='selected-gauge-store'),
+    dcc.Store(id='history-mode-store', data=None),
     dcc.Store(id='streamflow-data-store'),
     dcc.Store(id='site-limit-store', data=300),
     dcc.Store(id='auth-store', data={'authenticated': False}),
@@ -1401,149 +1447,165 @@ def handle_gauge_selection(clickData, gauges_data):
     return site_id, badge_text, badge_style, info_content
 
 
+# Callback: manage history-mode-store and history buttons visibility
+@app.callback(
+    [Output('history-mode-store', 'data'),
+     Output('history-buttons-row', 'style')],
+    [Input('selected-gauge-store', 'data'),
+     Input('show-30yr-history-btn', 'n_clicks'),
+     Input('show-full-history-btn', 'n_clicks'),
+     Input('show-fast-plot-btn', 'n_clicks')],
+    prevent_initial_call=True,
+)
+def update_history_mode(selected_gauge, n_30yr, n_full, n_fast):
+    """Track which history mode the user has selected."""
+    from dash import ctx
+    triggered = ctx.triggered_id if ctx.triggered_id else None
+
+    buttons_visible = {"display": "block"} if selected_gauge else {"display": "none"}
+
+    if triggered == 'selected-gauge-store':
+        # New station selected — reset to fast mode
+        return None, buttons_visible
+    if triggered == 'show-30yr-history-btn':
+        return '30yr', buttons_visible
+    if triggered == 'show-full-history-btn':
+        return 'all', buttons_visible
+    if triggered == 'show-fast-plot-btn':
+        return None, buttons_visible
+
+    return None, buttons_visible
+
+
 # Multi-plot callback: generates all plots for selected site
 @app.callback(
     Output('multi-plot-container', 'children'),
     [Input('selected-gauge-store', 'data'),
      Input('highlight-years-input', 'value'),
      Input('chart-height-dropdown', 'value'),
-     Input('plot-options-checklist', 'value')],
+     Input('plot-options-checklist', 'value'),
+     Input('history-mode-store', 'data')],
     [State('gauges-store', 'data')]
 )
-def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_options, gauges_data):
+def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_options,
+                       history_mode, gauges_data):
     """Generate and display all streamflow plots for the selected site."""
     if not selected_gauge:
         return [html.P("Select a gauge on the map to view streamflow plots.", className="text-muted")]
-    
+
     # Parse highlight years
     highlight_years = []
     if highlight_years_text:
         try:
             years_str = highlight_years_text.replace(' ', '')
             if years_str:
-                highlight_years = [int(year.strip()) for year in years_str.split(',') if year.strip().isdigit()]
-            print(f"DEBUG: Parsed highlight years: {highlight_years} from input: '{highlight_years_text}'")
+                highlight_years = [int(y.strip()) for y in years_str.split(',') if y.strip().isdigit()]
         except Exception as e:
             print(f"DEBUG: Error parsing highlight years: {e}")
-            highlight_years = []
-    
-    # Set default visualization options (always enabled since they're controlled in Plotly)
-    show_percentiles = True
-    show_statistics = True
-    print(f"DEBUG: Visualization options - percentiles: {show_percentiles}, statistics: {show_statistics}")
-    
-    # Get station name from gauges data
+
+    # Get station name
     station_name = "Unknown Station"
     if gauges_data:
         for gauge in gauges_data:
             if gauge.get('site_id') == selected_gauge:
                 station_name = gauge.get('station_name', 'Unknown Station')
                 break
-    
-    # Get data source info
-    data_source_info = data_manager.get_data_source_info()
-    data_source_text = data_source_info.get('source_name', 'Unknown')
-    
-    # Fetch streamflow data
-    streamflow_data = data_manager.get_streamflow_data(selected_gauge)
-    if streamflow_data is None or streamflow_data.empty:
-        return [dbc.Alert(f"No streamflow data available for site {selected_gauge}", color="warning")]
-    
-    # Fetch NWRFC forecast data (last 5 days, if available for this station)
+
+    data_source_text = data_manager.get_data_source_info().get('source_name', 'Unknown')
+
+    # Calculate current water year
+    today = datetime.today()
+    current_wy = today.year + 1 if today.month >= 10 else today.year
+    if current_wy not in highlight_years:
+        highlight_years.append(current_wy)
+
+    # Fetch NWRFC and ResidCast forecasts (fast — small payloads)
     forecast_data = None
     try:
         forecast_data = data_manager.get_forecast_data(selected_gauge, num_days=5)
-        if forecast_data:
-            print(f"DEBUG: Got {len(forecast_data)} forecast runs for {selected_gauge}")
-        else:
-            print(f"DEBUG: No forecast data available for {selected_gauge}")
     except Exception as e:
         print(f"DEBUG: Error fetching forecast data: {e}")
-
-    # Fetch ResidCast ML forecast data (last 5 runs, if enabled and available)
     resid_cast_data = data_manager.get_resid_cast_forecasts(selected_gauge, num_runs=5)
-    
-    # Generate all plots
-    plot_types = [
-        ("Water Year Plot", "water_year"),
-        ("Annual Summary", "annual"),
-        ("Flow Duration Curve", "flow_duration")
-    ]
-    
-    # Calculate current water year
-    today = datetime.today()
-    if today.month >= 10:
-        current_wy = today.year + 1
+
+    # ── Water year plot: fast vs full-history paths ───────────────────────
+    if history_mode in ('30yr', 'all'):
+        # Full history path: fetch complete record, render with year traces
+        streamflow_data = data_manager.get_streamflow_data(selected_gauge)
+        if streamflow_data is None or streamflow_data.empty:
+            return [dbc.Alert(f"No streamflow data available for site {selected_gauge}", color="warning")]
+        wy_fig = viz_manager.create_streamflow_plot(
+            selected_gauge, streamflow_data,
+            plot_type='water_year',
+            highlight_years=highlight_years,
+            show_percentiles=True, show_statistics=True,
+            data_manager=data_manager,
+            forecast_data=forecast_data,
+            resid_cast_data=resid_cast_data,
+            history_mode=history_mode,
+        )
     else:
-        current_wy = today.year
-    
-    # Add current year to highlights if not already there
-    if current_wy not in highlight_years:
-        highlight_years.append(current_wy)
-    
-    cards = []
-    for title, plot_type in plot_types:
+        # Fast path: current year data + cached statistics
+        current_year_data = data_manager.get_current_year_data(selected_gauge)
+        statistics = data_manager.get_flow_statistics(selected_gauge)
+        if current_year_data is None or current_year_data.empty:
+            return [dbc.Alert(f"No streamflow data available for site {selected_gauge}", color="warning")]
+        wy_fig = viz_manager.create_fast_water_year_plot(
+            site_id=selected_gauge,
+            current_year_data=current_year_data,
+            statistics=statistics,
+            forecast_data=forecast_data,
+            resid_cast_data=resid_cast_data,
+            data_manager=data_manager,
+        )
+        # Full-history data needed for annual summary and flow duration —
+        # fetch it now (same call would run anyway for those plots)
+        streamflow_data = data_manager.get_streamflow_data(selected_gauge)
+        if streamflow_data is None or streamflow_data.empty:
+            streamflow_data = current_year_data  # fallback to current year
+
+    # ── Build plot option config ───────────────────────────────────────────
+    selected_options = plot_options or []
+    graph_config = {
+        "displaylogo": False,
+        "displayModeBar": "hover" if "show_toolbar" in selected_options else False,
+        "scrollZoom": "enable_zoom" in selected_options,
+        "doubleClick": "autosize" if "enable_zoom" in selected_options else "reset",
+    }
+    graph_style = {"height": f"{chart_height}px"}
+    if "responsive" in selected_options:
+        graph_style["width"] = "100%"
+
+    def _card(title, fig):
+        return dbc.Card([
+            dbc.CardHeader([
+                html.Div(f"{title} - Site {selected_gauge} - {station_name}",
+                         style={'fontWeight': 'bold'}),
+                html.Div(f"Data Source: {data_source_text}",
+                         style={'fontSize': '0.9em', 'fontWeight': 'normal', 'color': '#6c757d'}),
+            ]),
+            dbc.CardBody([dcc.Graph(figure=fig, config=graph_config, style=graph_style)])
+        ], className="mb-3")
+
+    cards = [_card("Water Year Plot", wy_fig)]
+
+    # Annual summary and flow duration always use full history
+    for title, plot_type in [("Annual Summary", "annual"), ("Flow Duration Curve", "flow_duration")]:
         try:
             if plot_type == "flow_duration":
                 fig = viz_manager.create_flow_duration_curve(selected_gauge, streamflow_data)
-            elif plot_type == "water_year":
-                fig = viz_manager.create_streamflow_plot(
-                    selected_gauge,
-                    streamflow_data,
-                    plot_type=plot_type,
-                    highlight_years=highlight_years,
-                    show_percentiles=show_percentiles,
-                    show_statistics=show_statistics,
-                    data_manager=data_manager,
-                    forecast_data=forecast_data,
-                    resid_cast_data=resid_cast_data,
-                )
             else:
                 fig = viz_manager.create_streamflow_plot(
-                    selected_gauge,
-                    streamflow_data,
+                    selected_gauge, streamflow_data,
                     plot_type=plot_type,
                     highlight_years=[],
-                    show_percentiles=show_percentiles,
-                    show_statistics=show_statistics,
-                    data_manager=data_manager
+                    show_percentiles=True, show_statistics=True,
+                    data_manager=data_manager,
                 )
-            
-            # Configure plot options
-            selected_options = plot_options or []
-            
-            # Set up graph configuration based on user options
-            graph_config = {
-                "displaylogo": False,
-                "displayModeBar": "hover" if "show_toolbar" in selected_options else False,
-                "scrollZoom": "enable_zoom" in selected_options,
-                "doubleClick": "autosize" if "enable_zoom" in selected_options else "reset"
-            }
-            
-            # Set up graph style
-            graph_style = {"height": f"{chart_height}px"}
-            if "responsive" in selected_options:
-                graph_style["width"] = "100%"
-            
-            cards.append(
-                dbc.Card([
-                    dbc.CardHeader([
-                        html.Div(f"{title} - Site {selected_gauge} - {station_name}", 
-                                style={'fontWeight': 'bold'}),
-                        html.Div(f"Data Source: {data_source_text}", 
-                                style={'fontSize': '0.9em', 'fontWeight': 'normal', 'color': '#6c757d'})
-                    ]),
-                    dbc.CardBody([
-                        dcc.Graph(figure=fig, config=graph_config, style=graph_style)
-                    ])
-                ], className="mb-3")
-            )
+            cards.append(_card(title, fig))
         except Exception as e:
             print(f"Error creating {plot_type} plot: {e}")
-            cards.append(
-                dbc.Alert(f"Error generating {title}: {str(e)}", color="warning", className="mb-3")
-            )
-    
+            cards.append(dbc.Alert(f"Error generating {title}: {str(e)}", color="warning", className="mb-3"))
+
     return cards
 
 
