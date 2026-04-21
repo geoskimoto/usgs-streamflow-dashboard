@@ -238,6 +238,13 @@ app.index_string = '''
                 box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4) !important;
             }
 
+            body.dark-mode input[type="date"] {
+                background-color: #3a3a3a !important;
+                border-color: #555 !important;
+                color: #e0e0e0 !important;
+                color-scheme: dark;
+            }
+
             body.dark-mode ::-webkit-scrollbar { background-color: #2d2d2d; width: 8px; }
             body.dark-mode ::-webkit-scrollbar-thumb { background-color: #555; border-radius: 4px; }
         </style>
@@ -654,10 +661,11 @@ def create_main_content():
                                     width="auto",
                                 ),
                                 dbc.Col(
-                                    dcc.DatePickerSingle(
+                                    html.Input(
+                                        type="date",
                                         id="percentile-date-picker",
-                                        display_format="MMM D, YYYY",
-                                        className="date-picker-compact",
+                                        className="form-control form-control-sm",
+                                        style={"width": "140px", "fontSize": "0.8rem"},
                                     ),
                                     width="auto",
                                 ),
@@ -1137,38 +1145,36 @@ def load_percentile_date_range(n_intervals):
 
 
 @app.callback(
-    [Output('percentile-date-picker', 'min_date_allowed'),
-     Output('percentile-date-picker', 'max_date_allowed'),
-     Output('percentile-date-picker', 'date'),
-     Output('percentile-date-picker', 'initial_visible_month')],
+    [Output('percentile-date-picker', 'min'),
+     Output('percentile-date-picker', 'max'),
+     Output('percentile-date-picker', 'value')],
     Input('percentile-date-range-store', 'data'),
     prevent_initial_call=True,
 )
 def init_date_picker(range_data):
     """Set picker bounds and default to the latest available date."""
     if not range_data or not range_data.get('max_date'):
-        return no_update, no_update, no_update, no_update
+        return no_update, no_update, no_update
     return (
         range_data['min_date'],
         range_data['max_date'],
         range_data['max_date'],   # default selection = latest
-        range_data['max_date'],   # open calendar on latest month
     )
 
 
 @app.callback(
     [Output('selected-percentile-date-store', 'data'),
-     Output('percentile-date-picker', 'date', allow_duplicate=True)],
+     Output('percentile-date-picker', 'value', allow_duplicate=True)],
     [Input('prev-date-btn', 'n_clicks'),
      Input('next-date-btn', 'n_clicks'),
-     Input('percentile-date-picker', 'date')],
+     Input('percentile-date-picker', 'value')],
     State('percentile-date-range-store', 'data'),
     prevent_initial_call=True,
 )
-def update_date_selection(prev_clicks, next_clicks, picker_date, range_data):
-    """Handle − / + buttons and direct calendar selection.
+def update_date_selection(prev_clicks, next_clicks, picker_value, range_data):
+    """Handle − / + buttons and direct date input.
 
-    The date picker is always the single source of truth for what date is
+    The date input is always the single source of truth for what date is
     displayed. The − / + buttons shift it by one day and write back to it.
     When the selected date equals max_date, selected-percentile-date-store is
     set to None so the map uses the background-refresh cache instead of making
@@ -1182,14 +1188,18 @@ def update_date_selection(prev_clicks, next_clicks, picker_date, range_data):
 
     max_d = date.fromisoformat(range_data['max_date'])
     min_d = date.fromisoformat(range_data['min_date'])
-    current = date.fromisoformat(picker_date) if picker_date else max_d
+    try:
+        current = date.fromisoformat(picker_value) if picker_value else max_d
+    except ValueError:
+        return no_update, no_update
 
     if triggered_id == 'prev-date-btn':
         selected = max(current - timedelta(days=1), min_d)
     elif triggered_id == 'next-date-btn':
         selected = min(current + timedelta(days=1), max_d)
     elif triggered_id == 'percentile-date-picker':
-        selected = current
+        # Clamp typed value to valid range
+        selected = max(min_d, min(current, max_d))
     else:
         return no_update, no_update
 
