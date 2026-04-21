@@ -438,6 +438,8 @@ class USGSDataManager:
             source_name = "Local Cache (Offline)"
         elif mode == 'hybrid':
             source_name = "StreamFlow DataOps API (Cache Fallback)"
+        elif mode == 'direct_db':
+            source_name = "Local Database"
         else:
             source_name = "Unknown"
         

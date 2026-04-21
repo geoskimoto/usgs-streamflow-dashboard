@@ -1511,7 +1511,10 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
                 station_name = gauge.get('station_name', 'Unknown Station')
                 break
 
-    data_source_text = data_manager.get_data_source_info().get('source_name', 'Unknown')
+    if history_mode in ('30yr', 'all'):
+        data_source_text = data_manager.get_data_source_info().get('source_name', 'Unknown')
+    else:
+        data_source_text = "Local Stats Cache"
 
     # Calculate current water year
     today = datetime.today()
