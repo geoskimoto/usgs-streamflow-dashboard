@@ -775,6 +775,23 @@ def create_main_content():
                     children=[
                         html.Div(id="multi-plot-container", style={"maxHeight": "1200px", "overflowY": "auto"})
                     ]
+                ),
+                dcc.Loading(
+                    id="loading-annual-summary",
+                    type="default",
+                    custom_spinner=html.Div(
+                        className="hydro-loading-wrapper",
+                        children=[
+                            html.Div(
+                                className="hydro-wave-container",
+                                children=[html.Div(className="hydro-wave-bar") for _ in range(7)],
+                            ),
+                            html.Div("Loading period-of-record analysis…", className="hydro-loading-label"),
+                        ],
+                    ),
+                    children=[
+                        html.Div(id="annual-summary-container")
+                    ]
                 )
             ])
         ])
@@ -854,6 +871,7 @@ app.layout = dbc.Container([
     
     # Store components for data persistence and authentication
     dcc.Store(id='dark-mode-store', data=True),  # True = dark mode (default on)
+    dcc.Store(id='annual-summary-requested', data=False),
     dcc.Store(id='gauges-store'),
     dcc.Store(id='selected-gauge-store'),
     dcc.Store(id='history-mode-store', data=None),
