@@ -322,22 +322,24 @@ class VisualizationManager:
                 line=dict(color=line_color, width=line_width),
                 opacity=opacity,
                 showlegend=showlegend,
+                customdata=[self._day_of_wy_to_monthday(d) for d in year_data['day_of_wy']],
                 hovertemplate=f"<b>Water Year {year}</b><br>" +
-                            "Day %{x}<br>" +
+                            "%{customdata}<br>" +
                             "Discharge: %{y:.1f} cfs<extra></extra>"
             ))
-        
+
         # Add median line if enough data
         if len(years) >= 5:
             daily_medians = data_copy.groupby('day_of_wy')[value_col].median()
-            
+
             fig.add_trace(go.Scatter(
                 x=daily_medians.index,
                 y=daily_medians.values,
                 mode='lines',
                 name='Median (All Years)',
                 line=dict(color='black', width=2),
-                hovertemplate="Day %{x}<br>Median: %{y:.1f} cfs<extra></extra>"
+                customdata=[self._day_of_wy_to_monthday(d) for d in daily_medians.index],
+                hovertemplate="%{customdata}<br>Median: %{y:.1f} cfs<extra></extra>"
             ))
         
         # After adding traces, set x-axis labels
@@ -421,14 +423,16 @@ class VisualizationManager:
                     x=s["day_of_wy"], y=s["mean"],
                     mode="lines", name="Long-term Mean",
                     line=dict(color="gray", width=2.5, dash="dash"),
-                    hovertemplate="Day %{x}<br>Mean: %{y:.1f} cfs<extra></extra>",
+                    customdata=[self._day_of_wy_to_monthday(d) for d in s["day_of_wy"]],
+                    hovertemplate="%{customdata}<br>Mean: %{y:.1f} cfs<extra></extra>",
                 ))
             if "median" in s.columns:
                 fig.add_trace(go.Scatter(
                     x=s["day_of_wy"], y=s["median"],
                     mode="lines", name="Long-term Median",
                     line=dict(color="black", width=2.5, dash="solid"),
-                    hovertemplate="Day %{x}<br>Median: %{y:.1f} cfs<extra></extra>",
+                    customdata=[self._day_of_wy_to_monthday(d) for d in s["day_of_wy"]],
+                    hovertemplate="%{customdata}<br>Median: %{y:.1f} cfs<extra></extra>",
                 ))
 
         # ── Current water year trace ───────────────────────────────────────
@@ -464,9 +468,10 @@ class VisualizationManager:
                         mode="lines",
                         name=f"WY {current_wy} (Current)",
                         line=dict(color="#0000FF", width=3),
+                        customdata=[self._day_of_wy_to_monthday(d) for d in df_sorted["day_of_wy"]],
                         hovertemplate=(
                             f"<b>WY {current_wy}</b><br>"
-                            "Day %{x}<br>"
+                            "%{customdata}<br>"
                             "<b>Discharge: %{y:.1f} cfs</b><extra></extra>"
                         ),
                     ))
@@ -502,9 +507,10 @@ class VisualizationManager:
                                     mode="lines",
                                     name="Real-time Data",
                                     line=dict(color="#FF0000", width=2.5),
+                                    customdata=[self._day_of_wy_to_monthday(d) for d in rt_current["day_of_wy"]],
                                     hovertemplate=(
                                         "<b>Real-time</b><br>"
-                                        "Day %{x}<br>"
+                                        "%{customdata}<br>"
                                         "Discharge: %{y:.1f} cfs<extra></extra>"
                                     ),
                                 ))
@@ -724,9 +730,10 @@ class VisualizationManager:
                 # them on via the legend entry.
                 trace_visible = 'legendonly'
             
-            # Create custom data for tooltip with percentile info
+            # Create custom data for tooltip: [q90, q75, median, q25, q10, month_day]
             customdata = []
             for day in year_data['day_of_wy']:
+                month_day = self._day_of_wy_to_monthday(day)
                 if show_percentiles and hasattr(self, '_daily_stats') and day in self._daily_stats.index:
                     stats = self._daily_stats.loc[day]
                     customdata.append([
@@ -734,14 +741,15 @@ class VisualizationManager:
                         stats['q75'],
                         stats['median'],
                         stats['q25'],
-                        stats['q10']
+                        stats['q10'],
+                        month_day,
                     ])
                 else:
-                    customdata.append([None, None, None, None, None])
-            
+                    customdata.append([None, None, None, None, None, month_day])
+
             hovertemplate = (
                 f"<b>WY {year}</b><br>"
-                "Day %{x}<br>"
+                "%{customdata[5]}<br>"
                 "<b>Discharge: %{y:.1f} cfs</b><br>"
             )
             if show_percentiles:
@@ -754,7 +762,7 @@ class VisualizationManager:
                     "10th percentile: %{customdata[4]:.1f} cfs"
                 )
             hovertemplate += "<extra></extra>"
-            
+
             trace = go.Scatter(
                 x=year_data['day_of_wy'],
                 y=year_data[value_col],
@@ -764,7 +772,7 @@ class VisualizationManager:
                 opacity=opacity,
                 showlegend=showlegend,
                 visible=trace_visible,
-                customdata=customdata if show_percentiles else None,
+                customdata=customdata,
                 hovertemplate=hovertemplate
             )
             
@@ -786,9 +794,10 @@ class VisualizationManager:
                 mode='lines',
                 name='Long-term Median',
                 line=dict(color='black', width=2.5, dash='solid'),
-                hovertemplate="Day %{x}<br>Median: %{y:.1f} cfs<extra></extra>"
+                customdata=[self._day_of_wy_to_monthday(d) for d in daily_median.index],
+                hovertemplate="%{customdata}<br>Median: %{y:.1f} cfs<extra></extra>"
             ))
-            
+
             # Add mean line (gray, dashed)
             fig.add_trace(go.Scatter(
                 x=daily_mean.index,
@@ -796,7 +805,8 @@ class VisualizationManager:
                 mode='lines',
                 name='Long-term Mean',
                 line=dict(color='gray', width=2.5, dash='dash'),
-                hovertemplate="Day %{x}<br>Mean: %{y:.1f} cfs<extra></extra>"
+                customdata=[self._day_of_wy_to_monthday(d) for d in daily_mean.index],
+                hovertemplate="%{customdata}<br>Mean: %{y:.1f} cfs<extra></extra>"
             ))
         
         # Add current date vertical line
@@ -858,8 +868,9 @@ class VisualizationManager:
                             mode='lines',
                             name='Real-time Data',
                             line=dict(color='#FF0000', width=2.5),  # Red
+                            customdata=[self._day_of_wy_to_monthday(d) for d in current_wy_rt['day_of_wy']],
                             hovertemplate="<b>Real-time</b><br>" +
-                                        "Day %{x}<br>" +
+                                        "%{customdata}<br>" +
                                         "Discharge: %{y:.1f} cfs<extra></extra>"
                         ))
         
