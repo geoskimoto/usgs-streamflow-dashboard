@@ -677,6 +677,16 @@ def create_main_content():
                 dcc.Loading(
                     id="loading-map",
                     type="default",
+                    custom_spinner=html.Div(
+                        className="hydro-loading-wrapper",
+                        children=[
+                            html.Div(
+                                className="hydro-wave-container",
+                                children=[html.Div(className="hydro-wave-bar") for _ in range(7)],
+                            ),
+                            html.Div("Loading map data…", className="hydro-loading-label"),
+                        ],
+                    ),
                     children=[
                         dcc.Graph(
                             id="gauge-map",
