@@ -661,10 +661,10 @@ def create_main_content():
                                     width="auto",
                                 ),
                                 dbc.Col(
-                                    html.Input(
+                                    dbc.Input(
                                         type="date",
                                         id="percentile-date-picker",
-                                        className="form-control form-control-sm",
+                                        size="sm",
                                         style={"width": "140px", "fontSize": "0.8rem"},
                                     ),
                                     width="auto",
