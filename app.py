@@ -232,6 +232,12 @@ app.index_string = '''
             body.dark-mode .text-secondary { color: #aaaaaa !important; }
             body.dark-mode .list-group-item { background-color: #2d2d2d !important; border-color: #444 !important; color: #e0e0e0 !important; }
 
+            body.dark-mode #site-header {
+                background: linear-gradient(135deg, #1e1e1e 0%, #252525 100%) !important;
+                border-color: #444 !important;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4) !important;
+            }
+
             body.dark-mode ::-webkit-scrollbar { background-color: #2d2d2d; width: 8px; }
             body.dark-mode ::-webkit-scrollbar-thumb { background-color: #555; border-radius: 4px; }
         </style>
@@ -298,7 +304,7 @@ def create_header():
                            }),
                     html.Hr(className="d-none d-md-block",
                             style={"width": "60%", "margin": "1.5rem auto", "border": "2px solid #e9ecef"}),
-                ], style={
+                ], id="site-header", style={
                     "background": "linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)",
                     "padding": "1rem",
                     "borderRadius": "15px",
@@ -839,6 +845,7 @@ app.layout = dbc.Container([
     dcc.Location(id='url', refresh=False),
     
     # Store components for data persistence and authentication
+    dcc.Store(id='dark-mode-store', data=True),  # True = dark mode (default on)
     dcc.Store(id='gauges-store'),
     dcc.Store(id='selected-gauge-store'),
     dcc.Store(id='history-mode-store', data=None),
@@ -1496,11 +1503,12 @@ def update_history_mode(selected_gauge, n_30yr, n_full, n_fast):
      Input('highlight-years-input', 'value'),
      Input('chart-height-dropdown', 'value'),
      Input('plot-options-checklist', 'value'),
-     Input('history-mode-store', 'data')],
+     Input('history-mode-store', 'data'),
+     Input('dark-mode-store', 'data')],
     [State('gauges-store', 'data')]
 )
 def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_options,
-                       history_mode, gauges_data):
+                       history_mode, dark_mode, gauges_data):
     """Generate and display all streamflow plots for the selected site."""
     if not selected_gauge:
         return [html.P("Select a gauge on the map to view streamflow plots.", className="text-muted")]
@@ -1596,7 +1604,10 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
     if nwrfc_id:
         site_label += f" / NWRFC {nwrfc_id}"
 
+    plot_template = 'plotly_dark' if dark_mode else 'plotly'
+
     def _card(title, fig):
+        fig.update_layout(template=plot_template)
         return dbc.Card([
             dbc.CardHeader([
                 html.Div(f"{title} — {site_label} — {station_name}",
@@ -1774,12 +1785,13 @@ def update_realtime_filter_info(gauges_data):
 app.clientside_callback(
     """
     function(n_clicks) {
-        if (!n_clicks) { return window.dash_clientside.no_update; }
+        if (!n_clicks) { return [window.dash_clientside.no_update, window.dash_clientside.no_update]; }
         var isDark = document.body.classList.toggle('dark-mode');
-        return isDark ? 'Light Mode' : 'Dark Mode';
+        return [isDark ? 'Light Mode' : 'Dark Mode', isDark];
     }
     """,
-    Output('dark-mode-btn', 'children'),
+    [Output('dark-mode-btn', 'children'),
+     Output('dark-mode-store', 'data')],
     Input('dark-mode-btn', 'n_clicks'),
     prevent_initial_call=True,
 )
