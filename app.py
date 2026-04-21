@@ -1242,13 +1242,15 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
     # Apply filters
     filtered_gauges = all_gauges.copy()
     
-    # Search filter
+    # Search filter — matches USGS ID, station name, or NWRFC ID
     if search_text and search_text.strip():
         search_lower = search_text.lower().strip()
         search_filter = (
             filtered_gauges['site_id'].str.lower().str.contains(search_lower, na=False) |
             filtered_gauges['station_name'].str.lower().str.contains(search_lower, na=False)
         )
+        if 'nwrfc_id' in filtered_gauges.columns:
+            search_filter = search_filter | filtered_gauges['nwrfc_id'].str.lower().str.contains(search_lower, na=False)
         filtered_gauges = filtered_gauges[search_filter]
     
     # State filter (default to all if none selected)
@@ -1513,12 +1515,14 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
         except Exception as e:
             print(f"DEBUG: Error parsing highlight years: {e}")
 
-    # Get station name
+    # Get station name and NWRFC ID
     station_name = "Unknown Station"
+    nwrfc_id = None
     if gauges_data:
         for gauge in gauges_data:
             if gauge.get('site_id') == selected_gauge:
                 station_name = gauge.get('station_name', 'Unknown Station')
+                nwrfc_id = gauge.get('nwrfc_id')
                 break
 
     if history_mode in ('30yr', 'all'):
@@ -1588,10 +1592,14 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
     if "responsive" in selected_options:
         graph_style["width"] = "100%"
 
+    site_label = f"USGS {selected_gauge}"
+    if nwrfc_id:
+        site_label += f" / NWRFC {nwrfc_id}"
+
     def _card(title, fig):
         return dbc.Card([
             dbc.CardHeader([
-                html.Div(f"{title} - Site {selected_gauge} - {station_name}",
+                html.Div(f"{title} — {site_label} — {station_name}",
                          style={'fontWeight': 'bold'}),
                 html.Div(f"Data Source: {data_source_text}",
                          style={'fontSize': '0.9em', 'fontWeight': 'normal', 'color': '#6c757d'}),

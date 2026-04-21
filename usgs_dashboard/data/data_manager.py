@@ -362,10 +362,25 @@ class USGSDataManager:
             df['status'] = 'Active'
             df['color'] = '#32CD32'
         
+        # Add NWRFC ID via reverse lookup of nwrfc_usgs_crosswalk.json
+        if 'nwrfc_id' not in df.columns:
+            try:
+                import json
+                crosswalk_path = os.path.join(
+                    os.path.dirname(__file__), '../../data/nwrfc_usgs_crosswalk.json'
+                )
+                with open(crosswalk_path) as f:
+                    nwrfc_to_usgs = json.load(f)
+                usgs_to_nwrfc = {v: k for k, v in nwrfc_to_usgs.items()}
+                df['nwrfc_id'] = df['station_number'].map(usgs_to_nwrfc)
+            except Exception as e:
+                logger.warning(f"Could not load NWRFC crosswalk: {e}")
+                df['nwrfc_id'] = None
+
         # Filter by target states if configured
         if TARGET_STATES and 'state' in df.columns:
             df = df[df['state'].isin(TARGET_STATES)]
-        
+
         return df
     
     def get_filters_table(self) -> pd.DataFrame:
