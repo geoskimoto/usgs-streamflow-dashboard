@@ -776,6 +776,32 @@ def create_main_content():
                         html.Div(id="multi-plot-container", style={"maxHeight": "1200px", "overflowY": "auto"})
                     ]
                 ),
+                # Period-of-record prompt (hidden until a station is selected)
+                html.Div(
+                    id="annual-summary-prompt-row",
+                    style={"display": "none"},
+                    children=[
+                        dbc.Card([
+                            dbc.CardBody([
+                                html.Div([
+                                    html.P(
+                                        "Annual Summary and Flow Duration Curve use the full "
+                                        "period of record and may take a moment to load.",
+                                        className="text-muted mb-3",
+                                    ),
+                                    dbc.Button(
+                                        "📊 Load Period-of-Record Analysis",
+                                        id="load-annual-summary-btn",
+                                        color="primary",
+                                        outline=True,
+                                        size="md",
+                                        n_clicks=0,
+                                    ),
+                                ], className="text-center py-2"),
+                            ])
+                        ], className="mb-3"),
+                    ],
+                ),
                 dcc.Loading(
                     id="loading-annual-summary",
                     type="default",
@@ -1642,6 +1668,111 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
         ], className="mb-3")
 
     return [_card("Water Year Plot", wy_fig)]
+
+
+# ── Period-of-record lazy-load callbacks ──────────────────────────────────────
+
+@app.callback(
+    [Output('annual-summary-requested', 'data'),
+     Output('annual-summary-prompt-row', 'style')],
+    [Input('selected-gauge-store', 'data'),
+     Input('load-annual-summary-btn', 'n_clicks')],
+    prevent_initial_call=True,
+)
+def toggle_annual_summary_requested(selected_gauge, n_clicks):
+    """Reset to False on new gauge selection; set True when button clicked."""
+    from dash import ctx
+    triggered = ctx.triggered_id if ctx.triggered_id else None
+    prompt_visible = {"display": "block"} if selected_gauge else {"display": "none"}
+    if triggered == 'load-annual-summary-btn' and n_clicks:
+        # Hide prompt row once loading is triggered
+        return True, {"display": "none"}
+    # New gauge selected — reset and show prompt
+    return False, prompt_visible
+
+
+@app.callback(
+    Output('annual-summary-container', 'children'),
+    [Input('annual-summary-requested', 'data'),
+     Input('dark-mode-store', 'data')],
+    [State('selected-gauge-store', 'data'),
+     State('gauges-store', 'data'),
+     State('chart-height-dropdown', 'value'),
+     State('plot-options-checklist', 'value')],
+)
+def render_annual_summary(requested, dark_mode, selected_gauge, gauges_data,
+                          chart_height, plot_options):
+    """Render period-of-record plots when requested, otherwise empty."""
+    if not selected_gauge or not requested:
+        return []
+
+    # ── Full render ───────────────────────────────────────────────────────────
+    station_name = "Unknown Station"
+    nwrfc_id = None
+    if gauges_data:
+        for gauge in gauges_data:
+            if gauge.get('site_id') == selected_gauge:
+                station_name = gauge.get('station_name', 'Unknown Station')
+                nwrfc_id = gauge.get('nwrfc_id')
+                break
+
+    streamflow_data = data_manager.get_streamflow_data(selected_gauge)
+    if streamflow_data is None or streamflow_data.empty:
+        return [dbc.Alert(
+            f"No historical data available for site {selected_gauge}.",
+            color="warning", className="mb-3",
+        )]
+
+    data_source_text = data_manager.get_data_source_info().get('source_name', 'Unknown')
+    site_label = f"USGS {selected_gauge}"
+    if nwrfc_id:
+        site_label += f" / NWRFC {nwrfc_id}"
+
+    plot_template = 'plotly_dark' if dark_mode else 'plotly'
+    selected_options = plot_options or []
+    graph_config = {
+        "displaylogo": False,
+        "displayModeBar": "hover" if "show_toolbar" in selected_options else False,
+        "scrollZoom": "enable_zoom" in selected_options,
+        "doubleClick": "autosize" if "enable_zoom" in selected_options else "reset",
+    }
+    graph_style = {"height": f"{chart_height}px"}
+    if "responsive" in selected_options:
+        graph_style["width"] = "100%"
+
+    def _por_card(title, fig):
+        fig.update_layout(template=plot_template)
+        return dbc.Card([
+            dbc.CardHeader([
+                html.Div(f"{title} — {site_label} — {station_name}",
+                         style={'fontWeight': 'bold'}),
+                html.Div(f"Data Source: {data_source_text}",
+                         style={'fontSize': '0.9em', 'fontWeight': 'normal', 'color': '#6c757d'}),
+            ]),
+            dbc.CardBody([dcc.Graph(figure=fig, config=graph_config, style=graph_style)])
+        ], className="mb-3")
+
+    cards = []
+    for title, plot_type in [("Annual Summary", "annual"), ("Flow Duration Curve", "flow_duration")]:
+        try:
+            if plot_type == "flow_duration":
+                fig = viz_manager.create_flow_duration_curve(selected_gauge, streamflow_data)
+            else:
+                fig = viz_manager.create_streamflow_plot(
+                    selected_gauge, streamflow_data,
+                    plot_type=plot_type,
+                    highlight_years=[],
+                    show_percentiles=True, show_statistics=True,
+                    data_manager=data_manager,
+                )
+            cards.append(_por_card(title, fig))
+        except Exception as e:
+            print(f"Error creating {plot_type} plot: {e}")
+            cards.append(dbc.Alert(
+                f"Error generating {title}: {str(e)}", color="warning", className="mb-3"
+            ))
+
+    return cards
 
 
 # Callbacks to populate dropdown options
