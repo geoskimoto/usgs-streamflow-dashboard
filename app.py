@@ -1610,11 +1610,6 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
             resid_cast_data=resid_cast_data,
             data_manager=data_manager,
         )
-        # Full-history data needed for annual summary and flow duration —
-        # fetch it now (same call would run anyway for those plots)
-        streamflow_data = data_manager.get_streamflow_data(selected_gauge)
-        if streamflow_data is None or streamflow_data.empty:
-            streamflow_data = current_year_data  # fallback to current year
 
     # ── Build plot option config ───────────────────────────────────────────
     selected_options = plot_options or []
@@ -1646,27 +1641,7 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
             dbc.CardBody([dcc.Graph(figure=fig, config=graph_config, style=graph_style)])
         ], className="mb-3")
 
-    cards = [_card("Water Year Plot", wy_fig)]
-
-    # Annual summary and flow duration always use full history
-    for title, plot_type in [("Annual Summary", "annual"), ("Flow Duration Curve", "flow_duration")]:
-        try:
-            if plot_type == "flow_duration":
-                fig = viz_manager.create_flow_duration_curve(selected_gauge, streamflow_data)
-            else:
-                fig = viz_manager.create_streamflow_plot(
-                    selected_gauge, streamflow_data,
-                    plot_type=plot_type,
-                    highlight_years=[],
-                    show_percentiles=True, show_statistics=True,
-                    data_manager=data_manager,
-                )
-            cards.append(_card(title, fig))
-        except Exception as e:
-            print(f"Error creating {plot_type} plot: {e}")
-            cards.append(dbc.Alert(f"Error generating {title}: {str(e)}", color="warning", className="mb-3"))
-
-    return cards
+    return [_card("Water Year Plot", wy_fig)]
 
 
 # Callbacks to populate dropdown options
