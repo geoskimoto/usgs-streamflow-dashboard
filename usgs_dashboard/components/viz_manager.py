@@ -1151,8 +1151,6 @@ class VisualizationManager:
                     yanchor='top',
                     showactive=True,
                     buttons=buttons,
-                    bgcolor='white',
-                    bordercolor='#cccccc',
                     font=dict(size=11),
                 )
             ]

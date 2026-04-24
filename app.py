@@ -1673,11 +1673,6 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
 
     def _card(title, fig):
         fig.update_layout(template=plot_template, hovermode='x unified')
-        if dark_mode and fig.layout.updatemenus:
-            fig.for_each_updatemenu(lambda m: m.update(
-                bgcolor='#3a3a3a', bordercolor='#555555',
-                font=dict(color='#e0e0e0', size=11),
-            ))
         return dbc.Card([
             dbc.CardHeader([
                 html.Div(f"{title} — {site_label} — {station_name}",
