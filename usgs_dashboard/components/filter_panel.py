@@ -71,24 +71,24 @@ class SimplifiedFilterPanel:
                         html.Div([
                             dbc.Switch(
                                 id="forecast-filter",
-                                label="Show only stations with forecasts",
+                                label="Show only stations with any forecast",
                                 value=False,
                                 className="mb-2"
                             ),
                             html.Small(
                                 id="forecast-filter-info",
                                 className="text-muted d-block mb-2",
-                                children="NWRFC + ML forecast stations"
+                                children="NWRFC raw + ResidCast ML forecast stations (~292)"
                             ),
                             dbc.Switch(
                                 id="resid-cast-filter",
-                                label="Show only ResidCast ML stations",
+                                label="Show only per-station ML model stations",
                                 value=False,
                                 className="mb-1"
                             ),
                             html.Small(
                                 className="text-muted d-block",
-                                children="13 stations with ML-corrected forecasts"
+                                children="13 quality stations with XGBoost/LSTM/MuTHRE per-station models"
                             ),
                         ])
                     ], className="mb-3")
