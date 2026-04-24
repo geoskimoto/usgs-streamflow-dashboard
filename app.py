@@ -1704,7 +1704,8 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
 
 @app.callback(
     [Output('annual-summary-requested', 'data'),
-     Output('annual-summary-prompt-row', 'style')],
+     Output('annual-summary-prompt-row', 'style'),
+     Output('annual-summary-container', 'children', allow_duplicate=True)],
     [Input('selected-gauge-store', 'data'),
      Input('load-annual-summary-btn', 'n_clicks')],
     prevent_initial_call=True,
@@ -1715,26 +1716,27 @@ def toggle_annual_summary_requested(selected_gauge, n_clicks):
     triggered = ctx.triggered_id if ctx.triggered_id else None
     prompt_visible = {"display": "block"} if selected_gauge else {"display": "none"}
     if triggered == 'load-annual-summary-btn' and n_clicks:
-        # Hide prompt row once loading is triggered
-        return True, {"display": "none"}
-    # New gauge selected — reset and show prompt
-    return False, prompt_visible
+        return True, {"display": "none"}, no_update
+    # New gauge selected — clear container directly (no spinner) and reset state
+    return False, prompt_visible, []
 
 
 @app.callback(
     Output('annual-summary-container', 'children'),
-    [Input('annual-summary-requested', 'data'),
-     Input('dark-mode-store', 'data')],
-    [State('selected-gauge-store', 'data'),
+    [Input('annual-summary-requested', 'data')],
+    [State('dark-mode-store', 'data'),
+     State('selected-gauge-store', 'data'),
      State('gauges-store', 'data'),
      State('chart-height-dropdown', 'value'),
      State('plot-options-checklist', 'value')],
+    prevent_initial_call=True,
 )
 def render_annual_summary(requested, dark_mode, selected_gauge, gauges_data,
                           chart_height, plot_options):
-    """Render period-of-record plots when requested, otherwise empty."""
-    if not selected_gauge or not requested:
-        return []
+    """Render period-of-record plots only when explicitly requested via button."""
+    from dash.exceptions import PreventUpdate
+    if not requested or not selected_gauge:
+        raise PreventUpdate
 
     # ── Full render ───────────────────────────────────────────────────────────
     station_name = "Unknown Station"
