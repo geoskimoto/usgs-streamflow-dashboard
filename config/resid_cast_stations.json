@@ -1,15 +1,407 @@
 {
-  "13334300": { "nwrfc_id": "ANAW1",  "models": ["xgboost/raw", "muthre/standalone", "lstm/raw/general"] },
-  "12340000": { "nwrfc_id": "BONM8",  "models": ["xgboost/raw", "muthre/standalone", "lstm/raw/general"] },
-  "12414500": { "nwrfc_id": "CLDI1",  "models": ["xgboost/raw", "muthre/standalone", "lstm/raw/general"] },
-  "12331800": { "nwrfc_id": "DRMM8",  "models": ["xgboost/raw", "muthre/standalone", "lstm/raw/general"] },
-  "14210000": { "nwrfc_id": "ESTO3",  "models": ["xgboost/raw", "muthre/standalone", "lstm/raw/general"] },
-  "12510500": { "nwrfc_id": "KIOW1",  "models": ["xgboost/raw", "muthre/standalone", "lstm/raw/general"] },
-  "14103000": { "nwrfc_id": "MODO3",  "models": ["xgboost/raw", "muthre/standalone", "lstm/raw/general"] },
-  "13340000": { "nwrfc_id": "ORFI1",  "models": ["xgboost/raw", "muthre/standalone", "lstm/raw/general"] },
-  "12449950": { "nwrfc_id": "PATW1",  "models": ["xgboost/raw", "muthre/standalone", "lstm/raw/general"] },
-  "12459000": { "nwrfc_id": "PESW1",  "models": ["xgboost/raw", "muthre/standalone", "lstm/raw/general"] },
-  "14113000": { "nwrfc_id": "PITW1",  "models": ["xgboost/raw", "muthre/standalone", "lstm/raw/general"] },
-  "14142500": { "nwrfc_id": "SNDO3",  "models": ["xgboost/raw", "muthre/standalone", "lstm/raw/general"] },
-  "12451000": { "nwrfc_id": "STHW1",  "models": ["xgboost/raw", "muthre/standalone", "lstm/raw/general"] }
+  "13334300": {
+    "nwrfc_id": "ANAW1",
+    "models": [
+      "xgboost/raw",
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "12340000": {
+    "nwrfc_id": "BONM8",
+    "models": [
+      "xgboost/raw",
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "12414500": {
+    "nwrfc_id": "CLDI1",
+    "models": [
+      "xgboost/raw",
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "12331800": {
+    "nwrfc_id": "DRMM8",
+    "models": [
+      "xgboost/raw",
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "14210000": {
+    "nwrfc_id": "ESTO3",
+    "models": [
+      "xgboost/raw",
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "12510500": {
+    "nwrfc_id": "KIOW1",
+    "models": [
+      "xgboost/raw",
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "14103000": {
+    "nwrfc_id": "MODO3",
+    "models": [
+      "xgboost/raw",
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "13340000": {
+    "nwrfc_id": "ORFI1",
+    "models": [
+      "xgboost/raw",
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "12449950": {
+    "nwrfc_id": "PATW1",
+    "models": [
+      "xgboost/raw",
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "12459000": {
+    "nwrfc_id": "PESW1",
+    "models": [
+      "xgboost/raw",
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "14113000": {
+    "nwrfc_id": "PITW1",
+    "models": [
+      "xgboost/raw",
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "14142500": {
+    "nwrfc_id": "SNDO3",
+    "models": [
+      "xgboost/raw",
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "12451000": {
+    "nwrfc_id": "STHW1",
+    "models": [
+      "xgboost/raw",
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "12340500": {
+    "nwrfc_id": "ABOM8",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "14372300": {
+    "nwrfc_id": "AGNO3",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "14174000": {
+    "nwrfc_id": "ALBO3",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "13022500": {
+    "nwrfc_id": "ALPW4",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "13077000": {
+    "nwrfc_id": "AMFI1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "13190500": {
+    "nwrfc_id": "ANDI1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "13050500": {
+    "nwrfc_id": "ANTI1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "14366000": {
+    "nwrfc_id": "APRO3",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "12452800": {
+    "nwrfc_id": "ARDW1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "12167000": {
+    "nwrfc_id": "ARGW1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "14369500": {
+    "nwrfc_id": "ARWO3",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "12113000": {
+    "nwrfc_id": "AUBW1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "14202000": {
+    "nwrfc_id": "AURO3",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "14309000": {
+    "nwrfc_id": "AZAO3",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "12026400": {
+    "nwrfc_id": "BCDW1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "14303600": {
+    "nwrfc_id": "BEAO3",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "13217500": {
+    "nwrfc_id": "BEUO3",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "13011900": {
+    "nwrfc_id": "BFKW4",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "13069500": {
+    "nwrfc_id": "BFTI1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "13206000": {
+    "nwrfc_id": "BIGI1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "13186000": {
+    "nwrfc_id": "BRFI1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "13185000": {
+    "nwrfc_id": "BTSI1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "13142500": {
+    "nwrfc_id": "BWMI1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "12043000": {
+    "nwrfc_id": "CALW1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "13258500": {
+    "nwrfc_id": "CAMI1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "14200000": {
+    "nwrfc_id": "CANO3",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "14243000": {
+    "nwrfc_id": "CASW1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "12363000": {
+    "nwrfc_id": "CFMM8",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "12027500": {
+    "nwrfc_id": "CGMW1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "13049500": {
+    "nwrfc_id": "CHEI1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "14400000": {
+    "nwrfc_id": "CHTO3",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "14231900": {
+    "nwrfc_id": "CIYW1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "14233500": {
+    "nwrfc_id": "COKW1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "12194000": {
+    "nwrfc_id": "CONW1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "14327055": {
+    "nwrfc_id": "COQO3",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  },
+  "12149000": {
+    "nwrfc_id": "CRNW1",
+    "models": [
+      "muthre/standalone",
+      "lstm/raw/general",
+      "xgboost/raw/general"
+    ]
+  }
 }
