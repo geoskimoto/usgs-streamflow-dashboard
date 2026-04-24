@@ -44,7 +44,7 @@ Key standalone file:
 1. On load, `app.py → USGSDataManager.load_regional_gauges()` calls the DataOps adapter.
 2. The adapter hits the StreamflowOps REST API (or local cache / PostgreSQL depending on env).
 3. Stations are enriched with CSV metadata and returned as a DataFrame.
-4. Background thread refreshes percentile bands every 30 min.
+4. Background thread refreshes percentile bands every 30 min. A 1s startup interval (max 10 fires) ensures colors appear within ~1s of page load rather than waiting for the 30s poll cycle.
 5. Clicking a station triggers the **fast plot path** by default:
    - `get_current_year_data()` fetches only the current water year (~200 rows).
    - `get_flow_statistics()` loads pre-computed per-day-of-WY stats from `data/stats_cache/` (parquet). On cache miss, fetches full history, computes stats, and writes the cache.
@@ -166,7 +166,7 @@ pytest -v -s tests/test_data_manager.py   # Specific file
 - Three separate water-year plot implementations exist (`streamflow_analyzer`, `water_year_datetime`, `viz_manager`). Consolidation is a future goal — don't add a fourth.
 - `streamflow_analyzer.py` has its own USGS data-fetch path. The dashboard does not use it for fetching — data always flows through `data_manager`. Only the visualization classes are used.
 - The SQLite/database schema documented in `Documentation/DATABASE_SCHEMA.md` is legacy and not used in the current adapter-based architecture.
-- Percentile map coloring is partially implemented (`PERCENTILE_IMPLEMENTATION_PLAN.md`). The background refresh thread and map component support it, but end-to-end integration may be incomplete.
+- Percentile map coloring is **fully implemented end-to-end** (`PERCENTILE_IMPLEMENTATION_PLAN.md`). Background thread → `_percentile_cache` → 30s poll interval + 1s startup interval → `percentile-bands-store` → map callback → band-colored traces. Data lives in `daily_flow_percentiles` DB table (4,867 stations, updated daily). Historical date picker path also wired and working.
 
 ---
 
