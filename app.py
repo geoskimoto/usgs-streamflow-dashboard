@@ -916,6 +916,14 @@ app.layout = dbc.Container([
         interval=30_000,   # poll every 30 seconds
         n_intervals=0,
     ),
+    # Fast startup poll: fires every 1s for the first 10s so percentile colors
+    # appear immediately after the background thread populates the cache.
+    dcc.Interval(
+        id='percentile-startup-interval',
+        interval=1_000,
+        max_intervals=10,
+        n_intervals=0,
+    ),
     
     
     # Toast container for notifications
@@ -1161,6 +1169,7 @@ def load_gauge_data(pathname):
 @app.callback(
     Output('percentile-bands-store', 'data'),
     Input('percentile-refresh-interval', 'n_intervals'),
+    Input('percentile-startup-interval', 'n_intervals'),
     Input('selected-percentile-date-store', 'data'),
     State('percentile-bands-store', 'data'),
     prevent_initial_call=False,
@@ -1184,11 +1193,13 @@ def refresh_percentile_bands(n_intervals, selected_date, current_bands):
 @app.callback(
     Output('percentile-date-range-store', 'data'),
     Input('percentile-refresh-interval', 'n_intervals'),
+    Input('percentile-startup-interval', 'n_intervals'),
+    State('percentile-date-range-store', 'data'),
     prevent_initial_call=False,
 )
-def load_percentile_date_range(n_intervals):
-    """Fetch the available date range once on page load (n_intervals == 0)."""
-    if n_intervals != 0:
+def load_percentile_date_range(n_intervals, startup_intervals, current_range):
+    """Fetch the available date range once on load; skip if already populated."""
+    if current_range:
         return no_update
     range_data = data_manager.get_percentile_date_range()
     if not range_data.get('min_date') or not range_data.get('max_date'):

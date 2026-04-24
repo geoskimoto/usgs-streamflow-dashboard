@@ -108,24 +108,31 @@ class USGSDataManager:
         pd.DataFrame
             DataFrame with gauge metadata
         """
+        t0 = time.perf_counter()
         logger.info("Loading regional gauges via DataOps adapter")
-        
+
         # Use high limit to fetch all stations per state
         # (max_sites is per-state limit, not total)
         limit = max_sites if max_sites else 10000
-        
+
         try:
             all_stations = []
-            
+
             if TARGET_STATES:
                 # Fetch per-state concurrently to ensure state metadata is available
+                t_fetch = time.perf_counter()
+
                 def _fetch_state(state):
+                    t_s = time.perf_counter()
                     agency = 'EC' if state == 'BC' else 'USGS'
                     df = self.adapter.get_stations(agency=agency, state=state, limit=limit)
+                    elapsed = time.perf_counter() - t_s
                     if not df.empty:
                         if 'state' not in df.columns or df['state'].isna().all():
                             df['state'] = state
-                        logger.info(f"  Loaded {len(df)} {agency} stations for {state}")
+                        logger.info(f"  [{elapsed:.2f}s] Loaded {len(df)} {agency} stations for {state}")
+                    else:
+                        logger.info(f"  [{elapsed:.2f}s] No stations for {state}")
                     return state, df
 
                 with ThreadPoolExecutor(max_workers=10) as pool:
@@ -137,7 +144,9 @@ class USGSDataManager:
                                 all_stations.append(state_df)
                         except Exception as e:
                             logger.warning(f"Error loading stations: {e}")
-                
+
+                logger.info(f"  [PERF] Parallel state fetch total: {time.perf_counter() - t_fetch:.2f}s")
+
                 if all_stations:
                     stations_df = pd.concat(all_stations, ignore_index=True)
                     # Remove duplicates (station might appear in multiple state queries)
@@ -151,24 +160,31 @@ class USGSDataManager:
                     agency='USGS',
                     limit=limit
                 )
-            
+
             if stations_df.empty:
                 logger.warning("No stations returned from DataOps")
                 return pd.DataFrame()
-            
+
             # Classify station activity based on recent discharge data
+            t_classify = time.perf_counter()
             stations_df = self._classify_station_activity(stations_df)
-            
+            logger.info(f"  [PERF] Activity classification: {time.perf_counter() - t_classify:.2f}s")
+
             # Enrich with CSV data (drainage area, etc.)
+            t_csv = time.perf_counter()
             stations_df = self._enrich_from_csv(stations_df)
-            
+            logger.info(f"  [PERF] CSV enrichment: {time.perf_counter() - t_csv:.2f}s")
+
             # Enrich with visualization metadata
+            t_meta = time.perf_counter()
             stations_df = self._enrich_station_metadata(stations_df)
-            
+            logger.info(f"  [PERF] Metadata enrichment: {time.perf_counter() - t_meta:.2f}s")
+
             # Cache for use by get_filters_table() and other methods
             self._stations_cache = stations_df.copy()
-            
-            logger.info(f"✅ Loaded {len(stations_df)} stations from DataOps")
+
+            total = time.perf_counter() - t0
+            logger.info(f"✅ Loaded {len(stations_df)} stations in {total:.2f}s total")
             return stations_df
             
         except Exception as e:

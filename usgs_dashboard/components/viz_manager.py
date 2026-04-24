@@ -1117,19 +1117,26 @@ class VisualizationManager:
         fc_x0 = max(1.0, current_day - 7)
         fc_x1 = min(366.0, current_day + 14)
 
-        # Derive tight y-bounds from trace data inside the forecast window
-        fc_y_vals = []
+        # Derive tight y-bounds from trace data inside the forecast window.
+        # Prefer forecast + current-year traces; fall back to statistics (percentile
+        # bands / long-term mean) only when no observed/forecast data is in the window.
+        _STATS_FRAGMENTS = ('percentile', 'long-term', 'median', 'mean')
+        priority_y, fallback_y = [], []
         for trace in fig.data:
             xs = getattr(trace, 'x', None)
             ys = getattr(trace, 'y', None)
             if xs is None or ys is None:
                 continue
+            name_lower = (getattr(trace, 'name', '') or '').lower()
+            is_stats = any(f in name_lower for f in _STATS_FRAGMENTS)
+            target = fallback_y if is_stats else priority_y
             for x, y in zip(xs, ys):
                 try:
                     if y is not None and fc_x0 <= float(x) <= fc_x1:
-                        fc_y_vals.append(float(y))
+                        target.append(float(y))
                 except (TypeError, ValueError):
                     pass
+        fc_y_vals = priority_y if priority_y else fallback_y
 
         if fc_y_vals:
             span = max(fc_y_vals) - min(fc_y_vals)
