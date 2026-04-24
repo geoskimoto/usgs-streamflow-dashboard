@@ -20,6 +20,7 @@ import flask
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 import hashlib
 import os
+import threading
 
 # Import dashboard components
 from usgs_dashboard.data.data_manager import get_data_manager
@@ -56,6 +57,9 @@ filter_panel = SimplifiedFilterPanel()
 
 # Start percentile background refresh thread (fetches from StreamflowOps every 30 min)
 data_manager.start_percentile_background_refresh(interval_seconds=1800)
+
+# Pre-warm station cache in background so first user request hits cache, not cold API
+threading.Thread(target=data_manager.load_regional_gauges, daemon=True, name="station-prefetch").start()
 
 # Initialize Dash app
 app = dash.Dash(
@@ -1102,13 +1106,23 @@ def load_gauge_data(pathname):
         if 'years_of_record' in gauges_df.columns:
             gauges_df = gauges_df.drop('years_of_record', axis=1)
         
+        # Slim payload: keep only columns needed by map + filter callbacks
+        _keep_cols = [
+            'site_id', 'station_number', 'station_name', 'state',
+            'latitude', 'longitude', 'drainage_area', 'station_status',
+            'huc_code', 'basin', 'nwrfc_id', 'color', 'catchment_area',
+            'site_no', 'station_nm', 'name', 'status',
+        ]
+        available = [c for c in _keep_cols if c in gauges_df.columns]
+        gauges_df = gauges_df[available]
+
         # Convert any remaining binary columns to None
         for col in gauges_df.columns:
             if gauges_df[col].dtype == object:
                 sample = gauges_df[col].dropna().head(1)
                 if len(sample) > 0 and isinstance(sample.iloc[0], bytes):
                     gauges_df[col] = None
-        
+
         alert_msg = f"Successfully loaded {len(gauges_df)} USGS gauges from {', '.join(TARGET_STATES)}"
         if 'station_status' in gauges_df.columns:
             active_count = (gauges_df['station_status'] == 'Active').sum()

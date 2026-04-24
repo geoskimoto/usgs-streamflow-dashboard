@@ -12,6 +12,7 @@ import os
 import logging
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from ..utils.config import TARGET_STATES, CACHE_DURATION, MAX_YEARS_LOAD, GAUGE_COLORS
 
@@ -57,6 +58,11 @@ class USGSDataManager:
         
         # Cached stations DataFrame (refreshed on load_regional_gauges)
         self._stations_cache = None
+
+        # Active station numbers cache (1-hour TTL — avoids repeat API call on each load)
+        self._active_stations_cache: Optional[set] = None
+        self._active_stations_cache_time: float = 0.0
+        self._active_stations_cache_ttl: int = 3600
 
         # Percentile bands cache (latest date, refreshed by background thread)
         self._percentile_cache: dict = {}
@@ -112,26 +118,25 @@ class USGSDataManager:
             all_stations = []
             
             if TARGET_STATES:
-                # Fetch per-state to ensure we have state metadata
-                # Support multiple agencies (USGS for US states, EC for Canadian provinces)
-                for state in TARGET_STATES:
-                    try:
-                        # Determine agency based on state/province
-                        agency = 'EC' if state == 'BC' else 'USGS'
-                        
-                        state_df = self.adapter.get_stations(
-                            agency=agency,
-                            state=state,
-                            limit=limit
-                        )
-                        if not state_df.empty:
-                            # Ensure state column is populated (may be missing from StationList serializer)
-                            if 'state' not in state_df.columns or state_df['state'].isna().all():
-                                state_df['state'] = state
-                            logger.info(f"  Loaded {len(state_df)} {agency} stations for {state}")
-                            all_stations.append(state_df)
-                    except Exception as e:
-                        logger.warning(f"Error loading stations for state {state}: {e}")
+                # Fetch per-state concurrently to ensure state metadata is available
+                def _fetch_state(state):
+                    agency = 'EC' if state == 'BC' else 'USGS'
+                    df = self.adapter.get_stations(agency=agency, state=state, limit=limit)
+                    if not df.empty:
+                        if 'state' not in df.columns or df['state'].isna().all():
+                            df['state'] = state
+                        logger.info(f"  Loaded {len(df)} {agency} stations for {state}")
+                    return state, df
+
+                with ThreadPoolExecutor(max_workers=10) as pool:
+                    futures = {pool.submit(_fetch_state, s): s for s in TARGET_STATES}
+                    for future in as_completed(futures):
+                        try:
+                            _, state_df = future.result()
+                            if not state_df.empty:
+                                all_stations.append(state_df)
+                        except Exception as e:
+                            logger.warning(f"Error loading stations: {e}")
                 
                 if all_stations:
                     stations_df = pd.concat(all_stations, ignore_index=True)
@@ -192,9 +197,17 @@ class USGSDataManager:
             return df
         
         try:
-            # Get set of station numbers with recent discharge data
-            active_stations = self.adapter.get_active_station_numbers(months_back=6)
-            
+            # Get set of station numbers with recent discharge data (cached 1 hr)
+            now = time.time()
+            if (self._active_stations_cache is not None and
+                    (now - self._active_stations_cache_time) < self._active_stations_cache_ttl):
+                active_stations = self._active_stations_cache
+                logger.info("Station activity: using cached active-station set")
+            else:
+                active_stations = self.adapter.get_active_station_numbers(months_back=6)
+                self._active_stations_cache = active_stations
+                self._active_stations_cache_time = now
+
             if active_stations:
                 df['station_status'] = df['station_number'].apply(
                     lambda sn: 'Active' if sn in active_stations else 'Inactive'
