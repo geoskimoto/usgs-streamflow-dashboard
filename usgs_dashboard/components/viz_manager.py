@@ -1110,37 +1110,60 @@ class VisualizationManager:
         """
         Add a range slider and preset window buttons to a water year plot.
 
-        Buttons are centered on the current day of water year:
-          ±15 days, ±1 month, ±3 months, ±6 months, Full year.
+        Buttons: Forecast View (-7/+14 days, y-scaled to window), ±1mo, ±3mo, Full Year (default).
+        All non-forecast buttons reset yaxis.autorange so y rescales on click.
         """
-        windows = [
-            ('±15d',  15),
-            ('±1mo',  30),
-            ('±3mo',  91),
-            ('±6mo', 183),
+        # Compute forecast window bounds
+        fc_x0 = max(1.0, current_day - 7)
+        fc_x1 = min(366.0, current_day + 14)
+
+        # Derive tight y-bounds from trace data inside the forecast window
+        fc_y_vals = []
+        for trace in fig.data:
+            xs = getattr(trace, 'x', None)
+            ys = getattr(trace, 'y', None)
+            if xs is None or ys is None:
+                continue
+            for x, y in zip(xs, ys):
+                try:
+                    if y is not None and fc_x0 <= float(x) <= fc_x1:
+                        fc_y_vals.append(float(y))
+                except (TypeError, ValueError):
+                    pass
+
+        if fc_y_vals:
+            span = max(fc_y_vals) - min(fc_y_vals)
+            pad = span * 0.12 if span > 0 else max(fc_y_vals) * 0.12
+            fc_y_range = [max(0, min(fc_y_vals) - pad), max(fc_y_vals) + pad]
+            fc_relayout = {'xaxis.range': [fc_x0, fc_x1], 'yaxis.range': fc_y_range, 'yaxis.autorange': False}
+        else:
+            fc_relayout = {'xaxis.range': [fc_x0, fc_x1], 'yaxis.autorange': True}
+
+        buttons = [
+            dict(label='Forecast View', method='relayout', args=[fc_relayout]),
         ]
 
-        buttons = []
-        for label, half_span in windows:
+        for label, half_span in [('±1mo', 30), ('±3mo', 91)]:
             x0 = max(1, current_day - half_span)
             x1 = min(366, current_day + half_span)
             buttons.append(dict(
                 label=label,
                 method='relayout',
-                args=[{'xaxis.range': [x0, x1]}]
+                args=[{'xaxis.range': [x0, x1], 'yaxis.autorange': True}]
             ))
 
-        # Full year reset button
         buttons.append(dict(
             label='Full Year',
             method='relayout',
-            args=[{'xaxis.range': [1, 366]}]
+            args=[{'xaxis.range': [1, 366], 'yaxis.autorange': True}]
         ))
 
         fig.update_layout(
             xaxis=dict(
                 rangeslider=dict(visible=True, thickness=0.10),
+                range=[1, 366],  # Full Year default
             ),
+            yaxis=dict(autorange=True),
             updatemenus=[
                 dict(
                     type='buttons',
@@ -1150,6 +1173,7 @@ class VisualizationManager:
                     y=1.15,
                     yanchor='top',
                     showactive=True,
+                    active=3,  # Full Year is index 3 — shown as active on load
                     buttons=buttons,
                     font=dict(size=11),
                 )
