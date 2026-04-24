@@ -397,24 +397,24 @@ class VisualizationManager:
             fig.add_trace(go.Scatter(
                 x=s["day_of_wy"], y=s["q90"],
                 mode="lines", line=dict(color="rgba(173,216,230,0)"),
-                showlegend=False, name="90th pct", hovertemplate="<extra></extra>",
+                showlegend=False, name="90th pct", hoverinfo="skip",
             ))
             fig.add_trace(go.Scatter(
                 x=s["day_of_wy"], y=s["q10"],
                 mode="lines", line=dict(color="rgba(173,216,230,0)"),
                 fill="tonexty", fillcolor="rgba(173,216,230,0.42)",
-                showlegend=True, name="10th–90th percentile", hovertemplate="<extra></extra>",
+                showlegend=True, name="10th–90th percentile", hoverinfo="skip",
             ))
             fig.add_trace(go.Scatter(
                 x=s["day_of_wy"], y=s["q75"],
                 mode="lines", line=dict(color="rgba(100,149,237,0)"),
-                showlegend=False, name="75th pct", hovertemplate="<extra></extra>",
+                showlegend=False, name="75th pct", hoverinfo="skip",
             ))
             fig.add_trace(go.Scatter(
                 x=s["day_of_wy"], y=s["q25"],
                 mode="lines", line=dict(color="rgba(100,149,237,0)"),
                 fill="tonexty", fillcolor="rgba(100,149,237,0.56)",
-                showlegend=True, name="25th–75th percentile", hovertemplate="<extra></extra>",
+                showlegend=True, name="25th–75th percentile", hoverinfo="skip",
             ))
 
             # Mean and median lines
@@ -632,7 +632,7 @@ class VisualizationManager:
                 line=dict(color='rgba(173, 216, 230, 0)'),
                 showlegend=False,
                 name='90th percentile',
-                hovertemplate='<extra></extra>'  # Hide hover for boundary
+                hoverinfo='skip',
             ))
             fig.add_trace(go.Scatter(
                 x=daily_stats.index,
@@ -640,10 +640,10 @@ class VisualizationManager:
                 mode='lines',
                 line=dict(color='rgba(173, 216, 230, 0)'),
                 fill='tonexty',
-                fillcolor='rgba(173, 216, 230, 0.42)',  # Increased from 0.3 to 0.42 (40% increase)
+                fillcolor='rgba(173, 216, 230, 0.42)',
                 showlegend=True,
                 name='10th-90th percentile',
-                hovertemplate='<extra></extra>'  # Hide hover for fill
+                hoverinfo='skip',
             ))
             fig.add_trace(go.Scatter(
                 x=daily_stats.index,
@@ -652,7 +652,7 @@ class VisualizationManager:
                 line=dict(color='rgba(100, 149, 237, 0)'),
                 showlegend=False,
                 name='75th percentile',
-                hovertemplate='<extra></extra>'  # Hide hover for boundary
+                hoverinfo='skip',
             ))
             fig.add_trace(go.Scatter(
                 x=daily_stats.index,
@@ -660,10 +660,10 @@ class VisualizationManager:
                 mode='lines',
                 line=dict(color='rgba(100, 149, 237, 0)'),
                 fill='tonexty',
-                fillcolor='rgba(100, 149, 237, 0.56)',  # Increased from 0.4 to 0.56 (40% increase)
+                fillcolor='rgba(100, 149, 237, 0.56)',
                 showlegend=True,
                 name='25th-75th percentile',
-                hovertemplate='<extra></extra>'  # Hide hover for fill
+                hoverinfo='skip',
             ))
         # Get unique years
         years = sorted(data_copy['water_year'].unique())

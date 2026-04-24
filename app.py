@@ -1270,12 +1270,13 @@ def update_date_selection(prev_clicks, next_clicks, picker_value, range_data):
      Input('station-status-filter', 'value'),
      Input('forecast-filter', 'value'),
      Input('resid-cast-filter', 'value'),
-     Input('percentile-bands-store', 'data')],
+     Input('percentile-bands-store', 'data'),
+     Input('dark-mode-store', 'data')],
     [State('selected-gauge-store', 'data')]
 )
 def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin_boundaries, search_text, states,
                                      drainage_range, basins, hucs, show_realtime_only, station_status, show_forecast_only,
-                                     show_resid_cast_only, percentile_bands, selected_gauge):
+                                     show_resid_cast_only, percentile_bands, dark_mode, selected_gauge):
     """Update the gauge map based on simplified filters."""
     if not gauges_data:
         empty_fig = go.Figure()
@@ -1391,6 +1392,21 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
             percentile_bands=percentile_bands or {}
         )
         
+        # Apply dark mode legend / tooltip styling (basemap is unchanged)
+        if dark_mode:
+            fig.update_layout(
+                legend=dict(
+                    bgcolor="rgba(40,40,40,0.92)",
+                    bordercolor="#555555",
+                    font=dict(color="#e0e0e0"),
+                ),
+                hoverlabel=dict(
+                    bgcolor="#2d2d2d",
+                    bordercolor="#555555",
+                    font=dict(color="#e0e0e0"),
+                ),
+            )
+
         # Add watershed boundaries if selected
         if basin_boundaries:
             show_huc2 = 'huc2' in basin_boundaries
@@ -1656,7 +1672,12 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
     plot_template = 'plotly_dark' if dark_mode else 'plotly'
 
     def _card(title, fig):
-        fig.update_layout(template=plot_template)
+        fig.update_layout(template=plot_template, hovermode='x unified')
+        if dark_mode and fig.layout.updatemenus:
+            fig.for_each_updatemenu(lambda m: m.update(
+                bgcolor='#3a3a3a', bordercolor='#555555',
+                font=dict(color='#e0e0e0', size=11),
+            ))
         return dbc.Card([
             dbc.CardHeader([
                 html.Div(f"{title} — {site_label} — {station_name}",
