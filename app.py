@@ -651,10 +651,18 @@ def create_main_content():
                         width="auto",
                         className="d-flex align-items-center",
                     ),
-                    # Right: [−] date picker [+]
+                    # Right: label + [−] date picker [+]
                     dbc.Col(
                         dbc.Row(
                             [
+                                dbc.Col(
+                                    html.Small(
+                                        "Flow conditions for date:",
+                                        className="text-muted",
+                                        style={"whiteSpace": "nowrap", "fontSize": "0.75rem"},
+                                    ),
+                                    width="auto",
+                                ),
                                 dbc.Col(
                                     dbc.Button(
                                         "−", id="prev-date-btn",
@@ -1174,7 +1182,7 @@ def load_gauge_data(pathname):
     State('percentile-bands-store', 'data'),
     prevent_initial_call=False,
 )
-def refresh_percentile_bands(n_intervals, selected_date, current_bands):
+def refresh_percentile_bands(n_intervals, startup_n_intervals, selected_date, current_bands):
     """Poll cached percentile bands every 30 s. When a historical date is
     selected via the slider, fetches that date's bands on demand. Returns
     no_update when data is unchanged."""
