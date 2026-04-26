@@ -64,31 +64,31 @@ class SimplifiedFilterPanel:
                     ], className="mb-3")
                 ], style={'display': 'none'}),
                 
-                # Forecast Data Filter
+                # Forecast Data Filters
                 html.Div([
                     html.Div([
                         html.Label("🌊 River Forecasts:", className="fw-bold mb-2"),
                         html.Div([
                             dbc.Switch(
                                 id="forecast-filter",
-                                label="Show only stations with any forecast",
+                                label="Show only NWRFC forecast stations",
                                 value=False,
                                 className="mb-2"
                             ),
                             html.Small(
                                 id="forecast-filter-info",
                                 className="text-muted d-block mb-2",
-                                children="NWRFC raw + ResidCast ML forecast stations (~292)"
+                                children="Stations with NWRFC river forecast model assignments (~292)"
                             ),
                             dbc.Switch(
                                 id="resid-cast-filter",
-                                label="Show only per-station ML model stations",
+                                label="Show only ResidCast ML forecast stations",
                                 value=False,
                                 className="mb-1"
                             ),
                             html.Small(
                                 className="text-muted d-block",
-                                children="13 quality stations with XGBoost/LSTM/MuTHRE per-station models"
+                                children="Stations with bias-corrected ML forecasts (XGBoost/LSTM/MuTHRE)"
                             ),
                         ])
                     ], className="mb-3")

@@ -137,10 +137,13 @@ class ModernMapComponent:
             )
         )
         
+        # Add NWRFC overlay (diamond outline on top of band-colored circles)
+        self._add_nwrfc_overlay(fig, map_data)
+
         # Add selected gauge highlight if specified
         if selected_gauge and selected_gauge in gauges_df['site_id'].values:
             self._add_selected_gauge_highlight(fig, gauges_df, selected_gauge)
-            
+
         return fig
     
     def _prepare_map_data(self, gauges_df: pd.DataFrame, percentile_bands: dict = None) -> pd.DataFrame:
@@ -478,7 +481,32 @@ class ModernMapComponent:
             'inactive': '#808080',       # Gray (legacy alias)
         }
     
-    def _add_selected_gauge_highlight(self, fig: go.Figure, gauges_df: pd.DataFrame, 
+    def _add_nwrfc_overlay(self, fig: go.Figure, map_data: pd.DataFrame):
+        """Add a single diamond-stroked overlay trace for NWRFC forecast stations."""
+        if 'nwrfc_id' not in map_data.columns:
+            return
+        nwrfc_df = map_data[
+            map_data['nwrfc_id'].notna() &
+            (map_data['nwrfc_id'].astype(str).str.strip() != '') &
+            (map_data['nwrfc_id'].astype(str) != 'nan')
+        ]
+        if nwrfc_df.empty:
+            return
+        fig.add_trace(go.Scattermapbox(
+            lat=nwrfc_df['latitude'],
+            lon=nwrfc_df['longitude'],
+            mode='markers',
+            marker=dict(
+                size=nwrfc_df['size_value'] * 0.5,
+                color='rgba(255, 255, 255, 0.85)',
+                symbol='diamond',
+            ),
+            name=f'◆ NWRFC Forecast ({len(nwrfc_df)})',
+            showlegend=True,
+            hoverinfo='skip',
+        ))
+
+    def _add_selected_gauge_highlight(self, fig: go.Figure, gauges_df: pd.DataFrame,
                                     selected_gauge: str):
         """Add highlight for selected gauge using Scattermapbox (not Scattermap)."""
         selected_data = gauges_df[gauges_df['site_id'] == selected_gauge].iloc[0]

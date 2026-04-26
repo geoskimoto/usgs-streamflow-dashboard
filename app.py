@@ -454,10 +454,10 @@ def create_sidebar():
                         {"label": "🖥️ Large (600px)", "value": 600},
                         {"label": "📺 Extra Large (800px)", "value": 800},
                     ],
-                    value=500,  # Default current size
+                    value=600,
                     className="mb-3"
                 ),
-                
+
                 dbc.Label("Additional Options:"),
                 dbc.Checklist(
                     id="plot-options-checklist",
@@ -471,18 +471,18 @@ def create_sidebar():
                 ),
             ])
         ], className="mb-3"),
-        
+
         # Gauge information card
         dbc.Card([
             dbc.CardHeader(html.H5("📍 Selected Gauge", className="mb-0")),
             dbc.CardBody([
                 html.Div(id="gauge-info-content", children=[
-                    html.P("Select a gauge on the map to view details.", 
+                    html.P("Select a gauge on the map to view details.",
                           className="text-muted")
                 ])
             ])
         ], className="mb-3"),
-        
+
     ])  # Removed fixed width - now controlled by parent column
 
 
@@ -570,7 +570,7 @@ def create_public_sidebar():
                         {"label": "🖥️ Large (600px)", "value": 600},
                         {"label": "📺 Extra Large (800px)", "value": 800},
                     ],
-                    value=500,
+                    value=600,
                     className="mb-3"
                 ),
                 
@@ -1392,16 +1392,20 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
         except Exception as e:
             print(f"Error filtering by real-time data: {e}")
     
-    # Forecast data filter (NWRFC + ResidCast)
+    # NWRFC forecast filter — keep only stations with an nwrfc_id assignment
     if show_forecast_only:
-        try:
-            forecast_site_ids = data_manager.get_forecast_station_ids()
-            if forecast_site_ids:
-                filtered_gauges = filtered_gauges[filtered_gauges['site_id'].isin(forecast_site_ids)]
-            else:
-                filtered_gauges = pd.DataFrame()
-        except Exception as e:
-            print(f"Error filtering by forecast data: {e}")
+        if 'nwrfc_id' in filtered_gauges.columns:
+            has_nwrfc = filtered_gauges['nwrfc_id'].notna() & (filtered_gauges['nwrfc_id'].astype(str).str.strip() != '') & (filtered_gauges['nwrfc_id'].astype(str) != 'nan')
+            filtered_gauges = filtered_gauges[has_nwrfc]
+        else:
+            try:
+                forecast_site_ids = data_manager.get_forecast_station_ids()
+                if forecast_site_ids:
+                    filtered_gauges = filtered_gauges[filtered_gauges['site_id'].isin(forecast_site_ids)]
+                else:
+                    filtered_gauges = pd.DataFrame()
+            except Exception as e:
+                print(f"Error filtering by NWRFC forecast data: {e}")
 
     # ResidCast ML forecast filter
     if show_resid_cast_only:
