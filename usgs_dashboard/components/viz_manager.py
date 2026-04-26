@@ -1191,7 +1191,6 @@ class VisualizationManager:
                     font=dict(size=11, color='#ffffff'),
                     bgcolor='rgba(55,65,81,0.85)',
                     bordercolor='rgba(100,116,139,0.7)',
-                    activecolor='rgba(29,78,216,0.9)',
                 )
             ]
         )
