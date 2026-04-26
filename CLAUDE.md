@@ -83,41 +83,22 @@ The dev repo and the deployed app live on the **same VPS**. Files are copied man
 
 The deployed app runs under the `streamflowdash` system user via systemd + gunicorn, proxied through nginx. It uses `.venv/` (not `venv/`) as its virtualenv.
 
-**Deploy steps — run as root or sudo:**
+**Deploy — one command:**
 
 ```bash
-DEV=/home/geoskimoto/projects/usgs-streamflow-dashboard
-DEPLOY=/home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io
-
-# 1. Copy every changed file (mirror the list below as files are added/changed)
-sudo cp $DEV/app.py                                          $DEPLOY/app.py
-sudo cp $DEV/requirements.txt                               $DEPLOY/requirements.txt
-sudo cp $DEV/manage_cache.py                                $DEPLOY/manage_cache.py
-sudo cp $DEV/usgs_dashboard/components/viz_manager.py       $DEPLOY/usgs_dashboard/components/viz_manager.py
-sudo cp $DEV/usgs_dashboard/data/data_manager.py            $DEPLOY/usgs_dashboard/data/data_manager.py
-sudo cp $DEV/usgs_dashboard/data/stats_cache_manager.py     $DEPLOY/usgs_dashboard/data/stats_cache_manager.py
-# For new directories, create them first, then copy:
-# sudo mkdir -p $DEPLOY/<new_dir> && sudo cp -r $DEV/<new_dir>/. $DEPLOY/<new_dir>/
-
-# 2. Fix ownership so the service user can read/write the files
-sudo chown -R streamflowdash:streamflowdash $DEPLOY
-
-# 3. Install any new Python dependencies (uses .venv, not venv)
-sudo -u streamflowdash $DEPLOY/.venv/bin/pip install -r $DEPLOY/requirements.txt -q
-
-# 4. Restart and verify
-sudo systemctl restart streamflow-dashboard.service
-sudo systemctl status streamflow-dashboard.service --no-pager
-journalctl -u streamflow-dashboard.service -f   # tail logs
+./deploy.sh
 ```
 
-**New directories or files added since last deploy** must be explicitly created/copied — rsync is safer for large changes:
+`deploy.sh` rsyncs all changed files (excluding `.env`, `data/stats_cache/`, `.git`, `__pycache__`), fixes ownership, and restarts the service. Always run from the dev directory root.
+
+**If new Python dependencies were added**, install them after deploying:
 ```bash
-sudo rsync -av --chown=streamflowdash:streamflowdash \
-  --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' \
-  --exclude='.env' --exclude='venv/' --exclude='data/stats_cache/' \
-  $DEV/ $DEPLOY/
-sudo systemctl restart streamflow-dashboard.service
+sudo -u streamflowdash /home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/.venv/bin/pip install -r /home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/requirements.txt -q
+```
+
+**To tail logs after deploy:**
+```bash
+journalctl -u streamflow-dashboard.service -f
 ```
 
 **Known layout quirks:**
