@@ -173,6 +173,28 @@ LIMIT 10;
 "
 ```
 
+### Step 6b: Pre-warm the Stats Cache (Recommended)
+
+The dashboard caches per-day-of-water-year percentile statistics as parquet files in `data/stats_cache/`. These are **not** stored in SQLite — each file is `<site_id>_WY<year>.parquet`, one per station per water year.
+
+The cache builds automatically on first gauge click. To pre-warm it ahead of time:
+
+```bash
+python manage_cache.py rebuild_stats --active        # active stations only (recommended)
+python manage_cache.py rebuild_stats --all-stations  # all stations (slower)
+python manage_cache.py rebuild_stats --site 14187500 # single station
+python manage_cache.py rebuild_stats --force         # rebuild even if cache is current
+```
+
+To clear stale cache files:
+
+```bash
+python manage_cache.py clear_stats              # all stations (prompts for confirmation)
+python manage_cache.py clear_stats --site 14187500  # single station
+```
+
+The `data/stats_cache/` directory should never be committed to git or rsynced between environments — let it build independently on each server.
+
 ### Step 7: Start Dashboard
 
 ```bash

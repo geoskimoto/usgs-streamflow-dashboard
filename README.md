@@ -85,6 +85,27 @@ usgs-streamflow-dashboard/
 - Removed raw SQL from application code
 - Improved testability and maintainability
 
+## Stats Cache
+
+The dashboard pre-computes per-day-of-water-year percentile statistics and stores them as parquet files in `data/stats_cache/`. These are **not** a SQLite database — each file is `<site_id>_WY<year>.parquet`.
+
+The cache builds automatically on first gauge click (cache miss). To pre-warm it after a fresh deploy:
+
+```bash
+python manage_cache.py rebuild_stats --active   # active stations only
+python manage_cache.py rebuild_stats --all-stations  # all stations (slower)
+python manage_cache.py rebuild_stats --site 14187500  # single station
+```
+
+To clear the cache:
+
+```bash
+python manage_cache.py clear_stats              # all stations
+python manage_cache.py clear_stats --site 14187500  # single station
+```
+
+The `data/stats_cache/` directory is gitignored and excluded from `deploy.sh` — let it build independently on each environment.
+
 ## License
 
 MIT License - See LICENSE file for details
