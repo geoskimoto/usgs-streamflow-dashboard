@@ -830,6 +830,17 @@ class USGSDataManager:
             logger.warning(f"Error getting ResidCast station IDs: {e}")
             return set()
 
+    def get_resid_cast_perstation_ids(self) -> set:
+        """Return only the stations with per-station (3-model) ResidCast artifacts."""
+        if self._resid_cast is None:
+            return set()
+        try:
+            config = self._resid_cast._config
+            return {usgs_id for usgs_id, cfg in config.items() if len(cfg.get('models', [])) >= 3}
+        except Exception as e:
+            logger.warning(f"Error getting ResidCast per-station IDs: {e}")
+            return set()
+
     def get_resid_cast_forecasts(
         self, site_id: str, num_runs: int = 5
     ) -> List[Dict]:

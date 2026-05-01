@@ -82,13 +82,13 @@ class SimplifiedFilterPanel:
                             ),
                             dbc.Switch(
                                 id="resid-cast-filter",
-                                label="Show only ResidCast ML forecast stations",
+                                label="Show only per-station ResidCast models",
                                 value=False,
                                 className="mb-1"
                             ),
                             html.Small(
                                 className="text-muted d-block",
-                                children="Stations with bias-corrected ML forecasts (XGBoost/LSTM/MuTHRE)"
+                                children="Stations with per-station bias-corrected models (XGBoost/LSTM/MuTHRE, 13 stations)"
                             ),
                         ])
                     ], className="mb-3")

@@ -1407,10 +1407,10 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
             except Exception as e:
                 print(f"Error filtering by NWRFC forecast data: {e}")
 
-    # ResidCast ML forecast filter
+    # ResidCast ML forecast filter — per-station models only (13 quality stations)
     if show_resid_cast_only:
         try:
-            rc_ids = data_manager.get_resid_cast_station_ids()
+            rc_ids = data_manager.get_resid_cast_perstation_ids()
             if rc_ids:
                 filtered_gauges = filtered_gauges[filtered_gauges['site_id'].isin(rc_ids)]
             else:
