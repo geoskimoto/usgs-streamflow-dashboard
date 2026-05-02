@@ -94,7 +94,7 @@ class ModernMapComponent:
             'latitude', 'longitude', 'size_value', 'station_name'
         ]
         
-        # Use go.Scattermapbox for all map styles with custom tile layers
+        # Use go.Scattermap for all map styles with custom tile layers
         if map_style == 'stamen-terrain':
             fig = self._create_stamen_terrain_map(map_data, custom_data_fields, gauges_df, height)
         else:
@@ -256,9 +256,9 @@ class ModernMapComponent:
         return map_data
     
     def _create_usgs_national_map(self, map_data: pd.DataFrame, custom_data_fields: List, gauges_df: pd.DataFrame, height: int = 700) -> go.Figure:
-        """Create map with USGS National Map basemap using custom tiles and go.Scattermapbox."""
+        """Create map with USGS National Map basemap using custom tiles and go.Scattermap."""
         fig = go.Figure()
-        
+
         # Render one trace per percentile band
         for band_key, label, color, opacity, size_factor in PERCENTILE_GROUP_CONFIG:
             group_df = map_data[map_data['map_group'] == band_key]
@@ -273,7 +273,7 @@ class ModernMapComponent:
                 for _, row in group_df.iterrows()
             ]
 
-            fig.add_trace(go.Scattermapbox(
+            fig.add_trace(go.Scattermap(
                 lat=group_df['latitude'],
                 lon=group_df['longitude'],
                 mode='markers',
@@ -297,132 +297,125 @@ class ModernMapComponent:
                 )
             ))
 
-        # USGS National Map layers configuration matching your working example
-        mapbox_layers = [
-            {
-                "below": "traces",
-                "sourcetype": "raster", 
-                "sourceattribution": "United States Geologic Society",
-                "source": ["https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/tile/{z}/{y}/{x}"]
-            }
-        ]
-        
-        # Configure layout with USGS National Map tile layer using go.Layout()
-        fig.update_layout(
-            go.Layout(
-                mapbox=dict(
-                    style="white-bg",  # Use white background for custom tiles
-                    layers=mapbox_layers,
-                    center=self.last_center,
-                    zoom=self.last_zoom
-                ),
-                height=height,
-                margin=dict(r=0, t=50, l=0, b=0),
-                title=f"USGS Streamflow Gauges - Pacific Northwest ({len(gauges_df)} gauges) - USGS National Map",
-                font=dict(family="Arial", size=12),
-                legend=dict(
-                    orientation="v",
-                    yanchor="top",
-                    y=0.99,
-                    xanchor="left",
-                    x=0.01,
-                    bgcolor="rgba(255, 255, 255, 0.9)",
-                    bordercolor="black",
-                    borderwidth=1
-                ),
-                hoverlabel=dict(
-                    bgcolor="white",
-                    bordercolor="black",
-                    font=dict(size=12)
-                )
-            )
-        )
-        
-        return fig
-
-    def _create_stamen_terrain_map(self, map_data: pd.DataFrame, custom_data_fields: List, gauges_df: pd.DataFrame, height: int = 700) -> go.Figure:
-        """Create map with Stamen Terrain basemap using Stadia Maps hosted tiles."""
-        fig = go.Figure()
-        
-        # Render one trace per percentile band
-        for band_key, label, color, opacity, size_factor in PERCENTILE_GROUP_CONFIG:
-            group_df = map_data[map_data['map_group'] == band_key]
-            if group_df.empty:
-                continue
-
-            custom_data = [
-                [row['site_id'], row['state'], row['catchment_area_display'],
-                 row['years_of_record_display'], row['status'], row['latitude'],
-                 row['longitude'], row['size_value'], row['station_name'],
-                 row['percentile_label']]
-                for _, row in group_df.iterrows()
-            ]
-
-            fig.add_trace(go.Scattermapbox(
-                lat=group_df['latitude'],
-                lon=group_df['longitude'],
-                mode='markers',
-                marker=dict(
-                    size=group_df['size_value'] * size_factor,
-                    color=color,
-                    opacity=opacity,
-                ),
-                text=group_df['station_name'],
-                name=f"{label} ({len(group_df)})",
-                customdata=custom_data,
-                hovertemplate=(
-                    "<b>%{customdata[8]}</b><br>"
-                    "Site ID: %{customdata[0]}<br>"
-                    "State: %{customdata[1]}<br>"
-                    "Catchment Area: %{customdata[2]}<br>"
-                    "Years of Record: %{customdata[3]}<br>"
-                    "Condition: <b>%{customdata[9]}</b><br>"
-                    "Lat: %{customdata[5]:.4f}, Lon: %{customdata[6]:.4f}<br>"
-                    "<extra></extra>"
-                )
-            ))
-
-        # Stamen Terrain tiles hosted by Stadia Maps
-        mapbox_layers = [
+        map_layers = [
             {
                 "below": "traces",
                 "sourcetype": "raster",
-                "sourceattribution": "Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL. Hosted by Stadia Maps.",
-                "source": ["https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}.png"]
+                "sourceattribution": "United States Geological Survey",
+                "source": ["https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/tile/{z}/{y}/{x}"]
             }
         ]
-        
-        # Configure layout with Stamen Terrain tile layer
+
         fig.update_layout(
-            go.Layout(
-                mapbox=dict(
-                    style="white-bg",
-                    layers=mapbox_layers,
-                    center=self.last_center,
-                    zoom=self.last_zoom
-                ),
-                height=height,
-                margin=dict(r=0, t=50, l=0, b=0),
-                title=f"USGS Streamflow Gauges - Pacific Northwest ({len(gauges_df)} gauges) - Stamen Terrain",
-                font=dict(family="Arial", size=12),
-                legend=dict(
-                    orientation="v",
-                    yanchor="top",
-                    y=0.99,
-                    xanchor="left",
-                    x=0.01,
-                    bgcolor="rgba(255, 255, 255, 0.9)",
-                    bordercolor="black",
-                    borderwidth=1
-                ),
-                hoverlabel=dict(
-                    bgcolor="white",
-                    bordercolor="black",
-                    font=dict(size=12)
-                )
+            map=dict(
+                style="white-bg",
+                layers=map_layers,
+                center=self.last_center,
+                zoom=self.last_zoom
+            ),
+            height=height,
+            margin=dict(r=0, t=50, l=0, b=0),
+            title=f"USGS Streamflow Gauges - Pacific Northwest ({len(gauges_df)} gauges) - USGS National Map",
+            font=dict(family="Arial", size=12),
+            legend=dict(
+                orientation="v",
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=0.01,
+                bgcolor="rgba(255, 255, 255, 0.9)",
+                bordercolor="black",
+                borderwidth=1
+            ),
+            hoverlabel=dict(
+                bgcolor="white",
+                bordercolor="black",
+                font=dict(size=12)
             )
         )
-        
+
+        return fig
+
+    def _create_stamen_terrain_map(self, map_data: pd.DataFrame, custom_data_fields: List, gauges_df: pd.DataFrame, height: int = 700) -> go.Figure:
+        """Create map with CartoDB Voyager basemap (replaced broken Stadia Maps tiles)."""
+        fig = go.Figure()
+
+        # Render one trace per percentile band
+        for band_key, label, color, opacity, size_factor in PERCENTILE_GROUP_CONFIG:
+            group_df = map_data[map_data['map_group'] == band_key]
+            if group_df.empty:
+                continue
+
+            custom_data = [
+                [row['site_id'], row['state'], row['catchment_area_display'],
+                 row['years_of_record_display'], row['status'], row['latitude'],
+                 row['longitude'], row['size_value'], row['station_name'],
+                 row['percentile_label']]
+                for _, row in group_df.iterrows()
+            ]
+
+            fig.add_trace(go.Scattermap(
+                lat=group_df['latitude'],
+                lon=group_df['longitude'],
+                mode='markers',
+                marker=dict(
+                    size=group_df['size_value'] * size_factor,
+                    color=color,
+                    opacity=opacity,
+                ),
+                text=group_df['station_name'],
+                name=f"{label} ({len(group_df)})",
+                customdata=custom_data,
+                hovertemplate=(
+                    "<b>%{customdata[8]}</b><br>"
+                    "Site ID: %{customdata[0]}<br>"
+                    "State: %{customdata[1]}<br>"
+                    "Catchment Area: %{customdata[2]}<br>"
+                    "Years of Record: %{customdata[3]}<br>"
+                    "Condition: <b>%{customdata[9]}</b><br>"
+                    "Lat: %{customdata[5]:.4f}, Lon: %{customdata[6]:.4f}<br>"
+                    "<extra></extra>"
+                )
+            ))
+
+        # CartoDB Voyager tiles — free, no API key required
+        map_layers = [
+            {
+                "below": "traces",
+                "sourcetype": "raster",
+                "sourceattribution": "© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors © <a href='https://carto.com/attributions'>CARTO</a>",
+                "source": ["https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"]
+            }
+        ]
+
+        fig.update_layout(
+            map=dict(
+                style="white-bg",
+                layers=map_layers,
+                center=self.last_center,
+                zoom=self.last_zoom
+            ),
+            height=height,
+            margin=dict(r=0, t=50, l=0, b=0),
+            title=f"USGS Streamflow Gauges - Pacific Northwest ({len(gauges_df)} gauges) - Terrain",
+            font=dict(family="Arial", size=12),
+            legend=dict(
+                orientation="v",
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=0.01,
+                bgcolor="rgba(255, 255, 255, 0.9)",
+                bordercolor="black",
+                borderwidth=1
+            ),
+            hoverlabel=dict(
+                bgcolor="white",
+                bordercolor="black",
+                font=dict(size=12)
+            )
+        )
+
         return fig
         
     def update_view_state(self, center_lat: float, center_lon: float, zoom: float):
@@ -492,14 +485,13 @@ class ModernMapComponent:
         ]
         if nwrfc_df.empty:
             return
-        fig.add_trace(go.Scattermapbox(
+        fig.add_trace(go.Scattermap(
             lat=nwrfc_df['latitude'],
             lon=nwrfc_df['longitude'],
             mode='markers',
             marker=dict(
                 size=nwrfc_df['size_value'] * 0.5,
                 color='rgba(255, 255, 255, 0.85)',
-                symbol='diamond',
             ),
             name=f'◆ NWRFC Forecast ({len(nwrfc_df)})',
             showlegend=True,
@@ -508,34 +500,31 @@ class ModernMapComponent:
 
     def _add_selected_gauge_highlight(self, fig: go.Figure, gauges_df: pd.DataFrame,
                                     selected_gauge: str):
-        """Add highlight for selected gauge using Scattermapbox (not Scattermap)."""
+        """Add highlight for selected gauge using Scattermap."""
         selected_data = gauges_df[gauges_df['site_id'] == selected_gauge].iloc[0]
-        
-        # Add larger, more visible circle highlight for selected station
+
         # Layer 1: Outer ring (larger size, semi-transparent orange)
-        fig.add_trace(go.Scattermapbox(
+        fig.add_trace(go.Scattermap(
             lat=[selected_data['latitude']],
             lon=[selected_data['longitude']],
             mode='markers',
             marker=dict(
-                size=28,  # Larger outer ring for visibility
-                color='rgba(255, 69, 0, 0.4)',  # Orange with transparency
-                symbol='circle'
+                size=28,
+                color='rgba(255, 69, 0, 0.4)',
             ),
             name='Selection Outer Ring',
             showlegend=False,
             hoverinfo='skip'
         ))
-        
+
         # Layer 2: Inner circle (solid, bright orange)
-        fig.add_trace(go.Scattermapbox(
+        fig.add_trace(go.Scattermap(
             lat=[selected_data['latitude']],
             lon=[selected_data['longitude']],
             mode='markers',
             marker=dict(
-                size=16,  # Solid inner circle
-                color='#FF4500',  # Orange red for high visibility
-                symbol='circle'  # Simple circle - very visible
+                size=16,
+                color='#FF4500',
             ),
             hovertemplate=(
                 f"<b>🎯 SELECTED: {selected_data['station_name']}</b><br>"
@@ -550,38 +539,36 @@ class ModernMapComponent:
     def _create_empty_map(self, map_style: str = "open-street-map") -> go.Figure:
         """Create empty map with specified basemap style."""
         fig = go.Figure()
-        fig.add_trace(go.Scattermapbox(
+        fig.add_trace(go.Scattermap(
             lat=[],
             lon=[],
             mode='markers',
             showlegend=False
         ))
-        
-        # Build tile layers based on selected style
+
         if map_style == "stamen-terrain":
-            mapbox_layers = [
+            map_layers = [
                 {
                     "below": "traces",
                     "sourcetype": "raster",
-                    "sourceattribution": "Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL. Hosted by Stadia Maps.",
-                    "source": ["https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}.png"]
+                    "sourceattribution": "© OpenStreetMap contributors © CARTO",
+                    "source": ["https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"]
                 }
             ]
         else:
-            # Default: USGS National Map
-            mapbox_layers = [
+            map_layers = [
                 {
                     "below": "traces",
-                    "sourcetype": "raster", 
-                    "sourceattribution": "United States Geologic Society",
+                    "sourcetype": "raster",
+                    "sourceattribution": "United States Geological Survey",
                     "source": ["https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/tile/{z}/{y}/{x}"]
                 }
             ]
-        
+
         fig.update_layout(
-            mapbox=dict(
+            map=dict(
                 style="white-bg",
-                layers=mapbox_layers,
+                layers=map_layers,
                 center=self.last_center,
                 zoom=self.last_zoom
             ),
@@ -589,7 +576,7 @@ class ModernMapComponent:
             margin=dict(r=0, t=50, l=0, b=0),
             title="No data available for selected filters"
         )
-        
+
         return fig
 
     def _load_basin_geojson(self, basin_level: str, region: str = "pnw") -> Optional[Dict]:
@@ -739,7 +726,7 @@ class ModernMapComponent:
                 hover_text = f"<b>{basin_name}</b><br>HUC: {huc_code}<br>Area: {area_sqkm} km²"
                 
                 # Add filled polygon
-                fig.add_trace(go.Scattermapbox(
+                fig.add_trace(go.Scattermap(
                     lon=list(lons),
                     lat=list(lats),
                     mode='lines',
@@ -765,7 +752,7 @@ class ModernMapComponent:
                     area_sqkm = properties.get('areasqkm', 'N/A')
                     hover_text = f"<b>{basin_name}</b><br>HUC: {huc_code}<br>Area: {area_sqkm} km²"
                     
-                    fig.add_trace(go.Scattermapbox(
+                    fig.add_trace(go.Scattermap(
                         lon=list(lons),
                         lat=list(lats),
                         mode='lines',
