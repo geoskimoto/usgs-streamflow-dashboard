@@ -73,9 +73,6 @@ Never hardcode these. Never commit `.env`.
 
 ## Deployment
 
-**How this is currently deployed:**
-The dev repo and the deployed app live on the **same VPS**. Files are copied manually from the dev directory to the htdocs directory — there is no `git pull` on the deployed side.
-
 | Path | Purpose |
 |---|---|
 | `/home/geoskimoto/projects/usgs-streamflow-dashboard/` | Dev working directory (this repo) |
@@ -83,15 +80,21 @@ The dev repo and the deployed app live on the **same VPS**. Files are copied man
 
 The deployed app runs under the `streamflowdash` system user via systemd + gunicorn, proxied through nginx. It uses `.venv/` (not `venv/`) as its virtualenv.
 
-**Deploy — one command:**
+**Deploy — push to main, then pull in prod:**
 
 ```bash
-./deploy.sh
+# 1. Commit and push from dev as usual
+git push
+
+# 2. Pull in the deployed directory
+cd /home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io
+sudo -u streamflowdash git pull
+
+# 3. Restart the service
+sudo systemctl restart streamflow-dashboard.service
 ```
 
-`deploy.sh` rsyncs all changed files (excluding `.env`, `data/stats_cache/`, `.git`, `__pycache__`), fixes ownership, and restarts the service. Always run from the dev directory root.
-
-**If new Python dependencies were added**, install them after deploying:
+**If new Python dependencies were added**, install them after pulling:
 ```bash
 sudo -u streamflowdash /home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/.venv/bin/pip install -r /home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/requirements.txt -q
 ```
@@ -101,10 +104,12 @@ sudo -u streamflowdash /home/streamflowdash/htdocs/streamflow-dashboard.3rdplace
 journalctl -u streamflow-dashboard.service -f
 ```
 
+**SSH deploy key:** `streamflowdash` authenticates to GitHub via an Ed25519 deploy key at `/home/streamflowdash/.ssh/id_ed25519`. The corresponding public key is registered as a read-only deploy key on this repo (`Settings → Deploy keys`). Never delete this key without adding a replacement first.
+
 **Known layout quirks:**
 - Deployed venv is `.venv/` — the `venv/` directory in htdocs is unused.
-- `data/stats_cache/` holds the water-year statistics parquet cache — do **not** rsync this from dev; let it build on the server.
-- The deployed `.env` has production credentials and must never be overwritten from dev.
+- `data/stats_cache/` is gitignored and builds independently on the server — never commit or force-overwrite it.
+- The deployed `.env` has production credentials and is gitignored — it will never be touched by `git pull`.
 
 **Render.com** (alt deployment — see `render.yaml`):
 ```bash
