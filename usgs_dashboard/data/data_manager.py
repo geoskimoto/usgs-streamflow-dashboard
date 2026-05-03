@@ -68,6 +68,7 @@ class USGSDataManager:
         self._percentile_cache: dict = {}
         self._percentile_cache_time: float = 0.0
         self._percentile_cache_ttl: int = 1800        # 30 minutes
+        self._percentile_cache_lock = threading.Lock()
         self._percentile_refresh_event = threading.Event()
         self._percentile_bg_thread: threading.Thread = None
 
@@ -969,7 +970,8 @@ class USGSDataManager:
         Return the most recently fetched percentile bands dict.
         Non-blocking. Returns {} if never fetched.
         """
-        return self._percentile_cache.copy()
+        with self._percentile_cache_lock:
+            return self._percentile_cache.copy()
 
     def trigger_percentile_refresh(self):
         """Wake the background thread to refresh immediately."""
@@ -989,8 +991,9 @@ class USGSDataManager:
                 try:
                     bands = self.adapter.get_flow_percentile_bands()
                     if bands:
-                        self._percentile_cache = bands
-                        self._percentile_cache_time = time.time()
+                        with self._percentile_cache_lock:
+                            self._percentile_cache = bands
+                            self._percentile_cache_time = time.time()
                         logger.info(
                             f"Percentile bands refreshed: {len(bands)} stations "
                             f"at {datetime.now().strftime('%H:%M:%S')}"

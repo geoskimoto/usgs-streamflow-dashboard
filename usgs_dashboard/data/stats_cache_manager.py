@@ -73,11 +73,18 @@ def get_statistics(site_id: str, discharge_df: pd.DataFrame) -> pd.DataFrame:
     current_wy = _current_water_year()
     path = _cache_path(site_id, current_wy)
 
+    _REQUIRED_COLS = {'day_of_wy', 'q10', 'q25', 'q50', 'q75', 'q90', 'mean', 'median'}
+
     if os.path.exists(path):
         try:
             stats = pd.read_parquet(path)
-            logger.debug(f"Stats cache HIT: {site_id} WY{current_wy} ({len(stats)} day-rows)")
-            return stats
+            missing = _REQUIRED_COLS - set(stats.columns)
+            if missing:
+                logger.warning(f"Stats cache schema mismatch ({path}): missing {missing} — recomputing")
+                os.remove(path)
+            else:
+                logger.debug(f"Stats cache HIT: {site_id} WY{current_wy} ({len(stats)} day-rows)")
+                return stats
         except Exception as exc:
             logger.warning(f"Stats cache read failed ({path}): {exc} — recomputing")
 

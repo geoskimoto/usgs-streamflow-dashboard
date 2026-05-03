@@ -18,7 +18,7 @@ warnings.filterwarnings('ignore')
 # Authentication imports
 import flask
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
-import hashlib
+import bcrypt
 import os
 import threading
 
@@ -37,17 +37,18 @@ class User(UserMixin):
     def __init__(self, id):
         self.id = id
 
-# Simple admin credentials - in production, use environment variables or secure config
+# Admin credentials — set ADMIN_PASSWORD_BCRYPT in .env (bcrypt hash of the password)
+# Generate with: python -c "import bcrypt; print(bcrypt.hashpw(b'yourpassword', bcrypt.gensalt()).decode())"
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
-ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH', 
-    hashlib.sha256('admin123'.encode()).hexdigest())  # Default: admin123
+_ADMIN_PASSWORD_BCRYPT = os.environ.get('ADMIN_PASSWORD_BCRYPT', '').encode()
 
 def verify_password(username, password):
-    """Verify admin credentials."""
+    """Verify admin credentials using bcrypt."""
     if username != ADMIN_USERNAME:
         return False
-    password_hash = hashlib.sha256(password.encode()).hexdigest()
-    return password_hash == ADMIN_PASSWORD_HASH
+    if not _ADMIN_PASSWORD_BCRYPT:
+        return False
+    return bcrypt.checkpw(password.encode(), _ADMIN_PASSWORD_BCRYPT)
 
 # Initialize components
 data_manager = get_data_manager()

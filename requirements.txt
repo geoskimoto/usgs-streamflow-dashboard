@@ -40,3 +40,6 @@ python-dateutil>=2.8.0
 
 # Excel export support
 openpyxl>=3.0.0
+
+# Password hashing
+bcrypt>=4.0.0
