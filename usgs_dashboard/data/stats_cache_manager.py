@@ -142,6 +142,7 @@ def _compute_statistics(discharge_df: pd.DataFrame, current_wy: int) -> pd.DataF
             logger.warning("No numeric discharge column found")
             return pd.DataFrame()
         value_col = numeric_cols[0]
+        logger.warning(f"No discharge column found by name; falling back to first numeric column '{value_col}' — verify this is correct")
 
     df["water_year"] = df.index.map(lambda d: get_water_year(d, WATER_YEAR_START))
     df["day_of_wy"] = df.index.map(lambda d: get_day_of_water_year(d, WATER_YEAR_START))

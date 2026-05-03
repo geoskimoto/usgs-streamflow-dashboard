@@ -280,11 +280,15 @@ class USGSDataManager:
                     'site_no': 'station_number',
                     'station_nm': 'name'
                 })
-                
+
+                if 'station_number' not in csv_df.columns:
+                    logger.warning("CSV enrichment skipped: no station_number column after rename")
+                    return df
+
                 # Ensure station_number is string on both sides to prevent silent merge mismatches
                 csv_df['station_number'] = csv_df['station_number'].astype(str)
                 df['station_number'] = df['station_number'].astype(str)
-                
+
                 # Select only the enrichment columns we need
                 enrich_cols = ['station_number', 'drainage_area']
                 csv_enrichment = csv_df[enrich_cols].copy()

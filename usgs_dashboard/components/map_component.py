@@ -5,11 +5,14 @@ Uses the new px.scatter_map and go.Scattermap (replaces deprecated mapbox).
 This should resolve the grey box issue by using the current Plotly map API.
 """
 
+import logging
 import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
 import numpy as np
 import json
+
+logger = logging.getLogger(__name__)
 from pathlib import Path
 from typing import Dict, List, Optional
 from ..utils.config import (
@@ -250,6 +253,11 @@ class ModernMapComponent:
             map_data['map_group'] = map_data['status'].map(
                 {'Active': 'no_data', 'Inactive': 'inactive'}
             ).fillna('no_data')
+
+        known_keys = {cfg[0] for cfg in PERCENTILE_GROUP_CONFIG}
+        unknown = set(map_data['map_group'].dropna().unique()) - known_keys
+        if unknown:
+            logger.warning(f"Unknown percentile band keys from API (will not render): {unknown}")
 
         map_data['percentile_label'] = map_data['map_group'].map(PERCENTILE_LABELS).fillna('Unknown')
 

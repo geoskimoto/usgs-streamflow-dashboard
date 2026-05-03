@@ -17,7 +17,7 @@ warnings.filterwarnings('ignore')
 
 # Authentication imports
 import flask
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user
 import bcrypt
 import logging
 import os
@@ -1041,26 +1041,21 @@ def toggle_login_modal(admin_clicks, cancel_clicks, auth_data_changed, is_open, 
 )
 def handle_login(login_clicks, username, password, auth_data):
     """Handle login authentication."""
-    print(f"🔧 LOGIN CALLBACK TRIGGERED! clicks = {login_clicks}")
-    print(f"Username: '{username}', Password: {'*' * len(password) if password else 'None'}")
-    
     if login_clicks and login_clicks > 0:
         if not username or not password:
-            print("❌ Missing credentials")
-            return (auth_data or {'authenticated': False}, 
-                    dbc.Alert("Please enter both username and password", color="warning"), 
+            return (auth_data or {'authenticated': False},
+                    dbc.Alert("Please enter both username and password", color="warning"),
                     username or "", password or "")
-        
-        print(f"🔍 Verifying credentials for user: {username}")
+
         if verify_password(username, password):
-            print("✅ Login successful!")
-            return ({'authenticated': True, 'username': username}, 
-                    dbc.Alert("Login successful!", color="success"), 
+            logger.info(f"Login successful for user: {username}")
+            return ({'authenticated': True, 'username': username},
+                    dbc.Alert("Login successful!", color="success"),
                     "", "")
         else:
-            print("❌ Invalid credentials")
-            return (auth_data or {'authenticated': False}, 
-                    dbc.Alert("Invalid username or password", color="danger"), 
+            logger.warning(f"Failed login attempt for user: {username}")
+            return (auth_data or {'authenticated': False},
+                    dbc.Alert("Invalid username or password", color="danger"),
                     username, "")
     
     return auth_data or {'authenticated': False}, "", username or "", password or ""
@@ -1073,10 +1068,8 @@ def handle_login(login_clicks, username, password, auth_data):
 )
 def handle_logout(logout_clicks):
     """Handle logout."""
-    print(f"🚪 LOGOUT CALLBACK TRIGGERED! clicks = {logout_clicks}")
-    
     if logout_clicks and logout_clicks > 0:
-        print("✅ Logging out")
+        logger.info("User logged out")
         return [{'authenticated': False}]
     
     return [no_update]
@@ -1104,18 +1097,14 @@ def handle_logout(logout_clicks):
 def load_gauge_data(pathname):
     """Load gauge data on app start from DataOps API."""
     
-    print(f"\n=== load_gauge_data CALLBACK FIRED ===")
-    print(f"pathname: {pathname}")
-    
+    logger.debug(f"load_gauge_data callback fired: pathname={pathname}")
+
     try:
-        # Load all stations (no per-state cap)
-        print("Loading all stations (no site limit)")
-        
         # Load stations from DataOps API via data_manager
         filters_df = data_manager.load_regional_gauges()
-        
+
         if filters_df.empty:
-            print("WARNING: No stations returned from DataOps API")
+            logger.warning("No stations returned from DataOps API")
             alert = dbc.Alert(
                 "No gauge data available. Check DataOps API connection.",
                 color="warning",
@@ -1123,7 +1112,7 @@ def load_gauge_data(pathname):
             )
             return [], alert, 0
         
-        print(f"Loaded {len(filters_df)} stations from DataOps API")
+        logger.info(f"Loaded {len(filters_df)} stations from DataOps API")
         
         global gauges_df
         gauges_df = filters_df.copy()
@@ -1155,9 +1144,7 @@ def load_gauge_data(pathname):
             alert_msg += f" ({active_count} active, {len(gauges_df) - active_count} inactive)"
         
         gauges_data = gauges_df.to_dict('records')
-        print(f"Returning {len(gauges_data)} gauge records")
-        print(f"Sample gauge: {gauges_data[0] if gauges_data else 'NONE'}")
-        print("=== CALLBACK COMPLETE ===\n")
+        logger.debug(f"Returning {len(gauges_data)} gauge records")
         
         alert = dbc.Alert(
             alert_msg,
@@ -1168,11 +1155,7 @@ def load_gauge_data(pathname):
         return gauges_data, alert, len(gauges_data)
         
     except Exception as e:
-        print(f"ERROR in load_gauge_data: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        print("=== CALLBACK ERROR ===\n")
-        
+        logger.error(f"Error in load_gauge_data: {e}", exc_info=True)
         alert = dbc.Alert(
             f"Error loading gauge data: {str(e)}",
             color="danger",
@@ -1400,7 +1383,7 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
                 # No real-time sites available, return empty DataFrame
                 filtered_gauges = pd.DataFrame()
         except Exception as e:
-            print(f"Error filtering by real-time data: {e}")
+            logger.warning(f"Error filtering by real-time data: {e}")
     
     # NWRFC forecast filter — keep only stations with an nwrfc_id assignment
     if show_forecast_only:
@@ -1415,7 +1398,7 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
                 else:
                     filtered_gauges = pd.DataFrame()
             except Exception as e:
-                print(f"Error filtering by NWRFC forecast data: {e}")
+                logger.warning(f"Error filtering by NWRFC forecast data: {e}")
 
     # ResidCast ML forecast filter — per-station models only (13 quality stations)
     if show_resid_cast_only:
@@ -1426,7 +1409,7 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
             else:
                 filtered_gauges = pd.DataFrame()
         except Exception as e:
-            print(f"Error filtering by ResidCast stations: {e}")
+            logger.warning(f"Error filtering by ResidCast stations: {e}")
 
     # Create map figure
     if len(filtered_gauges) > 0:
@@ -1638,7 +1621,7 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
             if years_str:
                 highlight_years = [int(y.strip()) for y in years_str.split(',') if y.strip().isdigit()]
         except Exception as e:
-            print(f"DEBUG: Error parsing highlight years: {e}")
+            logger.debug(f"Error parsing highlight years: {e}")
 
     # Get station name and NWRFC ID
     station_name = "Unknown Station"
@@ -1832,7 +1815,7 @@ def render_annual_summary(requested, dark_mode, selected_gauge, gauges_data,
                 )
             cards.append(_por_card(title, fig))
         except Exception as e:
-            print(f"Error creating {plot_type} plot: {e}")
+            logger.error(f"Error creating {plot_type} plot: {e}", exc_info=True)
             cards.append(dbc.Alert(
                 f"Error generating {title}: {str(e)}", color="warning", className="mb-3"
             ))
@@ -1868,7 +1851,7 @@ def update_dropdown_options(selected_states):
         
         return basin_options, huc_options
     except Exception as e:
-        print(f"Error updating dropdown options: {e}")
+        logger.warning(f"Error updating dropdown options: {e}")
         import traceback
         traceback.print_exc()
         return [], []
@@ -1925,7 +1908,7 @@ def update_filter_summary(gauges_data):
         return summary_text, state_options
         
     except Exception as e:
-        print(f"Error updating filter summary: {e}")
+        logger.warning(f"Error updating filter summary: {e}")
         return "Error loading gauge data", []
 
 
@@ -1976,7 +1959,7 @@ def update_realtime_filter_info(gauges_data):
         else:
             return "No real-time data currently available"
     except Exception as e:
-        print(f"Error updating real-time filter info: {e}")
+        logger.warning(f"Error updating real-time filter info: {e}")
         return "Real-time data status unavailable"
 
 

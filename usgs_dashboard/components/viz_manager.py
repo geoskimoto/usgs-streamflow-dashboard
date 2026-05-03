@@ -6,6 +6,7 @@ Integrates streamflow analysis and visualization capabilities.
 
 import sys
 import os
+import logging
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
@@ -13,13 +14,15 @@ import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Union
 
+logger = logging.getLogger(__name__)
+
 # Import the streamflow analysis tools
 parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, parent_dir)
 try:
     from streamflow_analyzer import StreamflowData, StreamflowVisualizer
 except ImportError:
-    print("Warning: Could not import streamflow analysis tools. Creating fallback classes.")
+    logger.warning("Could not import streamflow analysis tools. Creating fallback classes.")
     StreamflowData = None
     StreamflowVisualizer = None
 
@@ -79,22 +82,22 @@ class VisualizationManager:
             try:
                 realtime_data = data_manager.get_realtime_data(site_id)
                 if not realtime_data.empty:
-                    print(f"Retrieved {len(realtime_data)} real-time records for visualization")
+                    logger.debug(f"Retrieved {len(realtime_data)} real-time records for visualization")
                 else:
-                    print(f"No real-time data available for site {site_id}")
+                    logger.debug(f"No real-time data available for site {site_id}")
             except Exception as e:
-                print(f"Error getting real-time data: {e}")
+                logger.warning(f"Error getting real-time data: {e}")
                 realtime_data = None
-        
+
         # Use integrated streamflow analyzer if available
         if self.streamflow_viz and StreamflowData:
             try:
                 fig = self._create_integrated_plot(
-                    site_id, streamflow_data, plot_type, 
+                    site_id, streamflow_data, plot_type,
                     highlight_years, show_percentiles, show_statistics, realtime_data
                 )
             except Exception as e:
-                print(f"Error with integrated plot, using fallback: {e}")
+                logger.warning(f"Error with integrated plot, using fallback: {e}")
                 fig = self._create_fallback_plot(
                     site_id, streamflow_data, plot_type, highlight_years,
                     show_percentiles, show_statistics, realtime_data,
@@ -215,11 +218,11 @@ class VisualizationManager:
                 data[date_col] = pd.to_datetime(data[date_col], errors='coerce')
                 data = data.set_index(date_col)
             except Exception as e:
-                print(f"[ERROR] Failed to set index to date column '{date_col}': {e}")
+                logger.error(f"Failed to set index to date column '{date_col}': {e}")
                 return self._create_error_plot(f"Failed to parse date column '{date_col}' for plotting.")
         elif not isinstance(data.index, pd.DatetimeIndex):
             # No valid date column, do NOT convert integer index to datetime
-            print("[ERROR] No valid date column found. Cannot plot. Returning error plot.")
+            logger.error("No valid date column found. Cannot plot. Returning error plot.")
             return self._create_error_plot("No valid date column found for plotting.")
         # Remove timezone info to avoid mixing issues
         if hasattr(data.index, 'tz') and data.index.tz is not None:
@@ -515,7 +518,7 @@ class VisualizationManager:
                                     ),
                                 ))
             except Exception as exc:
-                print(f"[WARNING] Real-time overlay failed in fast plot: {exc}")
+                logger.warning(f"Real-time overlay failed in fast plot: {exc}")
 
         # ── Current day vertical line ──────────────────────────────────────
         current_day_of_wy = get_day_of_water_year(pd.Timestamp.now(), WATER_YEAR_START)
@@ -557,12 +560,12 @@ class VisualizationManager:
         Documented logic and debug output for expected behavior.
         """
         # Debug: Log index type and sample
-        print("[DEBUG] Water Year Plot: Data index type:", type(data.index))
-        print("[DEBUG] Water Year Plot: Data index sample:", data.index[:5].tolist() if hasattr(data.index, 'tolist') else data.index)
-        print("[DEBUG] Water Year Plot: Data columns:", data.columns.tolist())
+        logger.debug("Water Year Plot: Data index type:", type(data.index))
+        logger.debug("Water Year Plot: Data index sample:", data.index[:5].tolist() if hasattr(data.index, 'tolist') else data.index)
+        logger.debug("Water Year Plot: Data columns:", data.columns.tolist())
         # Check for date/datetime columns
         date_cols = [col for col in data.columns if 'date' in col.lower() or 'time' in col.lower()]
-        print("[DEBUG] Water Year Plot: Date columns:", date_cols)
+        logger.debug("Water Year Plot: Date columns:", date_cols)
         # Add water year and day of water year
         data_copy = data.copy()
 
@@ -579,37 +582,37 @@ class VisualizationManager:
                     date_col = col
                     break
             if date_col:
-                print(f"[DEBUG] Setting index to '{date_col}' column.")
+                logger.debug(f"Setting index to '{date_col}' column.")
                 data_copy[date_col] = pd.to_datetime(data_copy[date_col], errors='coerce')
                 data_copy = data_copy.set_index(date_col)
             else:
-                print("[ERROR] No valid date column found. Cannot plot Water Year. Returning error plot.")
+                logger.error("No valid date column found. Cannot plot Water Year. Returning error plot.")
                 return self._create_error_plot("No valid date column found for Water Year plot.")
-        print("[DEBUG] After index conversion: Data index type:", type(data_copy.index))
-        print("[DEBUG] After index conversion: Data index sample:", data_copy.index[:5].tolist() if hasattr(data_copy.index, 'tolist') else data_copy.index)
+        logger.debug("After index conversion: Data index type:", type(data_copy.index))
+        logger.debug("After index conversion: Data index sample:", data_copy.index[:5].tolist() if hasattr(data_copy.index, 'tolist') else data_copy.index)
         # Filter out any rows with invalid dates
         data_copy = data_copy.dropna()
-        print("[DEBUG] After dropna: Data shape:", data_copy.shape)
+        logger.debug("After dropna: Data shape:", data_copy.shape)
         # Now safely calculate water year and day using imported functions
         data_copy['water_year'] = data_copy.index.map(lambda d: get_water_year(d, WATER_YEAR_START))
         data_copy['day_of_wy'] = data_copy.index.map(lambda d: get_day_of_water_year(d, WATER_YEAR_START))
-        print("[DEBUG] Unique water_years:", data_copy['water_year'].unique())
-        print("[DEBUG] Unique day_of_wy (first 10):", data_copy['day_of_wy'].unique()[:10])
+        logger.debug("Unique water_years:", data_copy['water_year'].unique())
+        logger.debug("Unique day_of_wy (first 10):", data_copy['day_of_wy'].unique()[:10])
         # Debug: Check for 1970 or other default years
         if np.all(data_copy.index.year == 1970):
-            print("[ERROR] All index years are 1970! Likely a conversion issue.")
+            logger.error("All index years are 1970! Likely a conversion issue.")
         # Debug: Log x-axis values for first year
         if len(data_copy) > 0:
             first_year = data_copy['water_year'].min()
             year_data = data_copy[data_copy['water_year'] == first_year]
-            print(f"[DEBUG] First year ({first_year}) day_of_wy sample:", year_data['day_of_wy'][:10].tolist())
+            logger.debug(f"First year ({first_year}) day_of_wy sample:", year_data['day_of_wy'][:10].tolist())
 
         # Apply history_mode filter
         if _history_mode == "30yr":
             current_wy = get_water_year(pd.Timestamp.now(), WATER_YEAR_START)
             cutoff_wy = current_wy - 30
             data_copy = data_copy[data_copy['water_year'] >= cutoff_wy]
-            print(f"[DEBUG] history_mode=30yr: keeping WY {cutoff_wy}–{current_wy} ({len(data_copy)} rows)")
+            logger.debug(f"history_mode=30yr: keeping WY {cutoff_wy}–{current_wy} ({len(data_copy)} rows)")
 
         fig = go.Figure()
         # Calculate percentile bands first (25th, 75th percentiles)
@@ -667,7 +670,7 @@ class VisualizationManager:
             ))
         # Get unique years
         years = sorted(data_copy['water_year'].unique())
-        print("[DEBUG] Years to plot:", years)
+        logger.debug("Years to plot:", years)
         
         # Get current water year
         current_wy = get_water_year(pd.Timestamp.now(), WATER_YEAR_START)
@@ -693,8 +696,8 @@ class VisualizationManager:
             if len(year_data) == 0:
                 continue
             # Debug: Log x and y sample for this year
-            print(f"[DEBUG] Plotting year {year}: day_of_wy sample:", year_data['day_of_wy'][:10].tolist())
-            print(f"[DEBUG] Plotting year {year}: discharge sample:", year_data[value_col][:10].tolist())
+            logger.debug(f"Plotting year {year}: day_of_wy sample:", year_data['day_of_wy'][:10].tolist())
+            logger.debug(f"Plotting year {year}: discharge sample:", year_data[value_col][:10].tolist())
             
             # Determine line properties
             if year == current_wy:
@@ -992,10 +995,10 @@ class VisualizationManager:
                         "Discharge: %{y:,.0f} cfs<extra></extra>"
                     )
                 ))
-                print(f"[DEBUG] Added forecast overlay: {name}, {len(fc_data)} points, visible={visible}")
+                logger.debug(f"Added forecast overlay: {name}, {len(fc_data)} points, visible={visible}")
                 
         except Exception as e:
-            print(f"[WARNING] Error adding forecast overlay: {e}")
+            logger.warning(f"Error adding forecast overlay: {e}")
         
         return fig
     
@@ -1108,7 +1111,7 @@ class VisualizationManager:
                 ))
 
         except Exception as e:
-            print(f"[WARNING] Error adding ResidCast overlay: {e}")
+            logger.warning(f"Error adding ResidCast overlay: {e}")
 
         return fig
 
@@ -1468,13 +1471,13 @@ class VisualizationManager:
                     break
             
             if value_col is None:
-                print("No discharge column found in real-time data")
+                logger.warning("No discharge column found in real-time data")
                 return fig
-            
+
             # Clean the real-time data
             rt_data_clean = realtime_data.dropna()
             if rt_data_clean.empty:
-                print("Real-time data is empty after cleaning")
+                logger.debug("Real-time data is empty after cleaning")
                 return fig
             
             # Check if this is a water year plot by looking at the x-axis type
@@ -1485,7 +1488,7 @@ class VisualizationManager:
             
             if is_water_year_plot:
                 # For water year plots, convert real-time data to day-of-water-year format
-                print(f"Adding real-time overlay to water year plot")
+                logger.debug("Adding real-time overlay to water year plot")
                 
                 # Prepare real-time data using the same water year system
                 rt_prepared = self.wy_handler.prepare_water_year_data(rt_data_clean, value_col)
@@ -1526,12 +1529,12 @@ class VisualizationManager:
                             customdata=customdata_array
                         )
                     )
-                    print(f"Added real-time overlay to water year plot: {len(current_year_rt)} points for WY {current_wy}")
+                    logger.debug(f"Added real-time overlay to water year plot: {len(current_year_rt)} points for WY {current_wy}")
                 else:
-                    print(f"No real-time data available for current water year {current_wy}")
+                    logger.debug(f"No real-time data available for current water year {current_wy}")
             else:
                 # For non-water-year plots, use original datetime-based approach
-                print(f"Adding real-time overlay to timeseries plot")
+                logger.debug("Adding real-time overlay to timeseries plot")
                 
                 # Add real-time data trace with datetime x-axis
                 fig.add_trace(
@@ -1569,11 +1572,11 @@ class VisualizationManager:
                 ]
             )
             
-            print(f"Added real-time overlay with {len(rt_data_clean)} points")
+            logger.debug(f"Added real-time overlay with {len(rt_data_clean)} points")
             return fig
-            
+
         except Exception as e:
-            print(f"Error adding real-time overlay: {e}")
+            logger.warning(f"Error adding real-time overlay: {e}")
             return fig
 
 
