@@ -166,6 +166,12 @@ class USGSDataManager:
                 logger.warning("No stations returned from DataOps")
                 return pd.DataFrame()
 
+            _REQUIRED_STATION_COLS = {'station_number', 'latitude', 'longitude', 'station_name'}
+            missing = _REQUIRED_STATION_COLS - set(stations_df.columns)
+            if missing:
+                logger.error(f"Station API response missing required columns: {missing} — map will not render")
+                return pd.DataFrame()
+
             # Classify station activity based on recent discharge data
             t_classify = time.perf_counter()
             stations_df = self._classify_station_activity(stations_df)
@@ -973,6 +979,13 @@ class USGSDataManager:
         with self._percentile_cache_lock:
             return self._percentile_cache.copy()
 
+    def is_percentile_data_stale(self, threshold_seconds: int = 7200) -> bool:
+        """Return True if percentile data has never loaded or is older than threshold."""
+        with self._percentile_cache_lock:
+            if not self._percentile_cache:
+                return True
+            return (time.time() - self._percentile_cache_time) > threshold_seconds
+
     def trigger_percentile_refresh(self):
         """Wake the background thread to refresh immediately."""
         if self._percentile_refresh_event is not None:
@@ -1013,13 +1026,11 @@ class USGSDataManager:
         logger.info("Percentile background refresh thread started")
 
 
+_data_manager_instance: Optional[USGSDataManager] = None
+
 def get_data_manager() -> USGSDataManager:
-    """
-    Get singleton instance of data manager.
-    
-    Returns:
-    --------
-    USGSDataManager
-        Data manager instance
-    """
-    return USGSDataManager()
+    """Return the module-level singleton USGSDataManager instance."""
+    global _data_manager_instance
+    if _data_manager_instance is None:
+        _data_manager_instance = USGSDataManager()
+    return _data_manager_instance

@@ -19,8 +19,11 @@ warnings.filterwarnings('ignore')
 import flask
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 import bcrypt
+import logging
 import os
 import threading
+
+logger = logging.getLogger(__name__)
 
 # Import dashboard components
 from usgs_dashboard.data.data_manager import get_data_manager
@@ -60,7 +63,13 @@ filter_panel = SimplifiedFilterPanel()
 data_manager.start_percentile_background_refresh(interval_seconds=1800)
 
 # Pre-warm station cache in background so first user request hits cache, not cold API
-threading.Thread(target=data_manager.load_regional_gauges, daemon=True, name="station-prefetch").start()
+def _prefetch_stations():
+    try:
+        data_manager.load_regional_gauges()
+    except Exception as e:
+        logger.error(f"Station prefetch failed: {e}", exc_info=True)
+
+threading.Thread(target=_prefetch_stations, daemon=True, name="station-prefetch").start()
 
 # Initialize Dash app
 app = dash.Dash(
@@ -1657,7 +1666,7 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
     try:
         forecast_data = data_manager.get_forecast_data(selected_gauge, num_days=5)
     except Exception as e:
-        print(f"DEBUG: Error fetching forecast data: {e}")
+        logger.warning(f"Forecast fetch failed for {selected_gauge}: {e}")
     resid_cast_data = data_manager.get_resid_cast_forecasts(selected_gauge, num_runs=5)
 
     # ── Water year plot: fast vs full-history paths ───────────────────────
