@@ -281,8 +281,9 @@ class USGSDataManager:
                     'station_nm': 'name'
                 })
                 
-                # Ensure station_number is string type for merging
+                # Ensure station_number is string on both sides to prevent silent merge mismatches
                 csv_df['station_number'] = csv_df['station_number'].astype(str)
+                df['station_number'] = df['station_number'].astype(str)
                 
                 # Select only the enrichment columns we need
                 enrich_cols = ['station_number', 'drainage_area']

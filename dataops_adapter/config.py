@@ -16,11 +16,17 @@ class AdapterConfig:
         self.api_url = os.getenv('DATAOPS_API_URL', 'https://streamflowops.3rdplaces.io')
         self.api_token = os.getenv('DATAOPS_API_TOKEN')
         self.verify_ssl = os.getenv('DATAOPS_VERIFY_SSL', 'true').lower() == 'true'
-        self.timeout = int(os.getenv('DATAOPS_TIMEOUT', '30'))
-        
+        try:
+            self.timeout = int(os.getenv('DATAOPS_TIMEOUT', '30'))
+        except ValueError:
+            self.timeout = 30
+
         # Cache configuration
         self.cache_enabled = os.getenv('DATAOPS_CACHE_ENABLED', 'true').lower() == 'true'
-        self.cache_ttl = int(os.getenv('DATAOPS_CACHE_TTL', '300'))
+        try:
+            self.cache_ttl = int(os.getenv('DATAOPS_CACHE_TTL', '300'))
+        except ValueError:
+            self.cache_ttl = 300
         self.cache_db_path = 'data/dataops_cache.db'
         
         # Feature flags

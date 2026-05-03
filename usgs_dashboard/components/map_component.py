@@ -501,7 +501,10 @@ class ModernMapComponent:
     def _add_selected_gauge_highlight(self, fig: go.Figure, gauges_df: pd.DataFrame,
                                     selected_gauge: str):
         """Add highlight for selected gauge using Scattermap."""
-        selected_data = gauges_df[gauges_df['site_id'] == selected_gauge].iloc[0]
+        match = gauges_df[gauges_df['site_id'] == selected_gauge]
+        if match.empty:
+            return fig
+        selected_data = match.iloc[0]
 
         # Layer 1: Outer ring (larger size, semi-transparent orange)
         fig.add_trace(go.Scattermap(

@@ -36,12 +36,12 @@ def retry_on_failure(max_retries=3, backoff_factor=2):
             while retries < max_retries:
                 try:
                     return func(*args, **kwargs)
-                except (TimeoutError, ServerError) as e:
+                except (TimeoutError, ServerError, RateLimitError, requests.exceptions.ConnectionError) as e:
                     retries += 1
                     if retries >= max_retries:
                         raise
                     wait_time = backoff_factor ** retries
-                    logger.warning(f"Request failed, retrying in {wait_time}s... ({retries}/{max_retries})")
+                    logger.warning(f"Request failed ({type(e).__name__}), retrying in {wait_time}s... ({retries}/{max_retries})")
                     time.sleep(wait_time)
             return func(*args, **kwargs)
         return wrapper

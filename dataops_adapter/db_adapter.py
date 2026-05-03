@@ -26,12 +26,15 @@ logger = logging.getLogger(__name__)
 
 def _get_db_config() -> dict:
     """Build database config from environment variables."""
+    password = os.getenv('DB_PASSWORD')
+    if not password:
+        raise AdapterError("DB_PASSWORD environment variable is required but not set")
     return {
         'host': os.getenv('DB_HOST', '127.0.0.1'),
         'port': os.getenv('DB_PORT', '5432'),
         'dbname': os.getenv('DB_NAME', 'streamflow_db'),
         'user': os.getenv('DB_USER', 'streamflow_user'),
-        'password': os.getenv('DB_PASSWORD', 'streamflow123'),
+        'password': password,
     }
 
 
