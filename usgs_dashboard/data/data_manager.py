@@ -166,8 +166,8 @@ class USGSDataManager:
                 logger.warning("No stations returned from DataOps")
                 return pd.DataFrame()
 
-            _REQUIRED_STATION_COLS = {'station_number', 'latitude', 'longitude', 'station_name'}
-            missing = _REQUIRED_STATION_COLS - set(stations_df.columns)
+            _REQUIRED_RAW_COLS = {'station_number', 'latitude', 'longitude', 'name'}
+            missing = _REQUIRED_RAW_COLS - set(stations_df.columns)
             if missing:
                 logger.error(f"Station API response missing required columns: {missing} — map will not render")
                 return pd.DataFrame()
