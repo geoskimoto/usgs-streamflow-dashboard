@@ -89,7 +89,7 @@ body {
 @media (max-width: 480px) {
     .display-4, .display-3 { font-size: 1.5rem; }
     .lead { font-size: 0.9rem; }
-    #gauge-map { height: 300px !important; }
+    #gauge-map { height: 350px !important; }
     .card-header { padding: 0.5rem 0.75rem; }
     .card-body { padding: 0.75rem; }
 }
@@ -98,9 +98,14 @@ body {
 @media (min-width: 481px) and (max-width: 600px) {
     .display-4, .display-3 { font-size: 1.75rem; }
     .lead { font-size: 0.95rem; }
-    #gauge-map { height: 350px !important; }
+    #gauge-map { height: 400px !important; }
     .card-header { padding: 0.5rem 0.75rem; }
     .card-body { padding: 0.75rem; }
+}
+
+/* Hide Plotly range slider on phones/phablets — too small to use with thumb */
+@media (max-width: 600px) {
+    .rangeslider-container { display: none !important; }
 }
 
 /* Tablets (601-768px) */
@@ -380,4 +385,19 @@ body.dark-mode .list-group-item {
     background-color: #2d2d2d;
     border-color: #444;
     color: #e0e0e0;
+}
+
+/* =============================================
+   MOBILE TOAST REPOSITIONING
+   ============================================= */
+
+/* Move toasts to bottom of screen on phones so they don't block map controls */
+@media (max-width: 600px) {
+    #toast-container {
+        top: auto !important;
+        bottom: 16px !important;
+        right: 10px !important;
+        left: 10px !important;
+        width: auto !important;
+    }
 }

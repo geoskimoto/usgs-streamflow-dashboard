@@ -1156,7 +1156,7 @@ class VisualizationManager:
             fc_relayout = {'xaxis.range': [fc_x0, fc_x1], 'yaxis.autorange': True}
 
         buttons = [
-            dict(label='Forecast View', method='relayout', args=[fc_relayout]),
+            dict(label='Forecast', method='relayout', args=[fc_relayout]),
         ]
 
         for label, half_span in [('±1mo', 30), ('±3mo', 91)]:
@@ -1180,18 +1180,28 @@ class VisualizationManager:
                 range=[1, 366],  # Full Year default
             ),
             yaxis=dict(autorange=True),
+            legend=dict(
+                orientation='h',
+                yanchor='top',
+                y=-0.22,
+                xanchor='center',
+                x=0.5,
+                font=dict(size=10),
+                tracegroupgap=0,
+            ),
+            margin=dict(b=140, t=60),
             updatemenus=[
                 dict(
                     type='buttons',
                     direction='right',
                     x=0.0,
                     xanchor='left',
-                    y=1.15,
+                    y=1.12,
                     yanchor='top',
                     showactive=True,
                     active=3,  # Full Year is index 3 — shown as active on load
                     buttons=buttons,
-                    font=dict(size=11, color='#ffffff'),
+                    font=dict(size=10, color='#ffffff'),
                     bgcolor='rgba(55,65,81,0.85)',
                     bordercolor='rgba(100,116,139,0.7)',
                 )

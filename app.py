@@ -672,6 +672,7 @@ def create_main_content():
                                         style={"whiteSpace": "nowrap", "fontSize": "0.75rem"},
                                     ),
                                     width="auto",
+                                    className="d-none d-sm-block",  # hide label on phones
                                 ),
                                 dbc.Col(
                                     dbc.Button(
@@ -929,6 +930,8 @@ app.layout = dbc.Container([
     dcc.Store(id='percentile-bands-store', data={}),
     dcc.Store(id='percentile-date-range-store', data={}),
     dcc.Store(id='selected-percentile-date-store', data=None),
+    dcc.Store(id='window-width-store', data=1200),   # populated by clientside callback
+    dcc.Store(id='scroll-trigger-store', data=None), # dummy output for scroll clientside callback
     dcc.Interval(
         id='percentile-refresh-interval',
         interval=30_000,   # poll every 30 seconds
@@ -954,6 +957,36 @@ app.layout = dbc.Container([
     }),
     
 ], fluid=True)
+
+
+# ── Mobile clientside helpers ─────────────────────────────────────────────────
+
+# Capture browser viewport width once on page load so server callbacks can
+# cap chart height on narrow screens without re-querying the browser.
+app.clientside_callback(
+    "function(href) { return window.innerWidth || 1200; }",
+    Output('window-width-store', 'data'),
+    Input('url', 'href'),
+)
+
+# On mobile, auto-scroll to the chart card after a gauge is selected so the
+# user doesn't have to manually scroll past the map.
+app.clientside_callback(
+    """
+    function(children) {
+        if (children && children.length && children[0] && children[0].type === 'Card'
+                && window.innerWidth < 992) {
+            setTimeout(function() {
+                var el = document.getElementById('multi-plot-container');
+                if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+            }, 500);
+        }
+        return null;
+    }
+    """,
+    Output('scroll-trigger-store', 'data'),
+    Input('multi-plot-container', 'children'),
+)
 
 
 # Authentication and Navigation Callbacks
@@ -1605,10 +1638,11 @@ def update_history_mode(selected_gauge, n_30yr, n_full, n_fast):
      Input('plot-options-checklist', 'value'),
      Input('history-mode-store', 'data'),
      Input('dark-mode-store', 'data')],
-    [State('gauges-store', 'data')]
+    [State('gauges-store', 'data'),
+     State('window-width-store', 'data')]
 )
 def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_options,
-                       history_mode, dark_mode, gauges_data):
+                       history_mode, dark_mode, gauges_data, window_width):
     """Generate and display all streamflow plots for the selected site."""
     if not selected_gauge:
         return [html.P("Select a gauge on the map to view streamflow plots.", className="text-muted")]
@@ -1691,7 +1725,8 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
         "scrollZoom": "enable_zoom" in selected_options,
         "doubleClick": "autosize" if "enable_zoom" in selected_options else "reset",
     }
-    graph_style = {"height": f"{chart_height}px"}
+    effective_height = min(chart_height, 400) if window_width and window_width < 600 else chart_height
+    graph_style = {"height": f"{effective_height}px"}
     if "responsive" in selected_options:
         graph_style["width"] = "100%"
 
@@ -1744,11 +1779,12 @@ def toggle_annual_summary_requested(selected_gauge, n_clicks):
      State('selected-gauge-store', 'data'),
      State('gauges-store', 'data'),
      State('chart-height-dropdown', 'value'),
-     State('plot-options-checklist', 'value')],
+     State('plot-options-checklist', 'value'),
+     State('window-width-store', 'data')],
     prevent_initial_call=True,
 )
 def render_annual_summary(requested, dark_mode, selected_gauge, gauges_data,
-                          chart_height, plot_options):
+                          chart_height, plot_options, window_width):
     """Render period-of-record plots only when explicitly requested via button."""
     from dash.exceptions import PreventUpdate
     if not requested or not selected_gauge:
@@ -1784,7 +1820,8 @@ def render_annual_summary(requested, dark_mode, selected_gauge, gauges_data,
         "scrollZoom": "enable_zoom" in selected_options,
         "doubleClick": "autosize" if "enable_zoom" in selected_options else "reset",
     }
-    graph_style = {"height": f"{chart_height}px"}
+    effective_height = min(chart_height, 400) if window_width and window_width < 600 else chart_height
+    graph_style = {"height": f"{effective_height}px"}
     if "responsive" in selected_options:
         graph_style["width"] = "100%"
 
