@@ -1418,20 +1418,19 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
         except Exception as e:
             logger.warning(f"Error filtering by real-time data: {e}")
     
-    # NWRFC forecast filter — keep only stations with an nwrfc_id assignment
+    # NWRFC forecast filter — keep only stations with active NWRFC forecast data
+    # Always use get_forecast_station_ids() (queries DataOps NOAA_RFC stations) rather
+    # than the nwrfc_id crosswalk column, which covers ~1,567 entries regardless of
+    # whether the station has current forecast data.
     if show_forecast_only:
-        if 'nwrfc_id' in filtered_gauges.columns:
-            has_nwrfc = filtered_gauges['nwrfc_id'].notna() & (filtered_gauges['nwrfc_id'].astype(str).str.strip() != '') & (filtered_gauges['nwrfc_id'].astype(str) != 'nan')
-            filtered_gauges = filtered_gauges[has_nwrfc]
-        else:
-            try:
-                forecast_site_ids = data_manager.get_forecast_station_ids()
-                if forecast_site_ids:
-                    filtered_gauges = filtered_gauges[filtered_gauges['site_id'].isin(forecast_site_ids)]
-                else:
-                    filtered_gauges = pd.DataFrame()
-            except Exception as e:
-                logger.warning(f"Error filtering by NWRFC forecast data: {e}")
+        try:
+            forecast_site_ids = data_manager.get_forecast_station_ids()
+            if forecast_site_ids:
+                filtered_gauges = filtered_gauges[filtered_gauges['site_id'].isin(forecast_site_ids)]
+            else:
+                filtered_gauges = pd.DataFrame()
+        except Exception as e:
+            logger.warning(f"Error filtering by NWRFC forecast data: {e}")
 
     # ResidCast ML forecast filter — per-station models only (13 quality stations)
     if show_resid_cast_only:
