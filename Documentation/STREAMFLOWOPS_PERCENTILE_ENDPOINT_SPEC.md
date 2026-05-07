@@ -63,11 +63,11 @@ Map the `percentile_rank` to one of ten band keys:
 | `p11_25`    | 11th–25th          | `#F9A825`       | Below Normal      |
 | `p26_50`    | 26th–50th          | `#2E7D32`       | Normal            |
 | `p51_75`    | 51st–75th          | `#1976D2`       | Above Normal      |
-| `p76_85`    | 76th–85th          | `#0D47A1`       | High              |
-| `p86_90`    | 86th–90th          | `#283593`       | Very High         |
-| `p91_95`    | 91st–95th          | `#4527A0`       | Exceptionally High|
-| `p96_98`    | 96th–98th          | `#7B1FA2`       | Near Record       |
-| `p99_100`   | > 98th             | `#AD1457`       | Record / Extreme  |
+| `p76_85`    | 76th–85th          | `#1565C0`       | High              |
+| `p86_90`    | 86th–90th          | `#0D47A1`       | Very High         |
+| `p91_95`    | 91st–95th          | `#0A3585`       | Exceptionally High|
+| `p96_98`    | 96th–98th          | `#07256B`       | Near Record       |
+| `p99_100`   | > 98th             | `#041552`       | Record / Extreme  |
 
 Python classification logic for reference:
 ```python
