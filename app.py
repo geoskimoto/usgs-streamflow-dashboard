@@ -1330,8 +1330,8 @@ def update_date_selection(prev_clicks, next_clicks, picker_value, range_data):
      Input('forecast-filter', 'value'),
      Input('resid-cast-filter', 'value'),
      Input('percentile-bands-store', 'data'),
-     Input('dark-mode-store', 'data')],
-    [State('selected-gauge-store', 'data')]
+     Input('dark-mode-store', 'data'),
+     Input('selected-gauge-store', 'data')]
 )
 def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin_boundaries, search_text, states,
                                      drainage_range, basins, hucs, show_realtime_only, station_status, show_forecast_only,
@@ -1353,7 +1353,7 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
     if ctx.triggered:
         trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
         # Don't auto-fit for map style, height changes, or when map is just being built from store
-        if trigger_id in ['map-style-dropdown', 'map-height-dropdown', 'gauges-store', 'percentile-bands-store']:
+        if trigger_id in ['map-style-dropdown', 'map-height-dropdown', 'gauges-store', 'percentile-bands-store', 'selected-gauge-store']:
             auto_fit = False
     
     # Convert data to DataFrame
