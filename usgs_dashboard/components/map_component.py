@@ -146,6 +146,9 @@ class ModernMapComponent:
             )
         )
         
+        # Add white inner dots to all colored stations for consistent bordered-circle look
+        self._add_station_inner_dots(fig, map_data)
+
         # Add NWRFC overlay (diamond outline on top of band-colored circles)
         self._add_nwrfc_overlay(fig, map_data)
 
@@ -295,7 +298,6 @@ class ModernMapComponent:
                     size=group_df['size_value'] * size_factor,
                     color=color,
                     opacity=opacity,
-                    line=dict(color='white', width=2),
                 ),
                 text=group_df['station_name'],
                 name=f"{label} ({len(group_df)})",
@@ -377,7 +379,6 @@ class ModernMapComponent:
                     size=group_df['size_value'] * size_factor,
                     color=color,
                     opacity=opacity,
-                    line=dict(color='white', width=2),
                 ),
                 text=group_df['station_name'],
                 name=f"{label} ({len(group_df)})",
@@ -490,6 +491,29 @@ class ModernMapComponent:
             'inactive': '#808080',       # Gray (legacy alias)
         }
     
+    def _add_station_inner_dots(self, fig: go.Figure, map_data: pd.DataFrame):
+        """Add white inner dots to all colored stations to create a bordered-circle appearance.
+
+        go.Scattermap does not support marker.line, so we layer a white dot (0.5x size)
+        on top of every colored station. inactive and no_data stations are excluded since
+        they are already dim/grey.
+        """
+        colored_bands = {cfg[0] for cfg in PERCENTILE_GROUP_CONFIG} - {'inactive', 'no_data'}
+        colored_df = map_data[map_data['map_group'].isin(colored_bands)]
+        if colored_df.empty:
+            return
+        fig.add_trace(go.Scattermap(
+            lat=colored_df['latitude'],
+            lon=colored_df['longitude'],
+            mode='markers',
+            marker=dict(
+                size=colored_df['size_value'] * 0.5,
+                color='rgba(255, 255, 255, 0.85)',
+            ),
+            showlegend=False,
+            hoverinfo='skip',
+        ))
+
     def _add_nwrfc_overlay(self, fig: go.Figure, map_data: pd.DataFrame):
         """Add a single diamond-stroked overlay trace for NWRFC forecast stations."""
         if 'nwrfc_id' not in map_data.columns:
