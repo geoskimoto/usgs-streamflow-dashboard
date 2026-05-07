@@ -22,14 +22,20 @@ from ..utils.config import (
 
 # Percentile band configuration: (band_key, label, hex_color, opacity, marker_size_factor)
 PERCENTILE_GROUP_CONFIG = [
-    ('p0_4',    '< 5th percentile',    '#880E4F', 0.92, 1.25),
-    ('p5_10',   '5th – 10th percentile',  '#E64A19', 0.90, 1.15),
-    ('p11_25',  '10th – 25th percentile', '#F9A825', 0.88, 1.05),
-    ('p26_50',  '25th – 50th percentile', '#2E7D32', 0.88, 1.00),
-    ('p51_75',  '50th – 75th percentile', '#1976D2', 0.90, 1.05),
-    ('p76_100', '> 75th percentile',   '#0D47A1', 0.92, 1.15),
-    ('no_data', 'No Flow Data',        '#808080', 0.60, 0.90),
-    ('inactive','Inactive',            '#404040', 0.40, 0.80),
+    ('p0_4',    '< 5th percentile',        '#880E4F', 0.92, 1.25),
+    ('p5_10',   '5th – 10th percentile',   '#E64A19', 0.90, 1.15),
+    ('p11_25',  '10th – 25th percentile',  '#F9A825', 0.88, 1.05),
+    ('p26_50',  '25th – 50th percentile',  '#2E7D32', 0.88, 1.00),
+    ('p51_75',  '50th – 75th percentile',  '#1976D2', 0.90, 1.05),
+    ('p76_85',  '75th – 85th percentile',  '#0D47A1', 0.92, 1.15),
+    ('p86_90',  '85th – 90th percentile',  '#283593', 0.93, 1.20),
+    ('p91_95',  '90th – 95th percentile',  '#4527A0', 0.93, 1.25),
+    ('p96_98',  '95th – 98th percentile',  '#7B1FA2', 0.94, 1.30),
+    ('p99_100', '> 98th percentile',       '#AD1457', 0.95, 1.35),
+    # Backward-compat alias: remove after StreamflowOps deploys new band keys
+    ('p76_100', '> 75th percentile',       '#0D47A1', 0.92, 1.15),
+    ('no_data', 'No Flow Data',            '#808080', 0.60, 0.90),
+    ('inactive','Inactive',               '#404040', 0.40, 0.80),
 ]
 
 PERCENTILE_LABELS = {cfg[0]: cfg[1] for cfg in PERCENTILE_GROUP_CONFIG}

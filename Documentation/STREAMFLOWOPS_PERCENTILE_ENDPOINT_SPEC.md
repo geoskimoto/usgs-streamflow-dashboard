@@ -54,16 +54,20 @@ The result is a float 0–100 where:
 
 ### 2.2 Band Classification
 
-Map the `percentile_rank` to one of six band keys:
+Map the `percentile_rank` to one of ten band keys:
 
-| Band Key    | Percentile Range   | Dashboard Color | Meaning        |
-|-------------|--------------------|-----------------|----------------|
-| `p0_4`      | 0–4th              | `#880E4F`       | Very Low       |
-| `p5_10`     | 5th–10th           | `#E64A19`       | Low            |
-| `p11_25`    | 11th–25th          | `#F9A825`       | Below Normal   |
-| `p26_50`    | 26th–50th          | `#2E7D32`       | Normal         |
-| `p51_75`    | 51st–75th          | `#1976D2`       | Above Normal   |
-| `p76_100`   | 76th–100th         | `#0D47A1`       | High           |
+| Band Key    | Percentile Range   | Dashboard Color | Meaning           |
+|-------------|--------------------|-----------------|-------------------|
+| `p0_4`      | 0–4th              | `#880E4F`       | Very Low          |
+| `p5_10`     | 5th–10th           | `#E64A19`       | Low               |
+| `p11_25`    | 11th–25th          | `#F9A825`       | Below Normal      |
+| `p26_50`    | 26th–50th          | `#2E7D32`       | Normal            |
+| `p51_75`    | 51st–75th          | `#1976D2`       | Above Normal      |
+| `p76_85`    | 76th–85th          | `#0D47A1`       | High              |
+| `p86_90`    | 86th–90th          | `#283593`       | Very High         |
+| `p91_95`    | 91st–95th          | `#4527A0`       | Exceptionally High|
+| `p96_98`    | 96th–98th          | `#7B1FA2`       | Near Record       |
+| `p99_100`   | > 98th             | `#AD1457`       | Record / Extreme  |
 
 Python classification logic for reference:
 ```python
@@ -77,8 +81,16 @@ elif percentile_rank <= 50:
     band = 'p26_50'
 elif percentile_rank <= 75:
     band = 'p51_75'
+elif percentile_rank <= 85:
+    band = 'p76_85'
+elif percentile_rank <= 90:
+    band = 'p86_90'
+elif percentile_rank <= 95:
+    band = 'p91_95'
+elif percentile_rank <= 98:
+    band = 'p96_98'
 else:
-    band = 'p76_100'
+    band = 'p99_100'
 ```
 
 ### 2.3 Historical Baseline
