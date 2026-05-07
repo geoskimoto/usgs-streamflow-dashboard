@@ -1314,7 +1314,7 @@ def update_date_selection(prev_clicks, next_clicks, picker_value, range_data):
 
 
 @app.callback(
-    [Output('gauge-map', 'figure', allow_duplicate=True),
+    [Output('gauge-map', 'figure'),
      Output('gauge-count-badge', 'children'),
      Output('results-count', 'children')],
     [Input('gauges-store', 'data'),
