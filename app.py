@@ -1314,7 +1314,7 @@ def update_date_selection(prev_clicks, next_clicks, picker_value, range_data):
 
 
 @app.callback(
-    [Output('gauge-map', 'figure'),
+    [Output('gauge-map', 'figure', allow_duplicate=True),
      Output('gauge-count-badge', 'children'),
      Output('results-count', 'children')],
     [Input('gauges-store', 'data'),
@@ -1331,8 +1331,8 @@ def update_date_selection(prev_clicks, next_clicks, picker_value, range_data):
      Input('forecast-filter', 'value'),
      Input('resid-cast-filter', 'value'),
      Input('percentile-bands-store', 'data'),
-     Input('dark-mode-store', 'data'),
-     Input('selected-gauge-store', 'data')]
+     Input('dark-mode-store', 'data')],
+    [State('selected-gauge-store', 'data')]
 )
 def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin_boundaries, search_text, states,
                                      drainage_range, basins, hucs, show_realtime_only, station_status, show_forecast_only,
@@ -1354,7 +1354,7 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
     if ctx.triggered:
         trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
         # Don't auto-fit for map style, height changes, or when map is just being built from store
-        if trigger_id in ['map-style-dropdown', 'map-height-dropdown', 'gauges-store', 'percentile-bands-store', 'selected-gauge-store']:
+        if trigger_id in ['map-style-dropdown', 'map-height-dropdown', 'gauges-store', 'percentile-bands-store']:
             auto_fit = False
     
     # Convert data to DataFrame
@@ -1597,6 +1597,68 @@ def handle_gauge_selection(clickData, gauges_data):
     badge_style = {"display": "inline"}
     
     return site_id, badge_text, badge_style, info_content
+
+
+# Clientside callback: patch selection highlight into the map without a server round-trip.
+# Triggered only when the user clicks a station; does not cause a full map rebuild.
+app.clientside_callback(
+    """
+    function(selectedGauge, gaugesData, figure) {
+        if (!figure) return window.dash_clientside.no_update;
+
+        // Remove any existing selection highlight traces
+        var filteredData = figure.data.filter(function(trace) {
+            return trace.name !== 'Selected Gauge' && trace.name !== 'Selection Outer Ring';
+        });
+
+        if (!selectedGauge || !gaugesData) {
+            return Object.assign({}, figure, {data: filteredData});
+        }
+
+        // Find the clicked station
+        var gauge = null;
+        for (var i = 0; i < gaugesData.length; i++) {
+            if (String(gaugesData[i].site_id) === String(selectedGauge)) {
+                gauge = gaugesData[i];
+                break;
+            }
+        }
+        if (!gauge) return Object.assign({}, figure, {data: filteredData});
+
+        var name = gauge.station_name || gauge.site_id;
+
+        return Object.assign({}, figure, {
+            data: filteredData.concat([
+                {
+                    type: 'scattermap',
+                    lat: [gauge.latitude],
+                    lon: [gauge.longitude],
+                    mode: 'markers',
+                    marker: {size: 28, color: 'rgba(255, 69, 0, 0.4)'},
+                    showlegend: false,
+                    hoverinfo: 'skip',
+                    name: 'Selection Outer Ring'
+                },
+                {
+                    type: 'scattermap',
+                    lat: [gauge.latitude],
+                    lon: [gauge.longitude],
+                    mode: 'markers',
+                    marker: {size: 16, color: '#FF4500'},
+                    showlegend: false,
+                    name: 'Selected Gauge',
+                    hovertemplate: '<b>🎯 SELECTED: ' + name + '</b><br>Site ID: ' + gauge.site_id + '<extra></extra>'
+                }
+            ])
+        });
+    }
+    """,
+    Output('gauge-map', 'figure', allow_duplicate=True),
+    Input('selected-gauge-store', 'data'),
+    [State('gauges-store', 'data'),
+     State('gauge-map', 'figure')],
+    prevent_initial_call=True,
+)
 
 
 # Callback: manage history-mode-store and history buttons visibility
