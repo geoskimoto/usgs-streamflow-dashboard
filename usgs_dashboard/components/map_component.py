@@ -104,11 +104,7 @@ class ModernMapComponent:
         ]
         
         # Use go.Scattermap for all map styles with custom tile layers
-        if map_style == 'stamen-terrain':
-            fig = self._create_stamen_terrain_map(map_data, custom_data_fields, gauges_df, height)
-        else:
-            # Default to USGS National Map
-            fig = self._create_usgs_national_map(map_data, custom_data_fields, gauges_df, height)
+        fig = self._create_map_with_tiles(map_data, gauges_df, height, map_style)
         # Set hovertemplate for each trace
         hovertemplate = (
             "<b>%{customdata[8]}</b><br>"
@@ -272,11 +268,31 @@ class ModernMapComponent:
 
         return map_data
     
-    def _create_usgs_national_map(self, map_data: pd.DataFrame, custom_data_fields: List, gauges_df: pd.DataFrame, height: int = 700) -> go.Figure:
-        """Create map with USGS National Map basemap using custom tiles and go.Scattermap."""
+    # Tile layer configs keyed by map_style value
+    _TILE_CONFIGS = {
+        'usgs-national': {
+            'url': 'https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/tile/{z}/{y}/{x}',
+            'attribution': 'United States Geological Survey',
+            'label': 'USGS National Map',
+        },
+        'stamen-terrain': {
+            'url': 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
+            'attribution': '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
+            'label': 'Terrain',
+        },
+        'natgeo': {
+            'url': 'https://services.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}',
+            'attribution': 'Esri, National Geographic, DeLorme, HERE, UNEP-WCMC, USGS, NASA, ESA, METI, NRCAN, GEBCO, NOAA, iPC',
+            'label': 'National Geographic',
+        },
+    }
+
+    def _create_map_with_tiles(self, map_data: pd.DataFrame, gauges_df: pd.DataFrame,
+                               height: int = 700, map_style: str = 'usgs-national') -> go.Figure:
+        """Render station traces onto any raster tile basemap."""
+        tile = self._TILE_CONFIGS.get(map_style, self._TILE_CONFIGS['usgs-national'])
         fig = go.Figure()
 
-        # Render one trace per percentile band
         for band_key, label, color, opacity, size_factor in PERCENTILE_GROUP_CONFIG:
             group_df = map_data[map_data['map_group'] == band_key]
             if group_df.empty:
@@ -314,121 +330,20 @@ class ModernMapComponent:
                 )
             ))
 
-        map_layers = [
-            {
-                "below": "traces",
-                "sourcetype": "raster",
-                "sourceattribution": "United States Geological Survey",
-                "source": ["https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/tile/{z}/{y}/{x}"]
-            }
-        ]
+        map_layers = [{"below": "traces", "sourcetype": "raster",
+                       "sourceattribution": tile['attribution'],
+                       "source": [tile['url']]}]
 
         fig.update_layout(
-            map=dict(
-                style="white-bg",
-                layers=map_layers,
-                center=self.last_center,
-                zoom=self.last_zoom
-            ),
+            map=dict(style="white-bg", layers=map_layers,
+                     center=self.last_center, zoom=self.last_zoom),
             height=height,
             margin=dict(r=0, t=50, l=0, b=0),
-            title=f"USGS Streamflow Gauges - Pacific Northwest ({len(gauges_df)} gauges) - USGS National Map",
+            title=f"USGS Streamflow Gauges - Pacific Northwest ({len(gauges_df)} gauges) - {tile['label']}",
             font=dict(family="Arial", size=12),
-            legend=dict(
-                orientation="v",
-                yanchor="top",
-                y=0.99,
-                xanchor="left",
-                x=0.01,
-                bgcolor="rgba(255, 255, 255, 0.9)",
-                bordercolor="black",
-                borderwidth=1
-            ),
-            hoverlabel=dict(
-                bgcolor="white",
-                bordercolor="black",
-                font=dict(size=12)
-            )
-        )
-
-        return fig
-
-    def _create_stamen_terrain_map(self, map_data: pd.DataFrame, custom_data_fields: List, gauges_df: pd.DataFrame, height: int = 700) -> go.Figure:
-        """Create map with CartoDB Voyager basemap (replaced broken Stadia Maps tiles)."""
-        fig = go.Figure()
-
-        # Render one trace per percentile band
-        for band_key, label, color, opacity, size_factor in PERCENTILE_GROUP_CONFIG:
-            group_df = map_data[map_data['map_group'] == band_key]
-            if group_df.empty:
-                continue
-
-            custom_data = [
-                [row['site_id'], row['state'], row['catchment_area_display'],
-                 row['years_of_record_display'], row['status'], row['latitude'],
-                 row['longitude'], row['size_value'], row['station_name'],
-                 row['percentile_label']]
-                for _, row in group_df.iterrows()
-            ]
-
-            fig.add_trace(go.Scattermap(
-                lat=group_df['latitude'],
-                lon=group_df['longitude'],
-                mode='markers',
-                marker=dict(
-                    size=group_df['size_value'] * size_factor,
-                    color=color,
-                    opacity=opacity,
-                ),
-                text=group_df['station_name'],
-                name=f"{label} ({len(group_df)})",
-                customdata=custom_data,
-                hovertemplate=(
-                    "<b>%{customdata[8]}</b><br>"
-                    "Site ID: %{customdata[0]}<br>"
-                    "State: %{customdata[1]}<br>"
-                    "Catchment Area: %{customdata[2]}<br>"
-                    "Years of Record: %{customdata[3]}<br>"
-                    "Condition: <b>%{customdata[9]}</b><br>"
-                    "Lat: %{customdata[5]:.4f}, Lon: %{customdata[6]:.4f}<br>"
-                    "<extra></extra>"
-                )
-            ))
-
-        # CartoDB Voyager tiles — free, no API key required
-        map_layers = [
-            {
-                "below": "traces",
-                "sourcetype": "raster",
-                "sourceattribution": "© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors © <a href='https://carto.com/attributions'>CARTO</a>",
-                "source": ["https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"]
-            }
-        ]
-
-        fig.update_layout(
-            map=dict(
-                style="white-bg",
-                layers=map_layers,
-                center=self.last_center,
-                zoom=self.last_zoom
-            ),
-            height=height,
-            margin=dict(r=0, t=50, l=0, b=0),
-            title=f"USGS Streamflow Gauges - Pacific Northwest ({len(gauges_df)} gauges) - Terrain",
-            font=dict(family="Arial", size=12),
-            legend=dict(
-                orientation="v",
-                yanchor="top",
-                y=0.99,
-                xanchor="left",
-                x=0.01,
-                bgcolor="rgba(255, 255, 255, 0.9)",
-                bordercolor="black",
-                borderwidth=1
-            ),
-            hoverlabel=dict(
-                bgcolor="white",
-                bordercolor="black",
+            legend=dict(orientation="v", yanchor="top", y=0.99, xanchor="left", x=0.01,
+                        bgcolor="rgba(255, 255, 255, 0.9)", bordercolor="black", borderwidth=1),
+            hoverlabel=dict(bgcolor="white", bordercolor="black",
                 font=dict(size=12)
             )
         )
@@ -589,24 +504,9 @@ class ModernMapComponent:
             showlegend=False
         ))
 
-        if map_style == "stamen-terrain":
-            map_layers = [
-                {
-                    "below": "traces",
-                    "sourcetype": "raster",
-                    "sourceattribution": "© OpenStreetMap contributors © CARTO",
-                    "source": ["https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"]
-                }
-            ]
-        else:
-            map_layers = [
-                {
-                    "below": "traces",
-                    "sourcetype": "raster",
-                    "sourceattribution": "United States Geological Survey",
-                    "source": ["https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/tile/{z}/{y}/{x}"]
-                }
-            ]
+        tile = self._TILE_CONFIGS.get(map_style, self._TILE_CONFIGS['usgs-national'])
+        map_layers = [{"below": "traces", "sourcetype": "raster",
+                       "sourceattribution": tile['attribution'], "source": [tile['url']]}]
 
         fig.update_layout(
             map=dict(

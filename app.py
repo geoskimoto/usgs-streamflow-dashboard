@@ -402,6 +402,7 @@ def create_sidebar():
                     options=[
                         {"label": "🏞️ USGS National Map", "value": "usgs-national"},
                         {"label": "🏔️ Stamen Terrain", "value": "stamen-terrain"},
+                        {"label": "🌍 National Geographic", "value": "natgeo"},
                     ],
                     value="usgs-national",  # Set USGS National Map as default
                     className="mb-3"
@@ -518,6 +519,7 @@ def create_public_sidebar():
                     options=[
                         {"label": "🏞️ USGS National Map", "value": "usgs-national"},
                         {"label": "🏔️ Stamen Terrain", "value": "stamen-terrain"},
+                        {"label": "🌍 National Geographic", "value": "natgeo"},
                     ],
                     value="usgs-national",
                     className="mb-3"
