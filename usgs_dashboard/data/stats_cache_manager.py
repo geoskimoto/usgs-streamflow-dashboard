@@ -65,7 +65,7 @@ def get_statistics(site_id: str, discharge_df: pd.DataFrame) -> pd.DataFrame:
     Returns
     -------
     pd.DataFrame
-        Columns: day_of_wy, q10, q25, q50, q75, q90, mean, median
+        Columns: day_of_wy, q03, q10, q25, q50, q75, q90, q97, mean, median
         (366 rows max — one per day of water year)
         Empty DataFrame if insufficient data.
     """
@@ -73,7 +73,7 @@ def get_statistics(site_id: str, discharge_df: pd.DataFrame) -> pd.DataFrame:
     current_wy = _current_water_year()
     path = _cache_path(site_id, current_wy)
 
-    _REQUIRED_COLS = {'day_of_wy', 'q10', 'q25', 'q50', 'q75', 'q90', 'mean', 'median'}
+    _REQUIRED_COLS = {'day_of_wy', 'q03', 'q10', 'q25', 'q50', 'q75', 'q90', 'q97', 'mean', 'median'}
 
     if os.path.exists(path):
         try:
@@ -159,11 +159,13 @@ def _compute_statistics(discharge_df: pd.DataFrame, current_wy: int) -> pd.DataF
     stats = (
         historical.groupby("day_of_wy")[value_col]
         .agg(
+            q03=lambda x: x.quantile(0.03),
             q10=lambda x: x.quantile(0.10),
             q25=lambda x: x.quantile(0.25),
             q50=lambda x: x.quantile(0.50),
             q75=lambda x: x.quantile(0.75),
             q90=lambda x: x.quantile(0.90),
+            q97=lambda x: x.quantile(0.97),
             mean="mean",
             median="median",
         )

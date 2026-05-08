@@ -420,6 +420,23 @@ class VisualizationManager:
                 showlegend=True, name="25th–75th percentile", hoverinfo="skip",
             ))
 
+            # 3rd/97th percentile marker lines (no fill — tail reference on heavy-tailed data)
+            if {"q03", "q97"}.issubset(s.columns):
+                fig.add_trace(go.Scatter(
+                    x=s["day_of_wy"], y=s["q97"],
+                    mode="lines", name="97th percentile",
+                    line=dict(color="rgba(173,216,230,0.7)", width=1, dash="dot"),
+                    customdata=[self._day_of_wy_to_monthday(d) for d in s["day_of_wy"]],
+                    hovertemplate="%{customdata}<br>97th pct: %{y:.1f} cfs<extra></extra>",
+                ))
+                fig.add_trace(go.Scatter(
+                    x=s["day_of_wy"], y=s["q03"],
+                    mode="lines", name="3rd percentile",
+                    line=dict(color="rgba(173,216,230,0.7)", width=1, dash="dot"),
+                    customdata=[self._day_of_wy_to_monthday(d) for d in s["day_of_wy"]],
+                    hovertemplate="%{customdata}<br>3rd pct: %{y:.1f} cfs<extra></extra>",
+                ))
+
             # Mean and median lines
             if "mean" in s.columns:
                 fig.add_trace(go.Scatter(
