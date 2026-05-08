@@ -285,6 +285,11 @@ class ModernMapComponent:
             'attribution': 'Esri, National Geographic, DeLorme, HERE, UNEP-WCMC, USGS, NASA, ESA, METI, NRCAN, GEBCO, NOAA, iPC',
             'label': 'National Geographic',
         },
+        'esri-satellite': {
+            'url': 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            'attribution': 'Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+            'label': 'Satellite',
+        },
     }
 
     def _create_map_with_tiles(self, map_data: pd.DataFrame, gauges_df: pd.DataFrame,
