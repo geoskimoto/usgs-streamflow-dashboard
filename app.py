@@ -956,6 +956,7 @@ app.layout = dbc.Container([
     dcc.Store(id='scroll-trigger-store', data=None), # dummy output for scroll clientside callback
     dcc.Store(id='fast-plot-figure-store', data=None),
     dcc.Store(id='plot-cache-meta-store', data=None),
+    dcc.Store(id='hover-data-store', data=None),
     dcc.Interval(
         id='percentile-refresh-interval',
         interval=30_000,   # poll every 30 seconds
@@ -2186,13 +2187,22 @@ def update_realtime_filter_info(gauges_data):
         return "Real-time data status unavailable"
 
 
-# Hover zoom panel: clientside callback — no server round-trip, instant response.
-# Reads hoverData from the water-year graph, zooms a floating panel to ±45 days.
-# Hidden on mobile (window width < 768) and when no figure is in the store.
+# Relay hoverData from the dynamically-created water-year graph to a stable store.
+# Server-side callbacks handle dynamic component IDs reliably with suppress_callback_exceptions=True.
+@app.callback(
+    Output('hover-data-store', 'data'),
+    Input('water-year-graph', 'hoverData'),
+    prevent_initial_call=True,
+)
+def relay_hover_data(hover_data):
+    return hover_data
+
+
+# Hover zoom panel: clientside callback watching only stable stores — no dynamic ID issues.
+# Zooms a floating panel to ±45 days around the hovered date. Hidden on mobile (< 768px).
 app.clientside_callback(
     """
     function(hoverData, figureStore, windowWidth) {
-        var noUpdate = window.dash_clientside.no_update;
         var hidden = {'display': 'none'};
 
         if (!figureStore || (windowWidth && windowWidth < 768)) {
@@ -2251,7 +2261,7 @@ app.clientside_callback(
     [Output('hover-zoom-panel', 'style'),
      Output('hover-zoom-graph', 'figure'),
      Output('hover-zoom-date-label', 'children')],
-    [Input('water-year-graph', 'hoverData'),
+    [Input('hover-data-store', 'data'),
      Input('fast-plot-figure-store', 'data')],
     State('window-width-store', 'data'),
 )
