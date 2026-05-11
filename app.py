@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 # Import dashboard components
 from usgs_dashboard.data.data_manager import get_data_manager
+from usgs_dashboard.data import plot_cache_manager
 from usgs_dashboard.components.map_component import get_map_component
 from usgs_dashboard.components.viz_manager import get_visualization_manager
 from usgs_dashboard.components.filter_panel import SimplifiedFilterPanel
@@ -742,15 +743,31 @@ def create_main_content():
         
         # Multi-plot visualization section
         dbc.Card([
-            dbc.CardHeader([
-                html.H5("📊 Streamflow Analysis", className="mb-0 d-inline"),
-                dbc.Badge(
-                    id="selected-gauge-badge",
-                    color="success",
-                    className="float-end",
-                    style={"display": "none"}
-                )
-            ]),
+            dbc.CardHeader(
+                html.Div([
+                    html.H5("📊 Streamflow Analysis", className="mb-0"),
+                    html.Div([
+                        dbc.Badge(
+                            id="cache-age-badge",
+                            color="secondary",
+                            style={"display": "none", "cursor": "default", "fontSize": "11px"},
+                        ),
+                        dbc.Button(
+                            "🔄 Refresh",
+                            id="refresh-live-plot-btn",
+                            color="outline-info",
+                            size="sm",
+                            n_clicks=0,
+                            style={"display": "none"},
+                        ),
+                        dbc.Badge(
+                            id="selected-gauge-badge",
+                            color="success",
+                            style={"display": "none"},
+                        ),
+                    ], className="d-flex align-items-center gap-2"),
+                ], className="d-flex justify-content-between align-items-center"),
+            ),
             dbc.CardBody([
                 # History-load buttons (hidden until a station is selected)
                 html.Div(
@@ -937,6 +954,8 @@ app.layout = dbc.Container([
     dcc.Store(id='selected-percentile-date-store', data=None),
     dcc.Store(id='window-width-store', data=1200),   # populated by clientside callback
     dcc.Store(id='scroll-trigger-store', data=None), # dummy output for scroll clientside callback
+    dcc.Store(id='fast-plot-figure-store', data=None),
+    dcc.Store(id='plot-cache-meta-store', data=None),
     dcc.Interval(
         id='percentile-refresh-interval',
         interval=30_000,   # poll every 30 seconds
@@ -960,7 +979,30 @@ app.layout = dbc.Container([
         'zIndex': '9999',
         'width': 'min(350px, calc(100vw - 20px))'
     }),
-    
+
+    # Hover zoom floating panel — shown on water-year graph hover (desktop only)
+    html.Div(
+        id='hover-zoom-panel',
+        style={'display': 'none'},
+        children=[
+            html.Div([
+                html.Small(
+                    "± 1.5 months",
+                    style={'color': '#8899bb', 'marginRight': '10px', 'fontSize': '11px'},
+                ),
+                html.Small(
+                    id='hover-zoom-date-label',
+                    style={'color': '#cdd6f4', 'fontWeight': 'bold', 'fontSize': '12px'},
+                ),
+            ], style={'marginBottom': '4px', 'paddingLeft': '4px'}),
+            dcc.Graph(
+                id='hover-zoom-graph',
+                config={'displayModeBar': False, 'staticPlot': True},
+                style={'height': '200px'},
+            ),
+        ],
+    ),
+
 ], fluid=True)
 
 
@@ -1697,21 +1739,27 @@ def update_history_mode(selected_gauge, n_30yr, n_full, n_fast):
 
 # Multi-plot callback: generates all plots for selected site
 @app.callback(
-    Output('multi-plot-container', 'children'),
+    [Output('multi-plot-container', 'children'),
+     Output('fast-plot-figure-store', 'data'),
+     Output('plot-cache-meta-store', 'data')],
     [Input('selected-gauge-store', 'data'),
      Input('highlight-years-input', 'value'),
      Input('chart-height-dropdown', 'value'),
      Input('plot-options-checklist', 'value'),
      Input('history-mode-store', 'data'),
-     Input('dark-mode-store', 'data')],
+     Input('dark-mode-store', 'data'),
+     Input('refresh-live-plot-btn', 'n_clicks')],
     [State('gauges-store', 'data'),
      State('window-width-store', 'data')]
 )
 def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_options,
-                       history_mode, dark_mode, gauges_data, window_width):
+                       history_mode, dark_mode, refresh_n_clicks, gauges_data, window_width):
     """Generate and display all streamflow plots for the selected site."""
     if not selected_gauge:
-        return [html.P("Select a gauge on the map to view streamflow plots.", className="text-muted")]
+        return [html.P("Select a gauge on the map to view streamflow plots.", className="text-muted")], None, None
+
+    triggered_id = callback_context.triggered_id if callback_context.triggered else None
+    force_live = (triggered_id == 'refresh-live-plot-btn')
 
     # Parse highlight years
     highlight_years = []
@@ -1753,11 +1801,14 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
     resid_cast_data = data_manager.get_resid_cast_forecasts(selected_gauge, num_runs=5)
 
     # ── Water year plot: fast vs full-history paths ───────────────────────
+    fast_fig_dict = None
+    cache_meta = None
+
     if history_mode in ('30yr', 'all'):
         # Full history path: fetch complete record, render with year traces
         streamflow_data = data_manager.get_streamflow_data(selected_gauge)
         if streamflow_data is None or streamflow_data.empty:
-            return [dbc.Alert(f"No streamflow data available for site {selected_gauge}", color="warning")]
+            return [dbc.Alert(f"No streamflow data available for site {selected_gauge}", color="warning")], None, None
         wy_fig = viz_manager.create_streamflow_plot(
             selected_gauge, streamflow_data,
             plot_type='water_year',
@@ -1769,19 +1820,38 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
             history_mode=history_mode,
         )
     else:
-        # Fast path: current year data + cached statistics
-        current_year_data = data_manager.get_current_year_data(selected_gauge)
-        statistics = data_manager.get_flow_statistics(selected_gauge)
-        if current_year_data is None or current_year_data.empty:
-            return [dbc.Alert(f"No streamflow data available for site {selected_gauge}", color="warning")]
-        wy_fig = viz_manager.create_fast_water_year_plot(
-            site_id=selected_gauge,
-            current_year_data=current_year_data,
-            statistics=statistics,
-            forecast_data=forecast_data,
-            resid_cast_data=resid_cast_data,
-            data_manager=data_manager,
-        )
+        # Fast path: serve from plot cache when available, else compute and cache
+        if not force_live and plot_cache_manager.exists(selected_gauge):
+            fig_dict, generated_at = plot_cache_manager.get(selected_gauge)
+            if fig_dict is not None:
+                wy_fig = go.Figure(fig_dict)
+                age = plot_cache_manager.age_seconds(selected_gauge)
+                cache_meta = {
+                    'cached': True,
+                    'generated_at': generated_at.isoformat(),
+                    'age_seconds': age,
+                }
+                fast_fig_dict = fig_dict
+            else:
+                force_live = True  # cache read failed, fall through to live
+
+        if force_live or not plot_cache_manager.exists(selected_gauge) or fast_fig_dict is None:
+            current_year_data = data_manager.get_current_year_data(selected_gauge)
+            statistics = data_manager.get_flow_statistics(selected_gauge)
+            if current_year_data is None or current_year_data.empty:
+                return [dbc.Alert(f"No streamflow data available for site {selected_gauge}", color="warning")], None, None
+            wy_fig = viz_manager.create_fast_water_year_plot(
+                site_id=selected_gauge,
+                current_year_data=current_year_data,
+                statistics=statistics,
+                forecast_data=forecast_data,
+                resid_cast_data=resid_cast_data,
+                data_manager=data_manager,
+            )
+            plot_cache_manager.save(selected_gauge, wy_fig)
+            now_iso = datetime.now().isoformat()
+            cache_meta = {'cached': False, 'generated_at': now_iso, 'age_seconds': 0}
+            fast_fig_dict = wy_fig.to_dict()
 
     # ── Build plot option config ───────────────────────────────────────────
     selected_options = plot_options or []
@@ -1802,8 +1872,11 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
 
     plot_template = 'plotly_dark' if dark_mode else 'plotly'
 
-    def _card(title, fig):
+    def _card(title, fig, graph_id=None):
         fig.update_layout(template=plot_template, hovermode='x unified')
+        graph_kwargs = dict(figure=fig, config=graph_config, style=graph_style)
+        if graph_id:
+            graph_kwargs['id'] = graph_id
         return dbc.Card([
             dbc.CardHeader([
                 html.Div(f"{title} — {site_label} — {station_name}",
@@ -1811,10 +1884,57 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
                 html.Div(f"Data Source: {data_source_text}",
                          style={'fontSize': '0.9em', 'fontWeight': 'normal', 'color': '#6c757d'}),
             ]),
-            dbc.CardBody([dcc.Graph(figure=fig, config=graph_config, style=graph_style)])
+            dbc.CardBody([dcc.Graph(**graph_kwargs)])
         ], className="mb-3")
 
-    return [_card("Water Year Plot", wy_fig)]
+    return [_card("Water Year Plot", wy_fig, graph_id='water-year-graph')], fast_fig_dict, cache_meta
+
+
+def _format_cache_age(seconds: float) -> str:
+    if seconds < 60:
+        return "just now"
+    if seconds < 3600:
+        return f"{int(seconds / 60)}m ago"
+    if seconds < 86400:
+        return f"{seconds / 3600:.1f}h ago"
+    return f"{int(seconds / 86400)}d ago"
+
+
+@app.callback(
+    [Output('refresh-live-plot-btn', 'disabled'),
+     Output('refresh-live-plot-btn', 'style'),
+     Output('cache-age-badge', 'children'),
+     Output('cache-age-badge', 'color'),
+     Output('cache-age-badge', 'style')],
+    [Input('selected-gauge-store', 'data'),
+     Input('history-mode-store', 'data'),
+     Input('plot-cache-meta-store', 'data')],
+)
+def update_refresh_controls(selected_gauge, history_mode, cache_meta):
+    hidden = {'display': 'none'}
+    visible = {'display': 'inline-block'}
+
+    if not selected_gauge:
+        return True, hidden, "", "secondary", hidden
+
+    in_history_mode = history_mode in ('30yr', 'all')
+    disabled = in_history_mode
+
+    if cache_meta and not in_history_mode:
+        if cache_meta.get('cached'):
+            age_str = _format_cache_age(cache_meta.get('age_seconds', 0))
+            badge_text = f"⏱ Cached {age_str}"
+            badge_color = "secondary"
+        else:
+            badge_text = "⚡ Live"
+            badge_color = "success"
+        badge_style = {'display': 'inline-block', 'fontSize': '11px', 'cursor': 'default'}
+    else:
+        badge_text = ""
+        badge_color = "secondary"
+        badge_style = hidden
+
+    return disabled, visible, badge_text, badge_color, badge_style
 
 
 # ── Period-of-record lazy-load callbacks ──────────────────────────────────────
@@ -2064,6 +2184,77 @@ def update_realtime_filter_info(gauges_data):
     except Exception as e:
         logger.warning(f"Error updating real-time filter info: {e}")
         return "Real-time data status unavailable"
+
+
+# Hover zoom panel: clientside callback — no server round-trip, instant response.
+# Reads hoverData from the water-year graph, zooms a floating panel to ±45 days.
+# Hidden on mobile (window width < 768) and when no figure is in the store.
+app.clientside_callback(
+    """
+    function(hoverData, figureStore, windowWidth) {
+        var noUpdate = window.dash_clientside.no_update;
+        var hidden = {'display': 'none'};
+
+        if (!figureStore || (windowWidth && windowWidth < 768)) {
+            return [hidden, {}, ''];
+        }
+        if (!hoverData || !hoverData.points || !hoverData.points.length) {
+            return [hidden, {}, ''];
+        }
+
+        var point = hoverData.points[0];
+        var hoverX = point.x;
+        if (!hoverX) return [hidden, {}, ''];
+
+        var hoverDate = new Date(hoverX);
+        var msPerDay = 86400000;
+        var windowMs = 45 * msPerDay;
+
+        var xMin = new Date(hoverDate.getTime() - windowMs).toISOString().split('T')[0];
+        var xMax = new Date(hoverDate.getTime() + windowMs).toISOString().split('T')[0];
+
+        var fig = JSON.parse(JSON.stringify(figureStore));
+        if (!fig.layout) fig.layout = {};
+        fig.layout.xaxis = fig.layout.xaxis || {};
+        fig.layout.xaxis.range = [xMin, xMax];
+        fig.layout.xaxis.rangeslider = {visible: false};
+        fig.layout.height = 210;
+        fig.layout.showlegend = false;
+        fig.layout.margin = {t: 8, b: 32, l: 56, r: 12};
+        fig.layout.updatemenus = [];
+        fig.layout.annotations = [];
+        fig.layout.shapes = (fig.layout.shapes || []).filter(function(s) {
+            return s.type !== 'line' || s.x0 !== s.x1;
+        });
+
+        var dateLabel = hoverDate.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
+
+        var panelStyle = {
+            'display': 'block',
+            'position': 'fixed',
+            'bottom': '24px',
+            'right': '24px',
+            'width': '480px',
+            'zIndex': 9998,
+            'backgroundColor': 'rgba(22, 27, 42, 0.97)',
+            'border': '1px solid rgba(100, 150, 255, 0.25)',
+            'borderRadius': '10px',
+            'boxShadow': '0 8px 32px rgba(0,0,0,0.65)',
+            'padding': '10px 12px 6px 12px',
+            'backdropFilter': 'blur(10px)',
+            'pointerEvents': 'none',
+        };
+
+        return [panelStyle, fig, dateLabel];
+    }
+    """,
+    [Output('hover-zoom-panel', 'style'),
+     Output('hover-zoom-graph', 'figure'),
+     Output('hover-zoom-date-label', 'children')],
+    [Input('water-year-graph', 'hoverData'),
+     Input('fast-plot-figure-store', 'data')],
+    State('window-width-store', 'data'),
+)
 
 
 # Dark mode: pure clientside toggle — no server round-trip needed

@@ -1,0 +1,13 @@
+[Unit]
+Description=Rebuild streamflow plot cache at 6am and 1pm PST (UTC+8 / UTC+7)
+
+[Timer]
+# 6am PST = 14:00 UTC (standard time) / 13:00 UTC (daylight time)
+# 1pm PST = 21:00 UTC (standard time) / 20:00 UTC (daylight time)
+# Using UTC times that split the difference — adjust if needed for DST precision.
+OnCalendar=*-*-* 14:00:00 UTC
+OnCalendar=*-*-* 21:00:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

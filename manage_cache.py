@@ -3,8 +3,9 @@
 Cache management CLI for the USGS Streamflow Dashboard.
 
 Analogous to Django management commands but for this Dash app.
-Rebuilds the per-day-of-water-year statistics cache used by the fast
-water year plot path.
+Manages two caches:
+  - stats cache: per-day-of-water-year statistics (parquet, used by fast plot path)
+  - plot cache:  pre-rendered Plotly figure JSON (served directly on station click)
 
 Usage
 -----
@@ -14,6 +15,9 @@ Usage
   python manage_cache.py rebuild_stats --site 14187500
 
   python manage_cache.py clear_stats [--site 14187500]
+
+  python manage_cache.py rebuild_plots [--site 14187500] [--workers 4] [--force] [--dry-run]
+  python manage_cache.py clear_plots [--site 14187500]
 
 Options (rebuild_stats)
 -----------------------
@@ -32,6 +36,20 @@ Options (clear_stats)
 ---------------------
   --site SITE_ID   Clear cache only for this site. Without --site, clears
                    all cache files.
+
+Options (rebuild_plots)
+-----------------------
+  Rebuilds pre-rendered Plotly figure JSON for NWRFC forecast stations.
+  --site SITE_ID   Rebuild for a single USGS site ID.
+  --workers N      Number of parallel worker threads (default: 4).
+  --force          Rebuild even when a valid cache already exists.
+  --dry-run        Print which stations would be processed; do not render
+                   or write anything.
+
+Options (clear_plots)
+---------------------
+  --site SITE_ID   Clear cache only for this site. Without --site, clears
+                   all plot cache files.
 """
 
 import argparse
@@ -228,6 +246,131 @@ def cmd_rebuild_stats(args):
         sys.exit(1)
 
 
+# ── rebuild_plots helpers ──────────────────────────────────────────────────────
+
+def _rebuild_plot_one(site_id: str, dm, vm, force: bool) -> tuple[str, str, float]:
+    """
+    Pre-render and cache the fast water-year plot for a single site.
+
+    Returns (site_id, status, elapsed_seconds).
+    Status is one of: 'rebuilt', 'skipped', 'error'.
+    """
+    from usgs_dashboard.data import plot_cache_manager
+
+    if not force and plot_cache_manager.exists(site_id):
+        return site_id, "skipped", 0.0
+
+    t0 = time.perf_counter()
+    try:
+        current_year_data = dm.get_current_year_data(site_id)
+        if current_year_data is None or current_year_data.empty:
+            logger.warning(f"  [{site_id}] No current year data")
+            return site_id, "error", time.perf_counter() - t0
+
+        statistics = dm.get_flow_statistics(site_id)
+
+        forecast_data = None
+        try:
+            forecast_data = dm.get_forecast_data(site_id, num_days=5)
+        except Exception as exc:
+            logger.debug(f"  [{site_id}] Forecast fetch skipped: {exc}")
+
+        resid_cast_data = dm.get_resid_cast_forecasts(site_id, num_runs=5)
+
+        fig = vm.create_fast_water_year_plot(
+            site_id=site_id,
+            current_year_data=current_year_data,
+            statistics=statistics,
+            forecast_data=forecast_data,
+            resid_cast_data=resid_cast_data,
+            data_manager=dm,
+        )
+        plot_cache_manager.save(site_id, fig)
+        return site_id, "rebuilt", time.perf_counter() - t0
+
+    except Exception as exc:
+        logger.error(f"  [{site_id}] Exception: {exc}")
+        return site_id, "error", time.perf_counter() - t0
+
+
+def cmd_rebuild_plots(args):
+    """Entry point for the rebuild_plots sub-command."""
+    import argparse as _argparse
+    from usgs_dashboard.components.viz_manager import get_visualization_manager
+    from usgs_dashboard.data import plot_cache_manager
+
+    dm = _get_data_manager()
+    vm = get_visualization_manager()
+
+    # Always filter to NWRFC forecast stations (union with ResidCast)
+    if args.site:
+        site_ids = [args.site]
+    else:
+        _forecast_args = _argparse.Namespace(
+            site=None,
+            all_stations=False,
+            active=False,
+            forecast=True,
+        )
+        site_ids = _build_station_list(_forecast_args, dm)
+
+    if not site_ids:
+        logger.error("No stations to process — exiting.")
+        sys.exit(1)
+
+    logger.info(
+        f"\nPlot cache dir    : {plot_cache_manager.PLOT_CACHE_DIR}\n"
+        f"Stations selected : {len(site_ids)}\n"
+        f"Workers           : {args.workers}\n"
+        f"Force rebuild     : {args.force}\n"
+        f"Dry run           : {args.dry_run}\n"
+    )
+
+    if args.dry_run:
+        print(f"\n{'─'*60}")
+        print(f"DRY RUN — would process {len(site_ids)} station(s):\n")
+        for sid in site_ids:
+            cached = plot_cache_manager.exists(sid)
+            action = "skip (cached)" if cached and not args.force else "rebuild"
+            print(f"  {sid:<15}  {action}")
+        print(f"{'─'*60}\n")
+        return
+
+    os.makedirs(plot_cache_manager.PLOT_CACHE_DIR, exist_ok=True)
+
+    counters = {"rebuilt": 0, "skipped": 0, "error": 0}
+    total = len(site_ids)
+    start_time = time.perf_counter()
+
+    with ThreadPoolExecutor(max_workers=args.workers) as pool:
+        futures = {
+            pool.submit(_rebuild_plot_one, sid, dm, vm, args.force): sid
+            for sid in site_ids
+        }
+        for i, future in enumerate(as_completed(futures), start=1):
+            site_id, status, elapsed = future.result()
+            counters[status] += 1
+            icon = {"rebuilt": "✅", "skipped": "⏭️ ", "error": "❌"}[status]
+            elapsed_str = f"{elapsed:.1f}s" if status != "skipped" else "—"
+            print(
+                f"  [{i:>4}/{total}]  {icon}  {site_id:<15}  {status:<8}  {elapsed_str}",
+                flush=True,
+            )
+
+    wall = time.perf_counter() - start_time
+    print(f"\n{'─'*60}")
+    print(
+        f"Done in {wall:.1f}s  |  "
+        f"rebuilt={counters['rebuilt']}  "
+        f"skipped={counters['skipped']}  "
+        f"errors={counters['error']}"
+    )
+    print(f"{'─'*60}\n")
+
+    if counters["error"] > 0:
+        sys.exit(1)
+
+
 # ── Clear command ──────────────────────────────────────────────────────────────
 
 def cmd_clear_stats(args):
@@ -249,6 +392,39 @@ def cmd_clear_stats(args):
             print("No cache files found.")
             return
         confirm = input(f"Delete all {len(files)} cache file(s)? [y/N] ").strip().lower()
+        if confirm != "y":
+            print("Aborted.")
+            return
+        for f in files:
+            f.unlink()
+            print(f"Deleted: {f.name}")
+        print(f"\nRemoved {len(files)} file(s).")
+
+
+def cmd_clear_plots(args):
+    """Delete plot cache files."""
+    from usgs_dashboard.data import plot_cache_manager
+
+    cache_dir = Path(plot_cache_manager.PLOT_CACHE_DIR)
+
+    if not cache_dir.exists():
+        print("Plot cache directory does not exist — nothing to clear.")
+        return
+
+    if args.site:
+        files = list(cache_dir.glob(f"{args.site}_WY*"))
+        if not files:
+            print(f"No plot cache files found for site {args.site}.")
+            return
+        for f in files:
+            f.unlink()
+            print(f"Deleted: {f.name}")
+    else:
+        files = list(cache_dir.glob("*_WY*"))
+        if not files:
+            print("No plot cache files found.")
+            return
+        confirm = input(f"Delete all {len(files)} plot cache file(s)? [y/N] ").strip().lower()
         if confirm != "y":
             print("Aborted.")
             return
@@ -326,6 +502,45 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Clear only this site's cache (default: clear all)",
     )
 
+    # ── rebuild_plots ──────────────────────────────────────────────────────────
+    rebuild_plots = sub.add_parser(
+        "rebuild_plots",
+        help="Pre-render water-year plot figures for NWRFC forecast stations",
+    )
+    rebuild_plots.add_argument(
+        "--site",
+        metavar="SITE_ID",
+        help="Single USGS site ID (default: all NWRFC forecast stations)",
+    )
+    rebuild_plots.add_argument(
+        "--workers",
+        type=int,
+        default=4,
+        metavar="N",
+        help="Parallel worker threads (default: 4)",
+    )
+    rebuild_plots.add_argument(
+        "--force",
+        action="store_true",
+        help="Rebuild even when a valid cache already exists",
+    )
+    rebuild_plots.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print what would happen without rendering or writing anything",
+    )
+
+    # ── clear_plots ────────────────────────────────────────────────────────────
+    clear_plots = sub.add_parser(
+        "clear_plots",
+        help="Delete plot cache files",
+    )
+    clear_plots.add_argument(
+        "--site",
+        metavar="SITE_ID",
+        help="Clear only this site's cache (default: clear all)",
+    )
+
     return parser
 
 
@@ -339,6 +554,10 @@ def main():
         cmd_rebuild_stats(args)
     elif args.command == "clear_stats":
         cmd_clear_stats(args)
+    elif args.command == "rebuild_plots":
+        cmd_rebuild_plots(args)
+    elif args.command == "clear_plots":
+        cmd_clear_plots(args)
     else:
         parser.print_help()
         sys.exit(1)
