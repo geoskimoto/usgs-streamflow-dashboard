@@ -2283,11 +2283,23 @@ app.clientside_callback(
 
         var dateLabel = hoverDate.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
 
+        // Read live cursor position stored by hover_zoom.js mousemove handler.
+        // Falls back to 0,0 if the script hasn't run yet (rare).
+        var cx = (window._hoverCursor && window._hoverCursor.x) || 0;
+        var cy = (window._hoverCursor && window._hoverCursor.y) || 0;
+
+        var PW = 480, PH = 250, OFFSET = 14;
+        var vw = window.innerWidth, vh = window.innerHeight;
+        var left = cx + OFFSET;
+        var top  = cy - PH - OFFSET;
+        if (left + PW > vw - 8) { left = cx - PW - OFFSET; }
+        if (top < 8)             { top  = cy + OFFSET; }
+
         var panelStyle = {
             'display': 'block',
             'position': 'fixed',
-            'left': '-9999px',   // hover_zoom.js repositions on next mousemove
-            'top': '-9999px',
+            'left': left + 'px',
+            'top':  top  + 'px',
             'width': '480px',
             'zIndex': 9998,
             'backgroundColor': 'rgba(22, 27, 42, 0.97)',
