@@ -1020,7 +1020,7 @@ app.layout = dbc.Container([
         children=[
             html.Div([
                 html.Small(
-                    "± 1.5 months",
+                    "± 1 month",
                     style={'color': '#8899bb', 'marginRight': '10px', 'fontSize': '11px'},
                 ),
                 html.Small(
@@ -2231,6 +2231,16 @@ def relay_hover_data(hover_data):
     return hover_data
 
 
+# Clear hover store on gauge change so the panel doesn't persist across station clicks.
+@app.callback(
+    Output('hover-data-store', 'data', allow_duplicate=True),
+    Input('selected-gauge-store', 'data'),
+    prevent_initial_call=True,
+)
+def clear_hover_on_gauge_change(_):
+    return None
+
+
 # Hover zoom panel: clientside callback watching only stable stores — no dynamic ID issues.
 # Zooms a floating panel to ±45 days around the hovered date. Hidden on mobile (< 768px).
 app.clientside_callback(
@@ -2252,7 +2262,7 @@ app.clientside_callback(
 
         var hoverDate = new Date(hoverX);
         var msPerDay = 86400000;
-        var windowMs = 45 * msPerDay;
+        var windowMs = 30 * msPerDay;
 
         var xMin = new Date(hoverDate.getTime() - windowMs).toISOString().split('T')[0];
         var xMax = new Date(hoverDate.getTime() + windowMs).toISOString().split('T')[0];
