@@ -2,7 +2,7 @@ services:
   - type: web
     name: usgs-streamflow-dashboard
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt && python -c "import asyncio; import kaleido; asyncio.run(kaleido.get_chrome())"
     startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 120 app:server
     plan: free
     envVars:
@@ -10,6 +10,42 @@ services:
         generateValue: true
       - key: DASH_DEBUG
         value: false
+      - key: PYTHON_VERSION
+        value: 3.11.5
+      - key: USE_DATAOPS_API
+        value: true
+
+  - type: cron
+    name: rebuild-plot-cache
+    env: python
+    schedule: "0 2 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python manage_cache.py rebuild_plots --forecast --force
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.5
+      - key: USE_DATAOPS_API
+        value: true
+
+  - type: cron
+    name: rebuild-png-cache
+    env: python
+    schedule: "0 3 * * *"
+    buildCommand: pip install -r requirements.txt && python -c "import asyncio; import kaleido; asyncio.run(kaleido.get_chrome())"
+    startCommand: python manage_cache.py rebuild_pngs --force
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.5
+      - key: USE_DATAOPS_API
+        value: true
+
+  - type: cron
+    name: rebuild-stats-cache
+    env: python
+    schedule: "0 1 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python manage_cache.py rebuild_stats --active
+    envVars:
       - key: PYTHON_VERSION
         value: 3.11.5
       - key: USE_DATAOPS_API
