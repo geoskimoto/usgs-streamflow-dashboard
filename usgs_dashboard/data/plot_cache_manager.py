@@ -125,7 +125,7 @@ def list_cached() -> list[str]:
     if not cache_dir.exists():
         return []
     return [
-        p.stem.replace(f"_WY{wy}", "")
+        p.name.replace(f"_WY{wy}.meta.json", "")
         for p in cache_dir.glob(f"*_WY{wy}.meta.json")
     ]
 
