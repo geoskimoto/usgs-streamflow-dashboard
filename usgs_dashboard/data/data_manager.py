@@ -109,6 +109,11 @@ class USGSDataManager:
         pd.DataFrame
             DataFrame with gauge metadata
         """
+        # Return in-memory cache if available and refresh not forced
+        if not refresh and self._stations_cache is not None:
+            logger.info(f"load_regional_gauges: returning {len(self._stations_cache)} cached stations (skip re-fetch)")
+            return self._stations_cache.copy()
+
         t0 = time.perf_counter()
         logger.info("Loading regional gauges via DataOps adapter")
 

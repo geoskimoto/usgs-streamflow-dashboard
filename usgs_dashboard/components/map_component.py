@@ -40,6 +40,18 @@ PERCENTILE_GROUP_CONFIG = [
 
 PERCENTILE_LABELS = {cfg[0]: cfg[1] for cfg in PERCENTILE_GROUP_CONFIG}
 
+# Shared hovertemplate — indices must match _build_customdata() order
+_HOVERTEMPLATE = (
+    "<b>%{customdata[8]}</b><br>"
+    "Site ID: %{customdata[0]}<br>"
+    "State: %{customdata[1]}<br>"
+    "Catchment Area: %{customdata[2]}<br>"
+    "Years of Record: %{customdata[3]}<br>"
+    "Condition: <b>%{customdata[9]}</b><br>"
+    "Lat: %{customdata[5]:.4f}, Lon: %{customdata[6]:.4f}<br>"
+    "<extra></extra>"
+)
+
 
 class ModernMapComponent:
     """Modern map component using MapLibre (not deprecated mapbox)."""
@@ -105,19 +117,8 @@ class ModernMapComponent:
         
         # Use go.Scattermap for all map styles with custom tile layers
         fig = self._create_map_with_tiles(map_data, gauges_df, height, map_style)
-        # Set hovertemplate for each trace
-        hovertemplate = (
-            "<b>%{customdata[8]}</b><br>"
-            "Site ID: %{customdata[0]}<br>"
-            "State: %{customdata[1]}<br>"
-            "Catchment Area: %{customdata[2]}<br>"
-            "Years of Record: %{customdata[3]}<br>"
-            "Condition: <b>%{customdata[9]}</b><br>"
-            "Lat: %{customdata[5]:.4f}, Lon: %{customdata[6]:.4f}<br>"
-            "<extra></extra>"
-        )
         for trace in fig.data:
-            trace.hovertemplate = hovertemplate
+            trace.hovertemplate = _HOVERTEMPLATE
         
         # Update layout with modern map configuration
         fig.update_layout(
@@ -323,16 +324,7 @@ class ModernMapComponent:
                 text=group_df['station_name'],
                 name=f"{label} ({len(group_df)})",
                 customdata=custom_data,
-                hovertemplate=(
-                    "<b>%{customdata[8]}</b><br>"
-                    "Site ID: %{customdata[0]}<br>"
-                    "State: %{customdata[1]}<br>"
-                    "Catchment Area: %{customdata[2]}<br>"
-                    "Years of Record: %{customdata[3]}<br>"
-                    "Condition: <b>%{customdata[9]}</b><br>"
-                    "Lat: %{customdata[5]:.4f}, Lon: %{customdata[6]:.4f}<br>"
-                    "<extra></extra>"
-                )
+                hovertemplate=_HOVERTEMPLATE
             ))
 
         map_layers = [{"below": "traces", "sourcetype": "raster",
@@ -411,6 +403,18 @@ class ModernMapComponent:
             'inactive': '#808080',       # Gray (legacy alias)
         }
     
+    @staticmethod
+    def _build_customdata(df: pd.DataFrame) -> list:
+        """Build customdata rows matching _HOVERTEMPLATE indices."""
+        return [
+            [row.get('site_id', ''), row.get('state', ''),
+             row.get('catchment_area_display', 'N/A'), row.get('years_of_record_display', 'N/A'),
+             row.get('status', 'Active'), row.get('latitude', 0), row.get('longitude', 0),
+             row.get('size_value', 15), row.get('station_name', ''),
+             row.get('percentile_label', 'Unknown')]
+            for _, row in df.iterrows()
+        ]
+
     def _add_station_inner_dots(self, fig: go.Figure, map_data: pd.DataFrame):
         """Add white inner dots to all colored stations to create a bordered-circle appearance.
 
@@ -431,7 +435,8 @@ class ModernMapComponent:
                 color='rgba(255, 255, 255, 0.85)',
             ),
             showlegend=False,
-            hoverinfo='skip',
+            customdata=self._build_customdata(colored_df),
+            hovertemplate=_HOVERTEMPLATE,
         ))
 
     def _add_nwrfc_overlay(self, fig: go.Figure, map_data: pd.DataFrame):
@@ -455,7 +460,8 @@ class ModernMapComponent:
             ),
             name=f'◆ NWRFC Forecast ({len(nwrfc_df)})',
             showlegend=True,
-            hoverinfo='skip',
+            customdata=self._build_customdata(nwrfc_df),
+            hovertemplate=_HOVERTEMPLATE,
         ))
 
     def _add_selected_gauge_highlight(self, fig: go.Figure, gauges_df: pd.DataFrame,
