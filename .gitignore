@@ -150,6 +150,8 @@ data/*.db
 data/stats_cache/
 # Plot cache (pre-rendered Plotly JSON; environment-specific, never commit)
 data/plot_cache/
+# PNG hover cache (pre-rendered thumbnails; environment-specific, never commit)
+data/png_cache/
 
 # Large CSV files (can be regenerated)
 # Uncomment if these become too large:
