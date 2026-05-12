@@ -10,6 +10,7 @@ flask-login>=0.6.0
 # Visualization
 plotly>=5.15.0
 matplotlib>=3.5.0
+kaleido>=1.0.0
 
 # Data Processing
 pandas>=2.0.0

@@ -59,7 +59,7 @@ import os
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 # ── Bootstrap: load .env and extend path ──────────────────────────────────────
@@ -434,6 +434,210 @@ def cmd_clear_plots(args):
         print(f"\nRemoved {len(files)} file(s).")
 
 
+# ── rebuild_pngs helpers ──────────────────────────────────────────────────────
+
+def _find_y_max_in_window(fig, x_min_str: str, x_max_str: str) -> float:
+    """
+    Scan all traces in fig and return the maximum y value whose x falls
+    within [x_min_str, x_max_str] (ISO date strings). Returns 0.0 if no
+    data is found in the window.
+    """
+    import pandas as pd
+
+    x_min_dt = pd.to_datetime(x_min_str)
+    x_max_dt = pd.to_datetime(x_max_str)
+    y_max = 0.0
+
+    for trace in fig.data:
+        xs = getattr(trace, "x", None)
+        ys = getattr(trace, "y", None)
+        if xs is None or ys is None:
+            continue
+        try:
+            for x_val, y_val in zip(xs, ys):
+                if x_val is None or y_val is None:
+                    continue
+                try:
+                    x_dt = pd.to_datetime(x_val)
+                except Exception:
+                    continue
+                if x_min_dt <= x_dt <= x_max_dt:
+                    try:
+                        y_max = max(y_max, float(y_val))
+                    except (TypeError, ValueError):
+                        pass
+        except Exception:
+            continue
+
+    return y_max
+
+
+def _rebuild_png_one(site_id: str, force: bool) -> tuple[str, str, float]:
+    """
+    Generate and cache a hover PNG for a single site from its JSON plot cache.
+
+    Returns (site_id, status, elapsed_seconds).
+    Status is one of: 'rebuilt', 'skipped', 'error', 'no_json'.
+    """
+    import plotly.graph_objects as go
+    from usgs_dashboard.data import plot_cache_manager
+    from usgs_dashboard.data import png_cache_manager
+
+    if not force and png_cache_manager.exists(site_id):
+        return site_id, "skipped", 0.0
+
+    if not plot_cache_manager.exists(site_id):
+        return site_id, "no_json", 0.0
+
+    t0 = time.perf_counter()
+    try:
+        fig_dict, _ = plot_cache_manager.get(site_id)
+        if fig_dict is None:
+            return site_id, "error", time.perf_counter() - t0
+
+        fig = go.Figure(fig_dict)
+
+        today = datetime.now()
+        x_min = (today - timedelta(days=45)).strftime("%Y-%m-%d")
+        x_max = (today + timedelta(days=45)).strftime("%Y-%m-%d")
+
+        y_max = _find_y_max_in_window(fig, x_min, x_max)
+        y_ceiling = max(y_max * 1.10, 10.0)
+
+        fig.update_layout(
+            xaxis=dict(
+                range=[x_min, x_max],
+                rangeslider=dict(visible=False),
+                showgrid=True,
+                gridcolor="rgba(128,128,128,0.2)",
+            ),
+            yaxis=dict(
+                range=[0, y_ceiling],
+                showgrid=True,
+                gridcolor="rgba(128,128,128,0.2)",
+                title=dict(text="Flow (cfs)", font=dict(size=10)),
+            ),
+            showlegend=False,
+            title=None,
+            margin=dict(t=8, b=36, l=58, r=8),
+            height=220,
+            width=400,
+            updatemenus=[],
+            annotations=[],
+            shapes=[
+                s for s in (fig.layout.shapes or [])
+                if not (getattr(s, "type", None) == "line" and getattr(s, "x0", None) == getattr(s, "x1", None))
+            ],
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+        )
+
+        ok = png_cache_manager.save(site_id, fig)
+        status = "rebuilt" if ok else "error"
+        return site_id, status, time.perf_counter() - t0
+
+    except Exception as exc:
+        logger.error(f"  [{site_id}] PNG generation failed: {exc}")
+        return site_id, "error", time.perf_counter() - t0
+
+
+def cmd_rebuild_pngs(args):
+    """Entry point for the rebuild_pngs sub-command."""
+    from usgs_dashboard.data import plot_cache_manager
+    from usgs_dashboard.data import png_cache_manager
+
+    if args.site:
+        site_ids = [args.site]
+    else:
+        site_ids = plot_cache_manager.list_cached()
+
+    if not site_ids:
+        logger.error("No stations with JSON plot cache found — run rebuild_plots first.")
+        sys.exit(1)
+
+    logger.info(
+        f"\nPNG cache dir     : {png_cache_manager.PNG_CACHE_DIR}\n"
+        f"Stations selected : {len(site_ids)}\n"
+        f"Workers           : {args.workers}\n"
+        f"Force rebuild     : {args.force}\n"
+        f"Dry run           : {args.dry_run}\n"
+    )
+
+    if args.dry_run:
+        print(f"\n{'─'*60}")
+        print(f"DRY RUN — would process {len(site_ids)} station(s):\n")
+        for sid in site_ids:
+            cached = png_cache_manager.exists(sid)
+            action = "skip (cached)" if cached and not args.force else "rebuild"
+            print(f"  {sid:<15}  {action}")
+        print(f"{'─'*60}\n")
+        return
+
+    os.makedirs(png_cache_manager.PNG_CACHE_DIR, exist_ok=True)
+
+    counters = {"rebuilt": 0, "skipped": 0, "error": 0, "no_json": 0}
+    total = len(site_ids)
+    start_time = time.perf_counter()
+
+    with ThreadPoolExecutor(max_workers=args.workers) as pool:
+        futures = {pool.submit(_rebuild_png_one, sid, args.force): sid for sid in site_ids}
+        for i, future in enumerate(as_completed(futures), start=1):
+            site_id, status, elapsed = future.result()
+            counters[status] = counters.get(status, 0) + 1
+            icon = {"rebuilt": "✅", "skipped": "⏭️ ", "error": "❌", "no_json": "⚠️ "}[status]
+            elapsed_str = f"{elapsed:.1f}s" if status not in ("skipped", "no_json") else "—"
+            print(
+                f"  [{i:>4}/{total}]  {icon}  {site_id:<15}  {status:<8}  {elapsed_str}",
+                flush=True,
+            )
+
+    wall = time.perf_counter() - start_time
+    print(f"\n{'─'*60}")
+    print(
+        f"Done in {wall:.1f}s  |  "
+        f"rebuilt={counters['rebuilt']}  "
+        f"skipped={counters['skipped']}  "
+        f"no_json={counters['no_json']}  "
+        f"errors={counters['error']}"
+    )
+    print(f"{'─'*60}\n")
+
+    if counters["error"] > 0:
+        sys.exit(1)
+
+
+def cmd_clear_pngs(args):
+    """Delete PNG cache files."""
+    from usgs_dashboard.data import png_cache_manager
+
+    cache_dir = Path(png_cache_manager.PNG_CACHE_DIR)
+    if not cache_dir.exists():
+        print("PNG cache directory does not exist — nothing to clear.")
+        return
+
+    if args.site:
+        files = list(cache_dir.glob(f"{args.site}_WY*.png"))
+        if not files:
+            print(f"No PNG cache files found for site {args.site}.")
+            return
+        for f in files:
+            f.unlink()
+            print(f"Deleted: {f.name}")
+    else:
+        files = list(cache_dir.glob("*_WY*.png"))
+        if not files:
+            print("No PNG cache files found.")
+            return
+        confirm = input(f"Delete all {len(files)} PNG file(s)? [y/N] ").strip().lower()
+        if confirm != "y":
+            print("Aborted.")
+            return
+        for f in files:
+            f.unlink()
+            print(f"Deleted: {f.name}")
+        print(f"\nRemoved {len(files)} file(s).")
+
+
 # ── Argument parser ────────────────────────────────────────────────────────────
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -541,6 +745,29 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Clear only this site's cache (default: clear all)",
     )
 
+    # ── rebuild_pngs ───────────────────────────────────────────────────────────
+    rebuild_pngs = sub.add_parser(
+        "rebuild_pngs",
+        help="Generate hover PNG thumbnails from existing JSON plot cache",
+    )
+    rebuild_pngs.add_argument(
+        "--site", metavar="SITE_ID",
+        help="Single USGS site ID (default: all JSON-cached stations)",
+    )
+    rebuild_pngs.add_argument(
+        "--workers", type=int, default=4, metavar="N",
+        help="Parallel worker threads (default: 4)",
+    )
+    rebuild_pngs.add_argument("--force", action="store_true",
+        help="Rebuild even when a valid PNG already exists")
+    rebuild_pngs.add_argument("--dry-run", action="store_true",
+        help="Print what would happen without writing anything")
+
+    # ── clear_pngs ─────────────────────────────────────────────────────────────
+    clear_pngs = sub.add_parser("clear_pngs", help="Delete PNG cache files")
+    clear_pngs.add_argument("--site", metavar="SITE_ID",
+        help="Clear only this site's PNG (default: clear all)")
+
     return parser
 
 
@@ -558,6 +785,10 @@ def main():
         cmd_rebuild_plots(args)
     elif args.command == "clear_plots":
         cmd_clear_plots(args)
+    elif args.command == "rebuild_pngs":
+        cmd_rebuild_pngs(args)
+    elif args.command == "clear_pngs":
+        cmd_clear_pngs(args)
     else:
         parser.print_help()
         sys.exit(1)
