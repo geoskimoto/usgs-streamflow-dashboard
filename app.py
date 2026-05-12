@@ -2286,8 +2286,8 @@ app.clientside_callback(
         var panelStyle = {
             'display': 'block',
             'position': 'fixed',
-            'bottom': '24px',
-            'right': '24px',
+            'left': '-9999px',   // hover_zoom.js repositions on next mousemove
+            'top': '-9999px',
             'width': '480px',
             'zIndex': 9998,
             'backgroundColor': 'rgba(22, 27, 42, 0.97)',
