@@ -998,7 +998,8 @@ app.layout = dbc.Container([
             ], style={'marginBottom': '4px', 'paddingLeft': '4px'}),
             dcc.Graph(
                 id='hover-zoom-graph',
-                config={'displayModeBar': False, 'staticPlot': True},
+                figure={'data': [], 'layout': {'margin': {'t': 0, 'b': 0, 'l': 0, 'r': 0}}},
+                config={'displayModeBar': False},
                 style={'height': '200px'},
             ),
         ],
@@ -2205,11 +2206,12 @@ app.clientside_callback(
     function(hoverData, figureStore, windowWidth) {
         var hidden = {'display': 'none'};
 
+        var noUpdate = window.dash_clientside.no_update;
         if (!figureStore || (windowWidth && windowWidth < 768)) {
-            return [hidden, {}, ''];
+            return [hidden, noUpdate, ''];
         }
         if (!hoverData || !hoverData.points || !hoverData.points.length) {
-            return [hidden, {}, ''];
+            return [hidden, noUpdate, ''];
         }
 
         var point = hoverData.points[0];
