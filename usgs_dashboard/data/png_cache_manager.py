@@ -45,6 +45,7 @@ def save(site_id: str, figure: go.Figure) -> bool:
     os.makedirs(PNG_CACHE_DIR, exist_ok=True)
     out_path = get_path(site_id)
     dir_ = str(out_path.parent)
+    tmp = None
 
     try:
         with tempfile.NamedTemporaryFile(suffix=".png", dir=dir_, delete=False) as f:
@@ -56,10 +57,11 @@ def save(site_id: str, figure: go.Figure) -> bool:
         return True
     except Exception as exc:
         logger.warning(f"PNG cache write failed for {site_id}: {exc}")
-        try:
-            os.unlink(tmp)
-        except Exception:
-            pass
+        if tmp is not None:
+            try:
+                os.unlink(tmp)
+            except Exception:
+                pass
         return False
 
 
