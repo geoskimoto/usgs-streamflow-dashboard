@@ -957,6 +957,8 @@ app.layout = dbc.Container([
     dcc.Store(id='fast-plot-figure-store', data=None),
     dcc.Store(id='plot-cache-meta-store', data=None),
     dcc.Store(id='hover-data-store', data=None),
+    dcc.Store(id='map-hover-debug-store', data=None),
+    html.Pre(id='map-hover-debug-out', style={'position':'fixed','bottom':'10px','left':'10px','zIndex':9999,'background':'rgba(0,0,0,0.8)','color':'lime','fontSize':'11px','maxWidth':'500px','maxHeight':'200px','overflow':'auto','padding':'6px','display':'block'}),
     dcc.Interval(
         id='percentile-refresh-interval',
         interval=30_000,   # poll every 30 seconds
@@ -2596,6 +2598,23 @@ def update_admin_system_info(admin_style, pathname):
         return get_system_info()
     
     return None
+
+
+# DEBUG: capture raw map hoverData to verify bbox presence — remove after testing
+@app.callback(
+    Output('map-hover-debug-out', 'children'),
+    Input('gauge-map', 'hoverData'),
+    prevent_initial_call=True,
+)
+def _debug_map_hover(hover_data):
+    import json
+    if not hover_data:
+        return 'no hoverData'
+    pt = hover_data['points'][0] if hover_data.get('points') else {}
+    keys = list(pt.keys())
+    bbox = pt.get('bbox', 'MISSING')
+    customdata = pt.get('customdata', 'MISSING')
+    return json.dumps({'keys': keys, 'bbox': bbox, 'customdata_0': customdata[0] if isinstance(customdata, list) else customdata}, indent=2)
 
 
 if __name__ == '__main__':
