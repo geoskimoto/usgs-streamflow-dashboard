@@ -84,6 +84,20 @@ app = dash.Dash(
     ]
 )
 
+# Serve pre-generated hover PNG thumbnails
+import re as _re
+from usgs_dashboard.data import png_cache_manager as _png_cache_mgr
+
+@app.server.route("/plot-png/<site_id>")
+def serve_plot_png(site_id):
+    """Serve a pre-generated hover PNG for the given site."""
+    if not _re.match(r'^[A-Za-z0-9_\-]+$', site_id):
+        return flask.abort(400)
+    png_path = _png_cache_mgr.get_path(site_id)
+    if not png_path.is_file():
+        return flask.abort(404)
+    return flask.send_file(str(png_path), mimetype="image/png")
+
 # Add custom CSS for responsive sidebar layout
 app.index_string = '''
 <!DOCTYPE html>
@@ -957,6 +971,24 @@ app.layout = dbc.Container([
     dcc.Store(id='fast-plot-figure-store', data=None),
     dcc.Store(id='plot-cache-meta-store', data=None),
     dcc.Store(id='hover-data-store', data=None),
+    dcc.Tooltip(
+        id='map-hover-tooltip',
+        children=html.Img(
+            id='map-hover-tooltip-img',
+            src='',
+            style={
+                'width': '400px',
+                'height': '220px',
+                'display': 'block',
+                'borderRadius': '6px',
+            }
+        ),
+        show=False,
+        direction='bottom',
+        background_color='rgba(255,255,255,0.97)',
+        border_color='#cccccc',
+        zindex=9000,
+    ),
     dcc.Interval(
         id='percentile-refresh-interval',
         interval=30_000,   # poll every 30 seconds
@@ -2267,6 +2299,34 @@ app.clientside_callback(
      Input('fast-plot-figure-store', 'data')],
     State('window-width-store', 'data'),
 )
+
+
+@app.callback(
+    Output('map-hover-tooltip', 'show'),
+    Output('map-hover-tooltip', 'bbox'),
+    Output('map-hover-tooltip-img', 'src'),
+    Input('gauge-map', 'hoverData'),
+    prevent_initial_call=True,
+)
+def show_map_hover_tooltip(hover_data):
+    """Show pre-generated PNG thumbnail when hovering over a map station."""
+    from usgs_dashboard.data import png_cache_manager as _png_mgr
+
+    if not hover_data or not hover_data.get('points'):
+        return False, no_update, no_update
+
+    pt = hover_data['points'][0]
+    bbox = pt.get('bbox')
+    customdata = pt.get('customdata')
+
+    if not bbox or not customdata:
+        return False, no_update, no_update
+
+    site_id = str(customdata[0]) if customdata else None
+    if not site_id or not _png_mgr.exists(site_id):
+        return False, no_update, no_update
+
+    return True, bbox, f"/plot-png/{site_id}"
 
 
 # Dark mode: pure clientside toggle — no server round-trip needed
