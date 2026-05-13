@@ -513,9 +513,11 @@ def _rebuild_png_one(site_id: str, force: bool) -> tuple[str, str, float]:
         today = datetime.now()
         wy_start_year = today.year - 1 if today.month < 10 else today.year
         wy_start = datetime(wy_start_year, 10, 1)
+        wy_end = datetime(wy_start_year + 1, 9, 30)
+        wy_length = (wy_end - wy_start).days + 1  # 365 or 366 depending on leap year
         doy_today = (today - wy_start).days + 1
         doy_min = max(1, doy_today - 30)
-        doy_max = min(366, doy_today + 30)
+        doy_max = min(wy_length, doy_today + 30)
 
         y_max = _find_y_max_in_window(fig, doy_min, doy_max)
         y_ceiling = max(y_max * 1.10, 100.0)  # floor 100 cfs so axis isn't empty
