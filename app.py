@@ -2200,24 +2200,12 @@ def update_realtime_filter_info(gauges_data):
         return "Real-time data status unavailable"
 
 
-_CONDITION_COLORS = {
-    '< 5th': '#f48fb1',
-    '5th':   '#ff8a65',
-    '10th':  '#ffd54f',
-    '25th':  '#66bb6a',
-    '50th':  '#64b5f6',
-    '75th':  '#42a5f5',
-    '85th':  '#5c9ef5',
-    '90th':  '#7986cb',
-    '95th':  '#9575cd',
-    '> 98th':'#b39ddb',
-}
+from usgs_dashboard.components.map_component import PERCENTILE_GROUP_CONFIG as _PG_CONFIG
+# Map condition label → exact hex color used for map markers (single source of truth)
+_CONDITION_COLORS = {cfg[1]: cfg[2] for cfg in _PG_CONFIG}
 
 def _condition_color(label: str) -> str:
-    for key, color in _CONDITION_COLORS.items():
-        if key in label:
-            return color
-    return '#555555'
+    return _CONDITION_COLORS.get(label, '#aaaaaa')
 
 
 @app.callback(
@@ -2249,7 +2237,11 @@ def update_map_tooltip_store(hover_data):
     cond_color = _condition_color(condition)
 
     has_png = _png_mgr.exists(site_id)
-    src = f"/plot-png/{site_id}" if has_png else ''
+    if has_png:
+        mtime = int(_png_mgr.get_path(site_id).stat().st_mtime)
+        src = f"/plot-png/{site_id}?v={mtime}"
+    else:
+        src = ''
 
     info = html.Div([
         html.Div(name, style={

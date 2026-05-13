@@ -1,7 +1,8 @@
 /* Cursor tracking for map-hover-panel positioning.
    Stores live cursor coords in window._hoverCursor so the Dash
    clientside callback can read them synchronously when it fires.
-   Also repositions the panel on every mousemove while it is visible. */
+   Also repositions the panel on every mousemove while it is visible,
+   and hides it when the cursor leaves the map element. */
 
 (function () {
     var OFFSET = 14;    // px gap between cursor tip and panel edge
@@ -38,6 +39,20 @@
             positionPanel(e.clientX, e.clientY);
         }
     });
+
+    /* Hide the tooltip panel when the cursor leaves the map element. */
+    function attachMapLeaveHandler() {
+        var mapEl = document.getElementById('gauge-map');
+        if (!mapEl) {
+            setTimeout(attachMapLeaveHandler, 500);
+            return;
+        }
+        mapEl.addEventListener('mouseleave', function () {
+            var panel = document.getElementById('map-hover-panel');
+            if (panel) panel.style.display = 'none';
+        });
+    }
+    attachMapLeaveHandler();
 
     /* Expose so the Dash clientside callback can call it directly. */
     window._positionHoverPanel = positionPanel;
