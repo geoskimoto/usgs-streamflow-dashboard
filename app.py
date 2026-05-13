@@ -1706,8 +1706,8 @@ app.clientside_callback(
                     mode: 'markers',
                     marker: {size: 16, color: '#FF4500'},
                     showlegend: false,
-                    name: 'Selected Gauge',
-                    hovertemplate: '<b>🎯 SELECTED: ' + name + '</b><br>Site ID: ' + gauge.site_id + '<extra></extra>'
+                    hoverinfo: 'skip',
+                    name: 'Selected Gauge'
                 }
             ])
         });

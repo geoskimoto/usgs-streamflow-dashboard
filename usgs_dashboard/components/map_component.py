@@ -324,16 +324,15 @@ class ModernMapComponent:
 
         fig.update_layout(
             map=dict(style="white-bg", layers=map_layers,
-                     center=self.last_center, zoom=self.last_zoom),
+                     center=self.last_center, zoom=self.last_zoom,
+                     uirevision=map_style),
+            uirevision=map_style,
             height=height,
             margin=dict(r=0, t=50, l=0, b=0),
             title=f"USGS Streamflow Gauges - Pacific Northwest ({len(gauges_df)} gauges) - {tile['label']}",
             font=dict(family="Arial", size=12),
             legend=dict(orientation="v", yanchor="top", y=0.99, xanchor="left", x=0.01,
                         bgcolor="rgba(255, 255, 255, 0.9)", bordercolor="black", borderwidth=1),
-            hoverlabel=dict(bgcolor="white", bordercolor="black",
-                font=dict(size=12)
-            )
         )
 
         return fig
@@ -510,8 +509,10 @@ class ModernMapComponent:
                 style="white-bg",
                 layers=map_layers,
                 center=self.last_center,
-                zoom=self.last_zoom
+                zoom=self.last_zoom,
+                uirevision='map_state',
             ),
+            uirevision='map_state',
             height=700,
             margin=dict(r=0, t=50, l=0, b=0),
             title="No data available for selected filters"
