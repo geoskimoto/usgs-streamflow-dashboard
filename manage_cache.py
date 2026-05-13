@@ -436,39 +436,50 @@ def cmd_clear_plots(args):
 
 # ── rebuild_pngs helpers ──────────────────────────────────────────────────────
 
-def _find_y_max_in_window(fig, x_min_str: str, x_max_str: str) -> float:
+def _decode_binary_array(raw_val):
     """
-    Scan all traces in fig and return the maximum y value whose x falls
-    within [x_min_str, x_max_str] (ISO date strings). Returns 0.0 if no
-    data is found in the window.
+    Decode a Plotly binary-encoded array (dict with 'bdata'/'dtype') into a list.
+    Returns the original value unchanged if it is not a binary dict.
     """
-    import pandas as pd
+    import base64, struct
+    if not isinstance(raw_val, dict) or 'bdata' not in raw_val:
+        return raw_val
+    dtype = raw_val.get('dtype', 'f8')
+    fmt_map = {'i1': 'b', 'u1': 'B', 'i2': 'h', 'u2': 'H',
+               'i4': 'i', 'u4': 'I', 'i8': 'q', 'u8': 'Q',
+               'f4': 'f', 'f8': 'd'}
+    fmt = fmt_map.get(dtype, 'd')
+    size = struct.calcsize(fmt)
+    raw = base64.b64decode(raw_val['bdata'])
+    n = len(raw) // size
+    return struct.unpack(f'{n}{fmt}', raw[:n * size])
 
-    x_min_dt = pd.to_datetime(x_min_str)
-    x_max_dt = pd.to_datetime(x_max_str)
+
+def _find_y_max_in_window(fig, x_min: int, x_max: int) -> float:
+    """
+    Scan all traces and return the max y value where x falls within [x_min, x_max].
+    x values are day-of-water-year integers (1–366).
+    Handles both plain lists and Plotly binary-encoded arrays.
+    """
     y_max = 0.0
-
     for trace in fig.data:
-        xs = getattr(trace, "x", None)
-        ys = getattr(trace, "y", None)
-        if xs is None or ys is None:
+        xs_raw = trace.x
+        ys_raw = trace.y
+        if xs_raw is None or ys_raw is None:
             continue
         try:
+            xs = _decode_binary_array(xs_raw)
+            ys = _decode_binary_array(ys_raw)
             for x_val, y_val in zip(xs, ys):
                 if x_val is None or y_val is None:
                     continue
                 try:
-                    x_dt = pd.to_datetime(x_val)
-                except Exception:
-                    continue
-                if x_min_dt <= x_dt <= x_max_dt:
-                    try:
+                    if x_min <= int(x_val) <= x_max:
                         y_max = max(y_max, float(y_val))
-                    except (TypeError, ValueError):
-                        pass
+                except (TypeError, ValueError):
+                    continue
         except Exception:
             continue
-
     return y_max
 
 
@@ -497,16 +508,24 @@ def _rebuild_png_one(site_id: str, force: bool) -> tuple[str, str, float]:
 
         fig = go.Figure(fig_dict)
 
+        # Compute today as day-of-water-year (1=Oct 1 … 366=Sep 30).
+        # The stored figure uses a linear integer x-axis, not dates.
         today = datetime.now()
-        x_min = (today - timedelta(days=30)).strftime("%Y-%m-%d")
-        x_max = (today + timedelta(days=30)).strftime("%Y-%m-%d")
+        wy_start_year = today.year - 1 if today.month < 10 else today.year
+        wy_start = datetime(wy_start_year, 10, 1)
+        doy_today = (today - wy_start).days + 1
+        doy_min = max(1, doy_today - 30)
+        doy_max = min(366, doy_today + 30)
 
-        y_max = _find_y_max_in_window(fig, x_min, x_max)
-        y_ceiling = max(y_max * 1.10, 10.0)
+        y_max = _find_y_max_in_window(fig, doy_min, doy_max)
+        y_ceiling = max(y_max * 1.10, 100.0)  # floor 100 cfs so axis isn't empty
 
         fig.update_layout(
             xaxis=dict(
-                range=[x_min, x_max],
+                range=[doy_min, doy_max],
+                autorange=False,
+                tickvals=None,   # clear stored full-year ticks; Plotly auto-generates
+                ticktext=None,
                 rangeslider=dict(visible=False),
                 showgrid=True,
                 gridcolor="rgba(255,255,255,0.1)",
@@ -516,6 +535,7 @@ def _rebuild_png_one(site_id: str, force: bool) -> tuple[str, str, float]:
             ),
             yaxis=dict(
                 range=[0, y_ceiling],
+                autorange=False,
                 showgrid=True,
                 gridcolor="rgba(255,255,255,0.1)",
                 title=dict(text="Flow (cfs)", font=dict(size=10, color="#cccccc")),
