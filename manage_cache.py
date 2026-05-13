@@ -498,8 +498,8 @@ def _rebuild_png_one(site_id: str, force: bool) -> tuple[str, str, float]:
         fig = go.Figure(fig_dict)
 
         today = datetime.now()
-        x_min = (today - timedelta(days=45)).strftime("%Y-%m-%d")
-        x_max = (today + timedelta(days=45)).strftime("%Y-%m-%d")
+        x_min = (today - timedelta(days=30)).strftime("%Y-%m-%d")
+        x_max = (today + timedelta(days=30)).strftime("%Y-%m-%d")
 
         y_max = _find_y_max_in_window(fig, x_min, x_max)
         y_ceiling = max(y_max * 1.10, 10.0)
@@ -509,13 +509,19 @@ def _rebuild_png_one(site_id: str, force: bool) -> tuple[str, str, float]:
                 range=[x_min, x_max],
                 rangeslider=dict(visible=False),
                 showgrid=True,
-                gridcolor="rgba(128,128,128,0.2)",
+                gridcolor="rgba(255,255,255,0.1)",
+                color="#cccccc",
+                tickfont=dict(color="#cccccc", size=10),
+                linecolor="#444444",
             ),
             yaxis=dict(
                 range=[0, y_ceiling],
                 showgrid=True,
-                gridcolor="rgba(128,128,128,0.2)",
-                title=dict(text="Flow (cfs)", font=dict(size=10)),
+                gridcolor="rgba(255,255,255,0.1)",
+                title=dict(text="Flow (cfs)", font=dict(size=10, color="#cccccc")),
+                color="#cccccc",
+                tickfont=dict(color="#cccccc", size=10),
+                linecolor="#444444",
             ),
             showlegend=False,
             title=None,
@@ -528,8 +534,8 @@ def _rebuild_png_one(site_id: str, force: bool) -> tuple[str, str, float]:
                 s for s in (fig.layout.shapes or [])
                 if not (getattr(s, "type", None) == "line" and getattr(s, "x0", None) == getattr(s, "x1", None))
             ],
-            plot_bgcolor="white",
-            paper_bgcolor="white",
+            plot_bgcolor="#2d2d2d",
+            paper_bgcolor="#252525",
         )
 
         ok = png_cache_manager.save(site_id, fig)
