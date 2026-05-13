@@ -1000,7 +1000,10 @@ app.layout = dbc.Container([
         id='map-hover-panel',
         style={'display': 'none'},
         children=[
-            html.Div(id='map-hover-info-text', style={'padding': '8px 10px 6px 10px'}),
+            html.Div(id='map-hover-info-text', style={
+                'padding': '8px 10px 6px 10px',
+                'backgroundColor': '#252525',
+            }),
             html.Img(
                 id='map-hover-tooltip-img',
                 src='',
@@ -2198,16 +2201,16 @@ def update_realtime_filter_info(gauges_data):
 
 
 _CONDITION_COLORS = {
-    '< 5th': '#880E4F',
-    '5th': '#E64A19',
-    '10th': '#F9A825',
-    '25th': '#2E7D32',
-    '50th': '#1976D2',
-    '75th': '#1565C0',
-    '85th': '#0D47A1',
-    '90th': '#0A3585',
-    '95th': '#07256B',
-    '> 98th': '#041552',
+    '< 5th': '#f48fb1',
+    '5th':   '#ff8a65',
+    '10th':  '#ffd54f',
+    '25th':  '#66bb6a',
+    '50th':  '#64b5f6',
+    '75th':  '#42a5f5',
+    '85th':  '#5c9ef5',
+    '90th':  '#7986cb',
+    '95th':  '#9575cd',
+    '> 98th':'#b39ddb',
 }
 
 def _condition_color(label: str) -> str:
@@ -2250,28 +2253,28 @@ def update_map_tooltip_store(hover_data):
 
     info = html.Div([
         html.Div(name, style={
-            'fontSize': '13px', 'fontWeight': '700', 'color': '#1a1a2e',
+            'fontSize': '13px', 'fontWeight': '700', 'color': '#e0e0e0',
             'marginBottom': '4px', 'lineHeight': '1.3',
         }),
-        html.Hr(style={'margin': '4px 0 6px 0', 'borderColor': '#ddd', 'borderWidth': '1px'}),
+        html.Hr(style={'margin': '4px 0 6px 0', 'borderColor': '#444', 'borderWidth': '1px'}),
         html.Div([
-            html.Span("Site: ", style={'color': '#777', 'fontSize': '11px'}),
-            html.Span(site_id, style={'fontSize': '11px', 'fontWeight': '600', 'marginRight': '12px'}),
-            html.Span("State: ", style={'color': '#777', 'fontSize': '11px'}),
-            html.Span(state, style={'fontSize': '11px'}),
+            html.Span("Site: ", style={'color': '#aaaaaa', 'fontSize': '11px'}),
+            html.Span(site_id, style={'fontSize': '11px', 'fontWeight': '600', 'color': '#e0e0e0', 'marginRight': '12px'}),
+            html.Span("State: ", style={'color': '#aaaaaa', 'fontSize': '11px'}),
+            html.Span(state, style={'fontSize': '11px', 'color': '#e0e0e0'}),
         ], style={'marginBottom': '3px'}),
         html.Div([
-            html.Span("Area: ", style={'color': '#777', 'fontSize': '11px'}),
-            html.Span(area, style={'fontSize': '11px', 'marginRight': '12px'}),
-            html.Span("Record: ", style={'color': '#777', 'fontSize': '11px'}),
-            html.Span(years, style={'fontSize': '11px'}),
+            html.Span("Area: ", style={'color': '#aaaaaa', 'fontSize': '11px'}),
+            html.Span(area, style={'fontSize': '11px', 'color': '#e0e0e0', 'marginRight': '12px'}),
+            html.Span("Record: ", style={'color': '#aaaaaa', 'fontSize': '11px'}),
+            html.Span(years, style={'fontSize': '11px', 'color': '#e0e0e0'}),
         ], style={'marginBottom': '3px'}),
         html.Div([
-            html.Span("Condition: ", style={'color': '#777', 'fontSize': '11px'}),
+            html.Span("Condition: ", style={'color': '#aaaaaa', 'fontSize': '11px'}),
             html.Span(condition, style={'fontSize': '11px', 'fontWeight': '700', 'color': cond_color}),
         ], style={'marginBottom': '3px'}),
         html.Div([
-            html.Span(f"{lat:.4f}°N, {lon:.4f}°W", style={'fontSize': '10px', 'color': '#999'}),
+            html.Span(f"{lat:.4f}°N, {lon:.4f}°W", style={'fontSize': '10px', 'color': '#888888'}),
         ]),
     ])
 
@@ -2310,10 +2313,10 @@ app.clientside_callback(
             'top':  top  + 'px',
             'width': PW + 'px',
             'zIndex': 9000,
-            'backgroundColor': 'rgba(255,255,255,0.97)',
-            'border': '1px solid #cccccc',
+            'backgroundColor': '#252525',
+            'border': '1px solid #444444',
             'borderRadius': '8px',
-            'boxShadow': '0 4px 16px rgba(0,0,0,0.35)',
+            'boxShadow': '0 6px 24px rgba(0,0,0,0.65)',
             'padding': '0',
             'overflow': 'hidden',
             'pointerEvents': 'none',
