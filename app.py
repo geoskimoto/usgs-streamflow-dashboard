@@ -970,25 +970,7 @@ app.layout = dbc.Container([
     dcc.Store(id='scroll-trigger-store', data=None), # dummy output for scroll clientside callback
     dcc.Store(id='fast-plot-figure-store', data=None),
     dcc.Store(id='plot-cache-meta-store', data=None),
-    dcc.Store(id='hover-data-store', data=None),
-    dcc.Tooltip(
-        id='map-hover-tooltip',
-        children=html.Img(
-            id='map-hover-tooltip-img',
-            src='',
-            style={
-                'width': '400px',
-                'height': '220px',
-                'display': 'block',
-                'borderRadius': '6px',
-            }
-        ),
-        show=False,
-        direction='bottom',
-        background_color='rgba(255,255,255,0.97)',
-        border_color='#cccccc',
-        zindex=9000,
-    ),
+    dcc.Store(id='map-tooltip-store', data=None),
     dcc.Interval(
         id='percentile-refresh-interval',
         interval=30_000,   # poll every 30 seconds
@@ -1013,26 +995,20 @@ app.layout = dbc.Container([
         'width': 'min(350px, calc(100vw - 20px))'
     }),
 
-    # Hover zoom floating panel — shown on water-year graph hover (desktop only)
+    # Map station hover panel — follows cursor, shows pre-generated PNG thumbnail
     html.Div(
-        id='hover-zoom-panel',
+        id='map-hover-panel',
         style={'display': 'none'},
         children=[
-            html.Div([
-                html.Small(
-                    "± 1 month",
-                    style={'color': '#8899bb', 'marginRight': '10px', 'fontSize': '11px'},
-                ),
-                html.Small(
-                    id='hover-zoom-date-label',
-                    style={'color': '#cdd6f4', 'fontWeight': 'bold', 'fontSize': '12px'},
-                ),
-            ], style={'marginBottom': '4px', 'paddingLeft': '4px'}),
-            dcc.Graph(
-                id='hover-zoom-graph',
-                figure={'data': [], 'layout': {'margin': {'t': 0, 'b': 0, 'l': 0, 'r': 0}}},
-                config={'displayModeBar': False},
-                style={'height': '200px'},
+            html.Img(
+                id='map-hover-tooltip-img',
+                src='',
+                style={
+                    'width': '400px',
+                    'height': '220px',
+                    'display': 'block',
+                    'borderRadius': '6px',
+                },
             ),
         ],
     ),
@@ -2220,135 +2196,73 @@ def update_realtime_filter_info(gauges_data):
         return "Real-time data status unavailable"
 
 
-# Relay hoverData from the dynamically-created water-year graph to a stable store.
-# Server-side callbacks handle dynamic component IDs reliably with suppress_callback_exceptions=True.
 @app.callback(
-    Output('hover-data-store', 'data'),
-    Input('water-year-graph', 'hoverData'),
+    Output('map-tooltip-store', 'data'),
+    Input('gauge-map', 'hoverData'),
     prevent_initial_call=True,
 )
-def relay_hover_data(hover_data):
-    return hover_data
+def update_map_tooltip_store(hover_data):
+    """Write show/src to store; clientside callback handles cursor-relative positioning."""
+    from usgs_dashboard.data import png_cache_manager as _png_mgr
+
+    if not hover_data or not hover_data.get('points'):
+        return {'show': False}
+
+    pt = hover_data['points'][0]
+    customdata = pt.get('customdata')
+    if not customdata:
+        return {'show': False}
+
+    site_id = str(customdata[0])
+    if not _png_mgr.exists(site_id):
+        return {'show': False}
+
+    return {'show': True, 'src': f"/plot-png/{site_id}"}
 
 
-# Clear hover store on gauge change so the panel doesn't persist across station clicks.
-@app.callback(
-    Output('hover-data-store', 'data', allow_duplicate=True),
-    Input('selected-gauge-store', 'data'),
-    prevent_initial_call=True,
-)
-def clear_hover_on_gauge_change(_):
-    return None
-
-
-# Hover zoom panel: clientside callback watching only stable stores — no dynamic ID issues.
-# Zooms a floating panel to ±45 days around the hovered date. Hidden on mobile (< 768px).
+# Map hover panel: position near cursor using window._hoverCursor (populated by hover_zoom.js).
 app.clientside_callback(
     """
-    function(hoverData, figureStore, windowWidth) {
+    function(storeData) {
         var hidden = {'display': 'none'};
-
         var noUpdate = window.dash_clientside.no_update;
-        if (!figureStore || (windowWidth && windowWidth < 768)) {
-            return [hidden, noUpdate, ''];
-        }
-        if (!hoverData || !hoverData.points || !hoverData.points.length) {
-            return [hidden, noUpdate, ''];
+
+        if (!storeData || !storeData.show) {
+            return [hidden, noUpdate];
         }
 
-        var point = hoverData.points[0];
-        var hoverX = point.x;
-        if (!hoverX) return [hidden, {}, ''];
-
-        var hoverDate = new Date(hoverX);
-        var msPerDay = 86400000;
-        var windowMs = 30 * msPerDay;
-
-        var xMin = new Date(hoverDate.getTime() - windowMs).toISOString().split('T')[0];
-        var xMax = new Date(hoverDate.getTime() + windowMs).toISOString().split('T')[0];
-
-        var fig = JSON.parse(JSON.stringify(figureStore));
-        if (!fig.layout) fig.layout = {};
-        fig.layout.xaxis = fig.layout.xaxis || {};
-        fig.layout.xaxis.range = [xMin, xMax];
-        fig.layout.xaxis.rangeslider = {visible: false};
-        fig.layout.height = 210;
-        fig.layout.showlegend = false;
-        fig.layout.margin = {t: 8, b: 32, l: 56, r: 12};
-        fig.layout.updatemenus = [];
-        fig.layout.annotations = [];
-        fig.layout.shapes = (fig.layout.shapes || []).filter(function(s) {
-            return s.type !== 'line' || s.x0 !== s.x1;
-        });
-
-        var dateLabel = hoverDate.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
-
-        // Read live cursor position stored by hover_zoom.js mousemove handler.
-        // Falls back to 0,0 if the script hasn't run yet (rare).
         var cx = (window._hoverCursor && window._hoverCursor.x) || 0;
         var cy = (window._hoverCursor && window._hoverCursor.y) || 0;
 
-        var PW = 480, PH = 250, OFFSET = 14;
+        var PW = 408, PH = 228, OFFSET = 14;
         var vw = window.innerWidth, vh = window.innerHeight;
         var left = cx + OFFSET;
-        var top  = cy - PH - OFFSET;
+        var top  = cy - Math.round(PH / 2);
         if (left + PW > vw - 8) { left = cx - PW - OFFSET; }
-        if (top < 8)             { top  = cy + OFFSET; }
+        if (top < 8)             { top  = 8; }
+        if (top + PH > vh - 8)  { top  = vh - PH - 8; }
 
         var panelStyle = {
             'display': 'block',
             'position': 'fixed',
             'left': left + 'px',
             'top':  top  + 'px',
-            'width': '480px',
-            'zIndex': 9998,
-            'backgroundColor': 'rgba(22, 27, 42, 0.97)',
-            'border': '1px solid rgba(100, 150, 255, 0.25)',
-            'borderRadius': '10px',
-            'boxShadow': '0 8px 32px rgba(0,0,0,0.65)',
-            'padding': '10px 12px 6px 12px',
-            'backdropFilter': 'blur(10px)',
+            'zIndex': 9000,
+            'backgroundColor': 'rgba(255,255,255,0.97)',
+            'border': '1px solid #cccccc',
+            'borderRadius': '8px',
+            'boxShadow': '0 4px 16px rgba(0,0,0,0.35)',
+            'padding': '4px',
             'pointerEvents': 'none',
         };
 
-        return [panelStyle, fig, dateLabel];
+        return [panelStyle, storeData.src];
     }
     """,
-    [Output('hover-zoom-panel', 'style'),
-     Output('hover-zoom-graph', 'figure'),
-     Output('hover-zoom-date-label', 'children')],
-    [Input('hover-data-store', 'data'),
-     Input('fast-plot-figure-store', 'data')],
-    State('window-width-store', 'data'),
+    [Output('map-hover-panel', 'style'),
+     Output('map-hover-tooltip-img', 'src')],
+    Input('map-tooltip-store', 'data'),
 )
-
-
-@app.callback(
-    Output('map-hover-tooltip', 'show'),
-    Output('map-hover-tooltip', 'bbox'),
-    Output('map-hover-tooltip-img', 'src'),
-    Input('gauge-map', 'hoverData'),
-    prevent_initial_call=True,
-)
-def show_map_hover_tooltip(hover_data):
-    """Show pre-generated PNG thumbnail when hovering over a map station."""
-    from usgs_dashboard.data import png_cache_manager as _png_mgr
-
-    if not hover_data or not hover_data.get('points'):
-        return False, no_update, no_update
-
-    pt = hover_data['points'][0]
-    bbox = pt.get('bbox')
-    customdata = pt.get('customdata')
-
-    if not bbox or not customdata:
-        return False, no_update, no_update
-
-    site_id = str(customdata[0]) if customdata else None
-    if not site_id or not _png_mgr.exists(site_id):
-        return False, no_update, no_update
-
-    return True, bbox, f"/plot-png/{site_id}"
 
 
 # Dark mode: pure clientside toggle — no server round-trip needed
