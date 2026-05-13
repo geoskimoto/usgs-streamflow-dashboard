@@ -995,19 +995,20 @@ app.layout = dbc.Container([
         'width': 'min(350px, calc(100vw - 20px))'
     }),
 
-    # Map station hover panel — follows cursor, shows pre-generated PNG thumbnail
+    # Map station hover panel — follows cursor, shows station info + PNG thumbnail
     html.Div(
         id='map-hover-panel',
         style={'display': 'none'},
         children=[
+            html.Div(id='map-hover-info-text', style={'padding': '8px 10px 6px 10px'}),
             html.Img(
                 id='map-hover-tooltip-img',
                 src='',
                 style={
-                    'width': '400px',
-                    'height': '220px',
+                    'width': '420px',
+                    'height': '230px',
                     'display': 'block',
-                    'borderRadius': '6px',
+                    'borderRadius': '0 0 6px 6px',
                 },
             ),
         ],
@@ -2196,28 +2197,85 @@ def update_realtime_filter_info(gauges_data):
         return "Real-time data status unavailable"
 
 
+_CONDITION_COLORS = {
+    '< 5th': '#880E4F',
+    '5th': '#E64A19',
+    '10th': '#F9A825',
+    '25th': '#2E7D32',
+    '50th': '#1976D2',
+    '75th': '#1565C0',
+    '85th': '#0D47A1',
+    '90th': '#0A3585',
+    '95th': '#07256B',
+    '> 98th': '#041552',
+}
+
+def _condition_color(label: str) -> str:
+    for key, color in _CONDITION_COLORS.items():
+        if key in label:
+            return color
+    return '#555555'
+
+
 @app.callback(
     Output('map-tooltip-store', 'data'),
+    Output('map-hover-info-text', 'children'),
     Input('gauge-map', 'hoverData'),
     prevent_initial_call=True,
 )
 def update_map_tooltip_store(hover_data):
-    """Write show/src to store; clientside callback handles cursor-relative positioning."""
+    """Populate station info panel and store; clientside callback handles positioning."""
     from usgs_dashboard.data import png_cache_manager as _png_mgr
 
     if not hover_data or not hover_data.get('points'):
-        return {'show': False}
+        return {'show': False}, []
 
     pt = hover_data['points'][0]
     customdata = pt.get('customdata')
     if not customdata:
-        return {'show': False}
+        return {'show': False}, []
 
-    site_id = str(customdata[0])
-    if not _png_mgr.exists(site_id):
-        return {'show': False}
+    site_id    = str(customdata[0])
+    state      = customdata[1] or ''
+    area       = customdata[2] or 'N/A'
+    years      = customdata[3] or 'N/A'
+    lat        = customdata[5] or 0
+    lon        = customdata[6] or 0
+    name       = customdata[8] or site_id
+    condition  = customdata[9] or 'Unknown'
+    cond_color = _condition_color(condition)
 
-    return {'show': True, 'src': f"/plot-png/{site_id}"}
+    has_png = _png_mgr.exists(site_id)
+    src = f"/plot-png/{site_id}" if has_png else ''
+
+    info = html.Div([
+        html.Div(name, style={
+            'fontSize': '13px', 'fontWeight': '700', 'color': '#1a1a2e',
+            'marginBottom': '4px', 'lineHeight': '1.3',
+        }),
+        html.Hr(style={'margin': '4px 0 6px 0', 'borderColor': '#ddd', 'borderWidth': '1px'}),
+        html.Div([
+            html.Span("Site: ", style={'color': '#777', 'fontSize': '11px'}),
+            html.Span(site_id, style={'fontSize': '11px', 'fontWeight': '600', 'marginRight': '12px'}),
+            html.Span("State: ", style={'color': '#777', 'fontSize': '11px'}),
+            html.Span(state, style={'fontSize': '11px'}),
+        ], style={'marginBottom': '3px'}),
+        html.Div([
+            html.Span("Area: ", style={'color': '#777', 'fontSize': '11px'}),
+            html.Span(area, style={'fontSize': '11px', 'marginRight': '12px'}),
+            html.Span("Record: ", style={'color': '#777', 'fontSize': '11px'}),
+            html.Span(years, style={'fontSize': '11px'}),
+        ], style={'marginBottom': '3px'}),
+        html.Div([
+            html.Span("Condition: ", style={'color': '#777', 'fontSize': '11px'}),
+            html.Span(condition, style={'fontSize': '11px', 'fontWeight': '700', 'color': cond_color}),
+        ], style={'marginBottom': '3px'}),
+        html.Div([
+            html.Span(f"{lat:.4f}°N, {lon:.4f}°W", style={'fontSize': '10px', 'color': '#999'}),
+        ]),
+    ])
+
+    return {'show': True, 'src': src, 'has_png': has_png}, info
 
 
 # Map hover panel: position near cursor using window._hoverCursor (populated by hover_zoom.js).
@@ -2228,13 +2286,16 @@ app.clientside_callback(
         var noUpdate = window.dash_clientside.no_update;
 
         if (!storeData || !storeData.show) {
-            return [hidden, noUpdate];
+            return [hidden, noUpdate, {'display': 'none'}];
         }
 
         var cx = (window._hoverCursor && window._hoverCursor.x) || 0;
         var cy = (window._hoverCursor && window._hoverCursor.y) || 0;
 
-        var PW = 408, PH = 228, OFFSET = 14;
+        var hasPng  = storeData.has_png;
+        var PW      = 440;
+        var PH      = hasPng ? 340 : 110;
+        var OFFSET  = 14;
         var vw = window.innerWidth, vh = window.innerHeight;
         var left = cx + OFFSET;
         var top  = cy - Math.round(PH / 2);
@@ -2247,20 +2308,27 @@ app.clientside_callback(
             'position': 'fixed',
             'left': left + 'px',
             'top':  top  + 'px',
+            'width': PW + 'px',
             'zIndex': 9000,
             'backgroundColor': 'rgba(255,255,255,0.97)',
             'border': '1px solid #cccccc',
             'borderRadius': '8px',
             'boxShadow': '0 4px 16px rgba(0,0,0,0.35)',
-            'padding': '4px',
+            'padding': '0',
+            'overflow': 'hidden',
             'pointerEvents': 'none',
         };
 
-        return [panelStyle, storeData.src];
+        var imgStyle = hasPng
+            ? {'display': 'block', 'width': '440px', 'height': '242px', 'borderRadius': '0 0 6px 6px'}
+            : {'display': 'none'};
+
+        return [panelStyle, storeData.src || '', imgStyle];
     }
     """,
     [Output('map-hover-panel', 'style'),
-     Output('map-hover-tooltip-img', 'src')],
+     Output('map-hover-tooltip-img', 'src'),
+     Output('map-hover-tooltip-img', 'style')],
     Input('map-tooltip-store', 'data'),
 )
 

@@ -5,8 +5,8 @@
 
 (function () {
     var OFFSET = 14;    // px gap between cursor tip and panel edge
-    var PW     = 408;   // matches width in clientside callback
-    var PH     = 228;   // matches height in clientside callback
+    var PW     = 440;   // matches width in clientside callback
+    var PH     = 340;   // worst-case height (info + PNG); pure-text case is smaller but safe
 
     window._hoverCursor = { x: 0, y: 0 };
 
@@ -18,11 +18,12 @@
         var vh = window.innerHeight;
 
         var left = cx + OFFSET;
-        var top  = cy - Math.round(PH / 2);
+        var actualPH = panel.offsetHeight || PH;
+        var top  = cy - Math.round(actualPH / 2);
 
         if (left + PW > vw - 8) { left = cx - PW - OFFSET; }
         if (top < 8)             { top  = 8; }
-        if (top + PH > vh - 8)  { top  = vh - PH - 8; }
+        if (top + actualPH > vh - 8) { top = vh - actualPH - 8; }
 
         panel.style.left = left + 'px';
         panel.style.top  = top  + 'px';

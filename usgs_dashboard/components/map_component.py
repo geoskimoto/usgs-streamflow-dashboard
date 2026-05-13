@@ -40,17 +40,8 @@ PERCENTILE_GROUP_CONFIG = [
 
 PERCENTILE_LABELS = {cfg[0]: cfg[1] for cfg in PERCENTILE_GROUP_CONFIG}
 
-# Shared hovertemplate — indices must match _build_customdata() order
-_HOVERTEMPLATE = (
-    "<b>%{customdata[8]}</b><br>"
-    "Site ID: %{customdata[0]}<br>"
-    "State: %{customdata[1]}<br>"
-    "Catchment Area: %{customdata[2]}<br>"
-    "Years of Record: %{customdata[3]}<br>"
-    "Condition: <b>%{customdata[9]}</b><br>"
-    "Lat: %{customdata[5]:.4f}, Lon: %{customdata[6]:.4f}<br>"
-    "<extra></extra>"
-)
+# Suppress native Plotly hoverlabel — custom map-hover-panel in app.py handles all station info
+_HOVERTEMPLATE = "<extra></extra>"
 
 
 class ModernMapComponent:
@@ -495,12 +486,7 @@ class ModernMapComponent:
                 size=16,
                 color='#FF4500',
             ),
-            hovertemplate=(
-                f"<b>🎯 SELECTED: {selected_data['station_name']}</b><br>"
-                f"Site ID: {selected_data['site_id']}<br>"
-                f"Status: {selected_data.get('status', 'N/A')}<br>"
-                f"<extra></extra>"
-            ),
+            hovertemplate="<extra></extra>",
             name='Selected Gauge',
             showlegend=False
         ))
