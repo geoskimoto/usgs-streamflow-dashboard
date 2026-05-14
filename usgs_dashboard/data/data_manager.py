@@ -76,6 +76,10 @@ class USGSDataManager:
         self._date_range_cache: dict = {}
         self._date_range_cache_time: float = 0.0
 
+        # Forecast date range cache (1-hour TTL)
+        self._forecast_date_range_cache: dict = {}
+        self._forecast_date_range_cache_time: float = 0.0
+
         # ResidCast ML forecast adapter (None when USE_RESID_CAST is false)
         self._resid_cast: Optional[Any] = None
         if _USE_RESID_CAST:
@@ -979,6 +983,47 @@ class USGSDataManager:
             return self.adapter.get_flow_percentile_bands(target_date=target_date)
         except Exception as e:
             logger.error(f"Failed to fetch percentile bands for {target_date}: {e}")
+            return {}
+
+    def get_forecast_percentile_date_range(self, source: str = 'NWRFC') -> dict:
+        """Return forecast min/max dates. Cached 1 hour."""
+        now = time.time()
+        if (
+            self._forecast_date_range_cache
+            and (now - self._forecast_date_range_cache_time) < 3600
+        ):
+            return self._forecast_date_range_cache.copy()
+        try:
+            result = self.adapter.get_forecast_percentile_date_range(source=source)
+            if result.get('min_date') and result.get('max_date'):
+                self._forecast_date_range_cache = result
+                self._forecast_date_range_cache_time = now
+                logger.info(
+                    f"Forecast percentile date range: "
+                    f"{result['min_date']} – {result['max_date']} "
+                    f"(run {result.get('forecast_run_date', '?')})"
+                )
+            return result
+        except Exception as e:
+            logger.error(f"Failed to fetch forecast percentile date range: {e}")
+            return self._forecast_date_range_cache.copy()
+
+    def get_forecast_percentile_bands_for_date(
+        self,
+        target_date: str,
+        source: str = 'NWRFC',
+    ) -> dict:
+        """
+        Fetch forecast bands for a specific future date.
+        Returns {'bands': {station_number: band}, 'forecast_run_date': str}.
+        No caching — forecast data updates intraday.
+        """
+        try:
+            return self.adapter.get_forecast_percentile_bands(
+                target_date=target_date, source=source
+            )
+        except Exception as e:
+            logger.error(f"Failed to fetch forecast percentile bands for {target_date}: {e}")
             return {}
 
     def get_cached_percentile_bands(self) -> dict:
