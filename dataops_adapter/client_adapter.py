@@ -630,6 +630,61 @@ class DataOpsAdapter:
             logger.error(f"Failed to fetch percentile date range: {e}")
             return {}
 
+    def get_forecast_percentile_date_range(self, source: str = 'NWRFC') -> dict:
+        """
+        Fetch min/max forecast dates available in forecast_percentiles.
+        GET /api/v1/forecasts/discharge/percentile-date-range/
+        Returns {'min_date': str, 'max_date': str, 'forecast_run_date': str} or {}.
+        """
+        if not self.api_enabled or not self.api_client:
+            logger.warning("API not available; cannot fetch forecast percentile date range")
+            return {}
+        try:
+            response = self.api_client._request(
+                'GET',
+                '/api/v1/forecasts/discharge/percentile-date-range/',
+                params={'source': source},
+            )
+            return {
+                'min_date': response.get('min_date'),
+                'max_date': response.get('max_date'),
+                'forecast_run_date': response.get('forecast_run_date'),
+            }
+        except Exception as e:
+            logger.error(f"Failed to fetch forecast percentile date range: {e}")
+            return {}
+
+    def get_forecast_percentile_bands(
+        self,
+        target_date: str,
+        source: str = 'NWRFC',
+    ) -> dict:
+        """
+        Fetch forecast percentile bands for a specific future date.
+        GET /api/v1/forecasts/discharge/percentile-bands/
+        Returns {'bands': {station_number: band}, 'forecast_run_date': str} or {}.
+        """
+        if not self.api_enabled or not self.api_client:
+            logger.warning("API not available; cannot fetch forecast percentile bands")
+            return {}
+        try:
+            response = self.api_client._request(
+                'GET',
+                '/api/v1/forecasts/discharge/percentile-bands/',
+                params={'date': target_date, 'source': source},
+            )
+            results = response.get('results', [])
+            bands = {r['station_number']: r['band'] for r in results}
+            forecast_run_date = response.get('forecast_run_date')
+            logger.info(
+                f"Fetched forecast percentile bands for {len(bands)} stations "
+                f"(date={target_date}, source={source})"
+            )
+            return {'bands': bands, 'forecast_run_date': forecast_run_date}
+        except Exception as e:
+            logger.error(f"Failed to fetch forecast percentile bands: {e}")
+            return {}
+
     def get_flow_percentile_bands(self, target_date: Optional[str] = None) -> Dict[str, str]:
         """
         Fetch precomputed percentile bands from StreamflowOps.
