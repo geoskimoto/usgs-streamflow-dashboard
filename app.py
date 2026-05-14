@@ -704,18 +704,20 @@ def create_main_content():
                                     width="auto",
                                 ),
                                 dbc.Col(
-                                    dbc.Input(
-                                        type="date",
-                                        id="percentile-date-picker",
-                                        size="sm",
-                                        style={"width": "140px", "fontSize": "0.8rem"},
-                                    ),
-                                    html.Small(
-                                        id='percentile-source-label',
-                                        children="Observed conditions",
-                                        className="text-muted d-block mt-1",
-                                        style={"fontSize": "0.7rem", "whiteSpace": "nowrap"},
-                                    ),
+                                    [
+                                        dbc.Input(
+                                            type="date",
+                                            id="percentile-date-picker",
+                                            size="sm",
+                                            style={"width": "140px", "fontSize": "0.8rem"},
+                                        ),
+                                        html.Small(
+                                            id='percentile-source-label',
+                                            children="Observed conditions",
+                                            className="text-muted d-block mt-1",
+                                            style={"fontSize": "0.7rem", "whiteSpace": "nowrap"},
+                                        ),
+                                    ],
                                     width="auto",
                                 ),
                                 dbc.Col(
