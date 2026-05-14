@@ -710,6 +710,12 @@ def create_main_content():
                                         size="sm",
                                         style={"width": "140px", "fontSize": "0.8rem"},
                                     ),
+                                    html.Small(
+                                        id='percentile-source-label',
+                                        children="Observed conditions",
+                                        className="text-muted d-block mt-1",
+                                        style={"fontSize": "0.7rem", "whiteSpace": "nowrap"},
+                                    ),
                                     width="auto",
                                 ),
                                 dbc.Col(
@@ -965,6 +971,8 @@ app.layout = dbc.Container([
     dcc.Store(id='auth-store', data={'authenticated': False}),
     dcc.Store(id='percentile-bands-store', data={}),
     dcc.Store(id='percentile-date-range-store', data={}),
+    dcc.Store(id='forecast-date-range-store', storage_type='memory'),
+    dcc.Store(id='forecast-run-date-store', storage_type='memory'),
     dcc.Store(id='selected-percentile-date-store', data=None),
     dcc.Store(id='window-width-store', data=1200),   # populated by clientside callback
     dcc.Store(id='scroll-trigger-store', data=None), # dummy output for scroll clientside callback
@@ -1262,7 +1270,8 @@ def load_gauge_data(pathname):
 
 
 @app.callback(
-    Output('percentile-bands-store', 'data'),
+    [Output('percentile-bands-store', 'data'),
+     Output('forecast-run-date-store', 'data')],
     Input('percentile-refresh-interval', 'n_intervals'),
     Input('percentile-startup-interval', 'n_intervals'),
     Input('selected-percentile-date-store', 'data'),
@@ -1270,19 +1279,26 @@ def load_gauge_data(pathname):
     prevent_initial_call=False,
 )
 def refresh_percentile_bands(n_intervals, startup_n_intervals, selected_date, current_bands):
-    """Poll cached percentile bands every 30 s. When a historical date is
-    selected via the slider, fetches that date's bands on demand. Returns
-    no_update when data is unchanged."""
-    # Historical date selected — fetch directly (not from background cache)
-    if selected_date:
-        new_bands = data_manager.get_percentile_bands_for_date(selected_date)
-    else:
-        # Latest / default — use the background-refresh cache
-        new_bands = data_manager.get_cached_percentile_bands()
+    """Route to forecast or observed bands depending on selected date."""
+    today = date.today().isoformat()
 
-    if new_bands == (current_bands or {}):
-        return no_update
-    return new_bands
+    if selected_date and selected_date > today:
+        result = data_manager.get_forecast_percentile_bands_for_date(selected_date)
+        new_bands = result.get('bands', {})
+        run_date = result.get('forecast_run_date')
+        if new_bands == (current_bands or {}):
+            return no_update, run_date
+        return new_bands, run_date
+    elif selected_date:
+        new_bands = data_manager.get_percentile_bands_for_date(selected_date)
+        if new_bands == (current_bands or {}):
+            return no_update, None
+        return new_bands, None
+    else:
+        new_bands = data_manager.get_cached_percentile_bands()
+        if new_bands == (current_bands or {}):
+            return no_update, None
+        return new_bands, None
 
 
 @app.callback(
@@ -1309,21 +1325,55 @@ def load_percentile_date_range(n_intervals, startup_intervals, current_range):
 
 
 @app.callback(
+    Output('forecast-date-range-store', 'data'),
+    Input('percentile-startup-interval', 'n_intervals'),
+    State('forecast-date-range-store', 'data'),
+    prevent_initial_call=False,
+)
+def load_forecast_date_range(startup_intervals, current_range):
+    """Fetch forecast date range once on load; skip if already populated."""
+    if current_range:
+        return no_update
+    return data_manager.get_forecast_percentile_date_range()
+
+
+@app.callback(
     [Output('percentile-date-picker', 'min'),
      Output('percentile-date-picker', 'max'),
      Output('percentile-date-picker', 'value')],
-    Input('percentile-date-range-store', 'data'),
+    [Input('percentile-date-range-store', 'data'),
+     Input('forecast-date-range-store', 'data')],
     prevent_initial_call=True,
 )
-def init_date_picker(range_data):
-    """Set picker bounds and default to the latest available date."""
-    if not range_data or not range_data.get('max_date'):
+def init_date_picker(obs_range, fcst_range):
+    """Set picker bounds: min from observed, max extended to forecast window if available."""
+    if not obs_range or not obs_range.get('max_date'):
         return no_update, no_update, no_update
-    return (
-        range_data['min_date'],
-        range_data['max_date'],
-        range_data['max_date'],   # default selection = latest
-    )
+    min_date = obs_range['min_date']
+    obs_max = obs_range['max_date']
+    fcst_max = (fcst_range or {}).get('max_date')
+    max_date = fcst_max if (fcst_max and fcst_max > obs_max) else obs_max
+    return min_date, max_date, max_date
+
+
+@app.callback(
+    Output('percentile-source-label', 'children'),
+    [Input('selected-percentile-date-store', 'data'),
+     Input('forecast-run-date-store', 'data')],
+    prevent_initial_call=False,
+)
+def update_source_label(selected_date, forecast_run_date):
+    """Show 'Observed conditions' or 'Forecast: NWRFC — issued [run date]'."""
+    today = date.today().isoformat()
+    if selected_date and selected_date > today and forecast_run_date:
+        try:
+            from datetime import datetime
+            run_dt = datetime.fromisoformat(forecast_run_date.replace('Z', '+00:00'))
+            run_local = run_dt.strftime('%-m/%-d/%Y %-I:%M %p UTC')
+        except Exception:
+            run_local = forecast_run_date
+        return f"Forecast: NWRFC — issued {run_local}"
+    return "Observed conditions"
 
 
 @app.callback(
@@ -1332,10 +1382,11 @@ def init_date_picker(range_data):
     [Input('prev-date-btn', 'n_clicks'),
      Input('next-date-btn', 'n_clicks'),
      Input('percentile-date-picker', 'value')],
-    State('percentile-date-range-store', 'data'),
+    [State('percentile-date-range-store', 'data'),
+     State('forecast-date-range-store', 'data')],
     prevent_initial_call=True,
 )
-def update_date_selection(prev_clicks, next_clicks, picker_value, range_data):
+def update_date_selection(prev_clicks, next_clicks, picker_value, range_data, fcst_range):
     """Handle − / + buttons and direct date input.
 
     The date input is always the single source of truth for what date is
@@ -1350,7 +1401,9 @@ def update_date_selection(prev_clicks, next_clicks, picker_value, range_data):
     ctx = callback_context
     triggered_id = ctx.triggered[0]['prop_id'].split('.')[0] if ctx.triggered else None
 
-    max_d = date.fromisoformat(range_data['max_date'])
+    obs_max = range_data['max_date']
+    fcst_max = (fcst_range or {}).get('max_date')
+    max_d = date.fromisoformat(fcst_max if (fcst_max and fcst_max > obs_max) else obs_max)
     min_d = date.fromisoformat(range_data['min_date'])
     try:
         current = date.fromisoformat(picker_value) if picker_value else max_d
@@ -1368,8 +1421,9 @@ def update_date_selection(prev_clicks, next_clicks, picker_value, range_data):
         return no_update, no_update
 
     date_str = selected.isoformat()
-    # Use background cache (None) when at the latest date
-    store_val = None if selected >= max_d else date_str
+    # Use background cache (None) when at the observed max date; forecast dates always need explicit fetch
+    obs_max_d = date.fromisoformat(obs_max)
+    store_val = None if selected >= obs_max_d else date_str
     return store_val, date_str
 
 
