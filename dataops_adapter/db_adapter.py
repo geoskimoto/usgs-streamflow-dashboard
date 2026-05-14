@@ -384,6 +384,61 @@ class DirectDBAdapter:
             logger.error(f"Error fetching percentile bands: {e}")
             return {}
 
+    def get_forecast_percentile_date_range(self, source: str = 'NWRFC') -> dict:
+        """Return the min/max forecast dates available in forecast_percentiles."""
+        query = """
+            SELECT MIN(target_date)::text, MAX(target_date)::text,
+                   MAX(forecast_run_date)::text
+            FROM forecast_percentiles
+            WHERE source = %s
+        """
+        try:
+            with self._get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query, [source])
+                    row = cur.fetchone()
+            if row and row[0]:
+                return {
+                    'min_date': row[0],
+                    'max_date': row[1],
+                    'forecast_run_date': row[2],
+                }
+            return {}
+        except Exception as e:
+            logger.error(f"Error fetching forecast percentile date range from DB: {e}")
+            return {}
+
+    def get_forecast_percentile_bands(
+        self,
+        target_date: str,
+        source: str = 'NWRFC',
+    ) -> dict:
+        """
+        Fetch forecast percentile bands directly from the DB.
+        Returns {'bands': {station_number: band}, 'forecast_run_date': str}.
+        """
+        query = """
+            SELECT s.station_number, fp.band, fp.forecast_run_date::text
+            FROM forecast_percentiles fp
+            JOIN stations s ON fp.station_id = s.id
+            WHERE fp.target_date = %s AND fp.source = %s
+        """
+        try:
+            with self._get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query, [target_date, source])
+                    rows = cur.fetchall()
+            bands = {row[0]: row[1] for row in rows}
+            run_date = rows[0][2] if rows else None
+            logger.info(
+                f"Fetched forecast percentile bands for {len(bands)} stations "
+                f"from DB (date={target_date}, source={source})"
+            )
+            return {'bands': bands, 'forecast_run_date': run_date}
+        except Exception as e:
+            logger.error(f"Error fetching forecast percentile bands from DB: {e}")
+            return {}
+
     def get_forecast_data(
         self, usgs_station_number: str, num_days: int = 5
     ) -> Optional[List[Dict]]:
