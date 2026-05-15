@@ -1355,7 +1355,7 @@ def init_date_picker(obs_range, fcst_range):
     obs_max = obs_range['max_date']
     fcst_max = (fcst_range or {}).get('max_date')
     max_date = fcst_max if (fcst_max and fcst_max > obs_max) else obs_max
-    return min_date, max_date, max_date
+    return min_date, max_date, obs_max  # default to latest observed date, not forecast end
 
 
 @app.callback(
@@ -1425,7 +1425,9 @@ def update_date_selection(prev_clicks, next_clicks, picker_value, range_data, fc
     date_str = selected.isoformat()
     # Use background cache (None) when at the observed max date; forecast dates always need explicit fetch
     obs_max_d = date.fromisoformat(obs_max)
-    store_val = None if selected >= obs_max_d else date_str
+    # None = use background cache (only when exactly at the latest observed date)
+    # Future dates must use an explicit date string to trigger the forecast API call
+    store_val = None if selected == obs_max_d else date_str
     return store_val, date_str
 
 
