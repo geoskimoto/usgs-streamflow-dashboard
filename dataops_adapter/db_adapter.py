@@ -275,36 +275,33 @@ class DirectDBAdapter:
 
     def get_active_station_numbers(self, months_back: int = 6) -> set:
         """
-        Get station numbers with recent discharge data.
+        Get station numbers for all active USGS stations.
 
-        Much faster than the API version -- single query vs paginated HTTP calls.
+        Reads stations.is_active (maintained by the dataOps pipeline) rather
+        than scanning discharge_observations, which is orders of magnitude
+        faster and avoids multi-minute full-table scans.
 
         Args:
-            months_back: Number of months to look back (default: 6)
+            months_back: Unused — kept for interface compatibility.
 
         Returns:
-            Set of station number strings with recent data
+            Set of station number strings for active USGS stations
         """
-        cutoff = (datetime.now() - timedelta(days=months_back * 30)).isoformat()
-
         query = """
-            SELECT DISTINCT s.station_number
-            FROM discharge_observations obs
-            JOIN stations s ON obs.station_id = s.id
-            WHERE obs.observed_at >= %s
+            SELECT station_number
+            FROM stations
+            WHERE is_active = TRUE AND agency = 'USGS'
         """
         try:
             with self._get_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute(query, [cutoff])
+                    cur.execute(query)
                     result = {row[0] for row in cur.fetchall()}
         except Exception as e:
             logger.error(f"Error fetching active station numbers: {e}")
             return set()
 
-        logger.info(
-            f"Found {len(result)} active stations in last {months_back} months (DB)"
-        )
+        logger.info(f"Found {len(result)} active USGS stations (via is_active flag)")
         return result
 
     def _load_crosswalk(self) -> dict:

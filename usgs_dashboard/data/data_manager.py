@@ -63,6 +63,7 @@ class USGSDataManager:
         self._active_stations_cache: Optional[set] = None
         self._active_stations_cache_time: float = 0.0
         self._active_stations_cache_ttl: int = 3600
+        self._active_stations_cache_lock = threading.Lock()
 
         # Percentile bands cache (latest date, refreshed by background thread)
         self._percentile_cache: dict = {}
@@ -229,16 +230,18 @@ class USGSDataManager:
             return df
         
         try:
-            # Get set of station numbers with recent discharge data (cached 1 hr)
+            # Get set of station numbers with recent discharge data (cached 1 hr).
+            # Lock prevents cache stampede when multiple callbacks fire simultaneously.
             now = time.time()
-            if (self._active_stations_cache is not None and
-                    (now - self._active_stations_cache_time) < self._active_stations_cache_ttl):
-                active_stations = self._active_stations_cache
-                logger.info("Station activity: using cached active-station set")
-            else:
-                active_stations = self.adapter.get_active_station_numbers(months_back=6)
-                self._active_stations_cache = active_stations
-                self._active_stations_cache_time = now
+            with self._active_stations_cache_lock:
+                if (self._active_stations_cache is not None and
+                        (now - self._active_stations_cache_time) < self._active_stations_cache_ttl):
+                    active_stations = self._active_stations_cache
+                    logger.info("Station activity: using cached active-station set")
+                else:
+                    active_stations = self.adapter.get_active_station_numbers(months_back=6)
+                    self._active_stations_cache = active_stations
+                    self._active_stations_cache_time = now
 
             if active_stations:
                 df['station_status'] = df['station_number'].apply(
