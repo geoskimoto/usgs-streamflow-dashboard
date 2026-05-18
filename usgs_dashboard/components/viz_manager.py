@@ -397,6 +397,22 @@ class VisualizationManager:
         if not statistics.empty and {"q10", "q25", "q75", "q90"}.issubset(statistics.columns):
             s = statistics.sort_values("day_of_wy")
 
+            # Outermost 3rd–97th band (lightest). Added first so the darker
+            # inner bands render on top of it. Pure band — no hover, to match
+            # the 10–90 / 25–75 bands.
+            if {"q03", "q97"}.issubset(s.columns):
+                fig.add_trace(go.Scatter(
+                    x=s["day_of_wy"], y=s["q97"],
+                    mode="lines", line=dict(color="rgba(173,216,230,0)"),
+                    showlegend=False, name="97th pct", hoverinfo="skip",
+                ))
+                fig.add_trace(go.Scatter(
+                    x=s["day_of_wy"], y=s["q03"],
+                    mode="lines", line=dict(color="rgba(173,216,230,0)"),
+                    fill="tonexty", fillcolor="rgba(173,216,230,0.24)",
+                    showlegend=True, name="3rd–97th percentile", hoverinfo="skip",
+                ))
+
             fig.add_trace(go.Scatter(
                 x=s["day_of_wy"], y=s["q90"],
                 mode="lines", line=dict(color="rgba(173,216,230,0)"),
@@ -419,23 +435,6 @@ class VisualizationManager:
                 fill="tonexty", fillcolor="rgba(100,149,237,0.56)",
                 showlegend=True, name="25th–75th percentile", hoverinfo="skip",
             ))
-
-            # 3rd/97th percentile marker lines (no fill — tail reference on heavy-tailed data)
-            if {"q03", "q97"}.issubset(s.columns):
-                fig.add_trace(go.Scatter(
-                    x=s["day_of_wy"], y=s["q97"],
-                    mode="lines", name="97th percentile",
-                    line=dict(color="rgba(173,216,230,0.7)", width=1, dash="dot"),
-                    customdata=[self._day_of_wy_to_monthday(d) for d in s["day_of_wy"]],
-                    hovertemplate="%{customdata}<br>97th pct: %{y:.1f} cfs<extra></extra>",
-                ))
-                fig.add_trace(go.Scatter(
-                    x=s["day_of_wy"], y=s["q03"],
-                    mode="lines", name="3rd percentile",
-                    line=dict(color="rgba(173,216,230,0.7)", width=1, dash="dot"),
-                    customdata=[self._day_of_wy_to_monthday(d) for d in s["day_of_wy"]],
-                    hovertemplate="%{customdata}<br>3rd pct: %{y:.1f} cfs<extra></extra>",
-                ))
 
             # Mean and median lines
             if "mean" in s.columns:
@@ -635,16 +634,41 @@ class VisualizationManager:
         # Calculate percentile bands first (25th, 75th percentiles)
         if show_percentiles and len(data_copy) > 100:
             daily_stats = data_copy.groupby('day_of_wy')[value_col].agg([
-                'median', 
+                'median',
+                lambda x: x.quantile(0.03),
                 lambda x: x.quantile(0.25),
                 lambda x: x.quantile(0.75),
                 lambda x: x.quantile(0.10),
-                lambda x: x.quantile(0.90)
+                lambda x: x.quantile(0.90),
+                lambda x: x.quantile(0.97)
             ])
-            daily_stats.columns = ['median', 'q25', 'q75', 'q10', 'q90']
+            daily_stats.columns = ['median', 'q03', 'q25', 'q75', 'q10', 'q90', 'q97']
             # Store daily stats for tooltip customization
             self._daily_stats = daily_stats
-            
+
+            # Outermost 3rd–97th band (lightest). Added first so the darker
+            # inner bands render on top of it. Pure band — no hover.
+            fig.add_trace(go.Scatter(
+                x=daily_stats.index,
+                y=daily_stats['q97'],
+                mode='lines',
+                line=dict(color='rgba(173, 216, 230, 0)'),
+                showlegend=False,
+                name='97th percentile',
+                hoverinfo='skip',
+            ))
+            fig.add_trace(go.Scatter(
+                x=daily_stats.index,
+                y=daily_stats['q03'],
+                mode='lines',
+                line=dict(color='rgba(173, 216, 230, 0)'),
+                fill='tonexty',
+                fillcolor='rgba(173, 216, 230, 0.24)',
+                showlegend=True,
+                name='3rd-97th percentile',
+                hoverinfo='skip',
+            ))
+
             fig.add_trace(go.Scatter(
                 x=daily_stats.index,
                 y=daily_stats['q90'],
