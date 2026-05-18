@@ -1011,15 +1011,15 @@ app.layout = dbc.Container([
         style={'display': 'none'},
         children=[
             html.Div(id='map-hover-info-text', style={
-                'padding': '8px 10px 6px 10px',
+                'padding': '5px 9px 4px 9px',
                 'backgroundColor': '#252525',
             }),
             html.Img(
                 id='map-hover-tooltip-img',
                 src='',
                 style={
-                    'width': '420px',
-                    'height': '230px',
+                    'width': '462px',
+                    'height': '268px',
                     'display': 'block',
                     'borderRadius': '0 0 6px 6px',
                 },
@@ -2303,28 +2303,28 @@ def update_map_tooltip_store(hover_data):
 
     info = html.Div([
         html.Div(name, style={
-            'fontSize': '13px', 'fontWeight': '700', 'color': '#e0e0e0',
-            'marginBottom': '4px', 'lineHeight': '1.3',
+            'fontSize': '12px', 'fontWeight': '700', 'color': '#e0e0e0',
+            'marginBottom': '2px', 'lineHeight': '1.2',
         }),
-        html.Hr(style={'margin': '4px 0 6px 0', 'borderColor': '#444', 'borderWidth': '1px'}),
+        html.Hr(style={'margin': '2px 0 4px 0', 'borderColor': '#444', 'borderWidth': '1px'}),
         html.Div([
-            html.Span("Site: ", style={'color': '#aaaaaa', 'fontSize': '11px'}),
-            html.Span(site_id, style={'fontSize': '11px', 'fontWeight': '600', 'color': '#e0e0e0', 'marginRight': '12px'}),
-            html.Span("State: ", style={'color': '#aaaaaa', 'fontSize': '11px'}),
-            html.Span(state, style={'fontSize': '11px', 'color': '#e0e0e0'}),
-        ], style={'marginBottom': '3px'}),
+            html.Span("Site: ", style={'color': '#aaaaaa', 'fontSize': '10px'}),
+            html.Span(site_id, style={'fontSize': '10px', 'fontWeight': '600', 'color': '#e0e0e0', 'marginRight': '10px'}),
+            html.Span("State: ", style={'color': '#aaaaaa', 'fontSize': '10px'}),
+            html.Span(state, style={'fontSize': '10px', 'color': '#e0e0e0'}),
+        ], style={'marginBottom': '2px'}),
         html.Div([
-            html.Span("Area: ", style={'color': '#aaaaaa', 'fontSize': '11px'}),
-            html.Span(area, style={'fontSize': '11px', 'color': '#e0e0e0', 'marginRight': '12px'}),
-            html.Span("Record: ", style={'color': '#aaaaaa', 'fontSize': '11px'}),
-            html.Span(years, style={'fontSize': '11px', 'color': '#e0e0e0'}),
-        ], style={'marginBottom': '3px'}),
+            html.Span("Area: ", style={'color': '#aaaaaa', 'fontSize': '10px'}),
+            html.Span(area, style={'fontSize': '10px', 'color': '#e0e0e0', 'marginRight': '10px'}),
+            html.Span("Record: ", style={'color': '#aaaaaa', 'fontSize': '10px'}),
+            html.Span(years, style={'fontSize': '10px', 'color': '#e0e0e0'}),
+        ], style={'marginBottom': '2px'}),
         html.Div([
-            html.Span("Condition: ", style={'color': '#aaaaaa', 'fontSize': '11px'}),
-            html.Span(condition, style={'fontSize': '11px', 'fontWeight': '700', 'color': cond_color}),
-        ], style={'marginBottom': '3px'}),
+            html.Span("Condition: ", style={'color': '#aaaaaa', 'fontSize': '10px'}),
+            html.Span(condition, style={'fontSize': '10px', 'fontWeight': '700', 'color': cond_color}),
+        ], style={'marginBottom': '2px'}),
         html.Div([
-            html.Span(f"{lat:.4f}°N, {lon:.4f}°W", style={'fontSize': '10px', 'color': '#888888'}),
+            html.Span(f"{lat:.4f}°N, {lon:.4f}°W", style={'fontSize': '9px', 'color': '#888888'}),
         ]),
     ])
 
@@ -2346,8 +2346,8 @@ app.clientside_callback(
         var cy = (window._hoverCursor && window._hoverCursor.y) || 0;
 
         var hasPng  = storeData.has_png;
-        var PW      = 440;
-        var PH      = hasPng ? 340 : 110;
+        var PW      = 462;
+        var PH      = hasPng ? 357 : 116;
         var OFFSET  = 14;
         var vw = window.innerWidth, vh = window.innerHeight;
         var left = cx + OFFSET;
@@ -2373,7 +2373,7 @@ app.clientside_callback(
         };
 
         var imgStyle = hasPng
-            ? {'display': 'block', 'width': '440px', 'height': '242px', 'borderRadius': '0 0 6px 6px'}
+            ? {'display': 'block', 'width': '462px', 'height': '268px', 'borderRadius': '0 0 6px 6px'}
             : {'display': 'none'};
 
         return [panelStyle, storeData.src || '', imgStyle];

@@ -548,8 +548,12 @@ def _rebuild_png_one(site_id: str, force: bool) -> tuple[str, str, float]:
             showlegend=False,
             title=None,
             margin=dict(t=8, b=36, l=58, r=8),
-            height=220,
-            width=400,
+            # Match the map hover-tooltip image box (462x268, see app.py
+            # map-hover-tooltip-img). Rendering at the display size keeps the
+            # native PNG aspect identical to the box so future rebuilds show
+            # no stretch.
+            height=268,
+            width=462,
             updatemenus=[],
             annotations=[],
             shapes=[
