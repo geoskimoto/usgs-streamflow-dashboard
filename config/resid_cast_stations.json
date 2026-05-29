@@ -4,35 +4,40 @@
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14372300": {
     "nwrfc_id": "AGNO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14174000": {
     "nwrfc_id": "ALBO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13022500": {
     "nwrfc_id": "ALPW4",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13077000": {
     "nwrfc_id": "AMFI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13334300": {
     "nwrfc_id": "ANAW1",
@@ -40,111 +45,127 @@
       "xgboost/raw",
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13190500": {
     "nwrfc_id": "ANDI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13050500": {
     "nwrfc_id": "ANTI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14366000": {
     "nwrfc_id": "APRO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12452800": {
     "nwrfc_id": "ARDW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12167000": {
     "nwrfc_id": "ARGW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "14369500": {
     "nwrfc_id": "ARWO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12113000": {
     "nwrfc_id": "AUBW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14202000": {
     "nwrfc_id": "AURO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14309000": {
     "nwrfc_id": "AZAO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12026400": {
     "nwrfc_id": "BCDW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14303600": {
     "nwrfc_id": "BEAO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13217500": {
     "nwrfc_id": "BEUO3",
     "models": [
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13011900": {
     "nwrfc_id": "BFKW4",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "13069500": {
     "nwrfc_id": "BFTI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13206000": {
     "nwrfc_id": "BIGI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12340000": {
     "nwrfc_id": "BONM8",
@@ -152,97 +173,111 @@
       "xgboost/raw",
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13186000": {
     "nwrfc_id": "BRFI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13185000": {
     "nwrfc_id": "BTSI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13142500": {
     "nwrfc_id": "BWMI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12043000": {
     "nwrfc_id": "CALW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "13258500": {
     "nwrfc_id": "CAMI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14200000": {
     "nwrfc_id": "CANO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14243000": {
     "nwrfc_id": "CASW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12363000": {
     "nwrfc_id": "CFMM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12027500": {
     "nwrfc_id": "CGMW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12452000": {
     "nwrfc_id": "CHDW1",
     "models": [
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13049500": {
     "nwrfc_id": "CHEI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14400000": {
     "nwrfc_id": "CHTO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "14231900": {
     "nwrfc_id": "CIYW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12414500": {
     "nwrfc_id": "CLDI1",
@@ -250,83 +285,95 @@
       "xgboost/raw",
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "14233500": {
     "nwrfc_id": "COKW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12194000": {
     "nwrfc_id": "CONW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14327055": {
     "nwrfc_id": "COQO3",
     "models": [
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12149000": {
     "nwrfc_id": "CRNW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12031000": {
     "nwrfc_id": "CRPW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12344000": {
     "nwrfc_id": "DARM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12324200": {
     "nwrfc_id": "DLGM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14203500": {
     "nwrfc_id": "DLLO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "10396000": {
     "nwrfc_id": "DONO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "12020000": {
     "nwrfc_id": "DOTW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "13236500": {
     "nwrfc_id": "DRBI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12331800": {
     "nwrfc_id": "DRMM8",
@@ -334,63 +381,72 @@
       "xgboost/raw",
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12048000": {
     "nwrfc_id": "DRSW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "12079000": {
     "nwrfc_id": "DSRW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12306500": {
     "nwrfc_id": "EASI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14339000": {
     "nwrfc_id": "EGLO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14321000": {
     "nwrfc_id": "EKTO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14338000": {
     "nwrfc_id": "ELKO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12045500": {
     "nwrfc_id": "ELWW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12413000": {
     "nwrfc_id": "ENVI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14210000": {
     "nwrfc_id": "ESTO3",
@@ -398,222 +454,254 @@
       "xgboost/raw",
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14158050": {
     "nwrfc_id": "EUGO3",
     "models": [
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12355500": {
     "nwrfc_id": "FCFM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12094000": {
     "nwrfc_id": "FFXW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12302055": {
     "nwrfc_id": "FISM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13010065": {
     "nwrfc_id": "FLGW4",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12372000": {
     "nwrfc_id": "FPOM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12401500": {
     "nwrfc_id": "FRYW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14301000": {
     "nwrfc_id": "FSSO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "12143400": {
     "nwrfc_id": "GARW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14020000": {
     "nwrfc_id": "GIBO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "12134500": {
     "nwrfc_id": "GLBW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12178000": {
     "nwrfc_id": "GORW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14157500": {
     "nwrfc_id": "GOSO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14361500": {
     "nwrfc_id": "GRAO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13023000": {
     "nwrfc_id": "GREW4",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "13015000": {
     "nwrfc_id": "GVZW4",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12424000": {
     "nwrfc_id": "HAGW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14166000": {
     "nwrfc_id": "HARO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13290450": {
     "nwrfc_id": "HCDI1",
     "models": [
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13037500": {
     "nwrfc_id": "HEII1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14120000": {
     "nwrfc_id": "HODO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13351000": {
     "nwrfc_id": "HOPW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13168500": {
     "nwrfc_id": "HOTI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13247500": {
     "nwrfc_id": "HRSI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13120500": {
     "nwrfc_id": "HWRI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12121600": {
     "nwrfc_id": "ISSW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14152000": {
     "nwrfc_id": "JASO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14189000": {
     "nwrfc_id": "JFFO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14038530": {
     "nwrfc_id": "JHNO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13018750": {
     "nwrfc_id": "JKSW4",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12301933": {
     "nwrfc_id": "KBDM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12510500": {
     "nwrfc_id": "KIOW1",
@@ -621,140 +709,160 @@
       "xgboost/raw",
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14377100": {
     "nwrfc_id": "KRBO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12409000": {
     "nwrfc_id": "KTFW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12404500": {
     "nwrfc_id": "LAUW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12305000": {
     "nwrfc_id": "LEOI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12117500": {
     "nwrfc_id": "LNDW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13337000": {
     "nwrfc_id": "LOCI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "12431000": {
     "nwrfc_id": "LSDW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13127000": {
     "nwrfc_id": "MAKI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14238000": {
     "nwrfc_id": "MAYW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14194150": {
     "nwrfc_id": "MCMO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14183000": {
     "nwrfc_id": "MEHO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14357500": {
     "nwrfc_id": "MFDO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12208000": {
     "nwrfc_id": "MFNW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13309220": {
     "nwrfc_id": "MIDI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12089500": {
     "nwrfc_id": "MKNW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14337500": {
     "nwrfc_id": "MLBO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14013000": {
     "nwrfc_id": "MLKW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14170000": {
     "nwrfc_id": "MNRO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12037400": {
     "nwrfc_id": "MNSW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14103000": {
     "nwrfc_id": "MODO3",
@@ -762,139 +870,159 @@
       "xgboost/raw",
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14046000": {
     "nwrfc_id": "MONO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13200000": {
     "nwrfc_id": "MORI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14307620": {
     "nwrfc_id": "MPLO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12150800": {
     "nwrfc_id": "MROW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12200500": {
     "nwrfc_id": "MVEW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14327000": {
     "nwrfc_id": "MYNO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14326510": {
     "nwrfc_id": "MYPO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12010000": {
     "nwrfc_id": "NASW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "12025000": {
     "nwrfc_id": "NEWW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "12205000": {
     "nwrfc_id": "NFNW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12082500": {
     "nwrfc_id": "NISW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "12442500": {
     "nwrfc_id": "NITW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12213100": {
     "nwrfc_id": "NKSW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12210700": {
     "nwrfc_id": "NRKW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12059500": {
     "nwrfc_id": "NSPW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12210000": {
     "nwrfc_id": "NSSW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14207740": {
     "nwrfc_id": "OCUO3",
     "models": [
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12447200": {
     "nwrfc_id": "OKMW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13175100": {
     "nwrfc_id": "OMCN2",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13340000": {
     "nwrfc_id": "ORFI1",
@@ -902,49 +1030,56 @@
       "xgboost/raw",
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "12093500": {
     "nwrfc_id": "ORTW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13183000": {
     "nwrfc_id": "OWYO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13346800": {
     "nwrfc_id": "PACI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14226500": {
     "nwrfc_id": "PACW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13011500": {
     "nwrfc_id": "PACW4",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "13032500": {
     "nwrfc_id": "PALI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12449950": {
     "nwrfc_id": "PATW1",
@@ -952,14 +1087,16 @@
       "xgboost/raw",
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12388700": {
     "nwrfc_id": "PERM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12459000": {
     "nwrfc_id": "PESW1",
@@ -967,21 +1104,24 @@
       "xgboost/raw",
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14171000": {
     "nwrfc_id": "PHIO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12155300": {
     "nwrfc_id": "PILW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14113000": {
     "nwrfc_id": "PITW1",
@@ -989,272 +1129,311 @@
       "xgboost/raw",
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12389000": {
     "nwrfc_id": "PLNM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14325000": {
     "nwrfc_id": "POWO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "12411000": {
     "nwrfc_id": "PRCI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "12390700": {
     "nwrfc_id": "PRCM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "12472800": {
     "nwrfc_id": "PRDW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13235000": {
     "nwrfc_id": "PRLI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "13251000": {
     "nwrfc_id": "PRPI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12395000": {
     "nwrfc_id": "PRTI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13348000": {
     "nwrfc_id": "PULW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12101500": {
     "nwrfc_id": "PUYW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14231000": {
     "nwrfc_id": "RAWW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12334510": {
     "nwrfc_id": "RCCM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14310000": {
     "nwrfc_id": "RDLO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13056500": {
     "nwrfc_id": "REXI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13316500": {
     "nwrfc_id": "RIGI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13058000": {
     "nwrfc_id": "RIRI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12119000": {
     "nwrfc_id": "RNTW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14359000": {
     "nwrfc_id": "RYGO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12189500": {
     "nwrfc_id": "SAKW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "13027500": {
     "nwrfc_id": "SALW4",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12414900": {
     "nwrfc_id": "SATI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12035000": {
     "nwrfc_id": "SATW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "14316700": {
     "nwrfc_id": "SCRO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "13336500": {
     "nwrfc_id": "SELI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14046500": {
     "nwrfc_id": "SERO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12362500": {
     "nwrfc_id": "SFCM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13105000": {
     "nwrfc_id": "SFLN2",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12193400": {
     "nwrfc_id": "SHAW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13060000": {
     "nwrfc_id": "SHYI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13057155": {
     "nwrfc_id": "SIFI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14305500": {
     "nwrfc_id": "SILO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "12026150": {
     "nwrfc_id": "SKMW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12056500": {
     "nwrfc_id": "SKOW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "14191000": {
     "nwrfc_id": "SLMO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12138160": {
     "nwrfc_id": "SLTW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12201500": {
     "nwrfc_id": "SMRW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13062500": {
     "nwrfc_id": "SNAI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12155500": {
     "nwrfc_id": "SNAW1",
     "models": [
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14142500": {
     "nwrfc_id": "SNDO3",
@@ -1262,91 +1441,104 @@
       "xgboost/raw",
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12142000": {
     "nwrfc_id": "SNQW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13342500": {
     "nwrfc_id": "SPDI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12095000": {
     "nwrfc_id": "SPEW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "12422500": {
     "nwrfc_id": "SPOW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14165000": {
     "nwrfc_id": "SPRO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12144500": {
     "nwrfc_id": "SQUW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12354500": {
     "nwrfc_id": "SRGM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12365700": {
     "nwrfc_id": "SRLM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14137000": {
     "nwrfc_id": "SRMO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "12181000": {
     "nwrfc_id": "SRMW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12061500": {
     "nwrfc_id": "SRPW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12060500": {
     "nwrfc_id": "SSUW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12451000": {
     "nwrfc_id": "STHW1",
@@ -1354,326 +1546,373 @@
       "xgboost/raw",
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "13338500": {
     "nwrfc_id": "STII1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "14190500": {
     "nwrfc_id": "SUVO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13172500": {
     "nwrfc_id": "SWAI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12370000": {
     "nwrfc_id": "SWRM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14211500": {
     "nwrfc_id": "SYCO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12141300": {
     "nwrfc_id": "TANW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "14018500": {
     "nwrfc_id": "TCHW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13055000": {
     "nwrfc_id": "TEAI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12175500": {
     "nwrfc_id": "THNW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "12389500": {
     "nwrfc_id": "THRM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14306500": {
     "nwrfc_id": "TIDO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "14308000": {
     "nwrfc_id": "TILO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14236200": {
     "nwrfc_id": "TILW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "14301500": {
     "nwrfc_id": "TLMO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14209500": {
     "nwrfc_id": "TLYO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12148500": {
     "nwrfc_id": "TOLW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12445000": {
     "nwrfc_id": "TONW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13073000": {
     "nwrfc_id": "TOPI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14242580": {
     "nwrfc_id": "TOTW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14302480": {
     "nwrfc_id": "TRAO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14158850": {
     "nwrfc_id": "TRBO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14188800": {
     "nwrfc_id": "TRSO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12304500": {
     "nwrfc_id": "TRYM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13333000": {
     "nwrfc_id": "TRYO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14033500": {
     "nwrfc_id": "UMAO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12484500": {
     "nwrfc_id": "UMTW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13233300": {
     "nwrfc_id": "VALO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14299800": {
     "nwrfc_id": "VENO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12350250": {
     "nwrfc_id": "VICM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14162500": {
     "nwrfc_id": "VIDO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13215000": {
     "nwrfc_id": "WARO3",
     "models": [
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12186000": {
     "nwrfc_id": "WCHW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "13174000": {
     "nwrfc_id": "WDHN2",
     "models": [
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12342500": {
     "nwrfc_id": "WFBM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12358500": {
     "nwrfc_id": "WGCM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "13317000": {
     "nwrfc_id": "WHBI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12366000": {
     "nwrfc_id": "WHRM8",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12013500": {
     "nwrfc_id": "WILW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": true
   },
   "14319500": {
     "nwrfc_id": "WNRO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13148500": {
     "nwrfc_id": "WODI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12100490": {
     "nwrfc_id": "WRAW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14207500": {
     "nwrfc_id": "WSLO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14312000": {
     "nwrfc_id": "WSNO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "13266000": {
     "nwrfc_id": "WSRI1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "12448500": {
     "nwrfc_id": "WTHW1",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   },
   "14187500": {
     "nwrfc_id": "WTLO3",
     "models": [
       "muthre/standalone",
       "lstm/raw/general"
-    ]
+    ],
+    "ealstm_available": false
   }
 }
