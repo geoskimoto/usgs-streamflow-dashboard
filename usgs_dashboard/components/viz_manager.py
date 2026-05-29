@@ -49,6 +49,7 @@ class VisualizationManager:
                              data_manager=None,
                              forecast_data: pd.DataFrame = None,
                              resid_cast_data: list = None,
+                             precip_runoff_data: list = None,
                              history_mode: str = "all") -> go.Figure:
         """
         Create streamflow visualization plot.
@@ -117,6 +118,10 @@ class VisualizationManager:
         # Add ResidCast ML forecast overlay
         if plot_type == 'water_year' and resid_cast_data:
             fig = self._add_resid_cast_overlay(fig, resid_cast_data)
+
+        # Add precip-runoff EA-LSTM forecast overlay
+        if plot_type == 'water_year' and precip_runoff_data:
+            fig = self._add_precip_overlay(fig, precip_runoff_data)
 
         # Add range slider and window buttons to water year plots
         if plot_type == 'water_year':
@@ -365,6 +370,7 @@ class VisualizationManager:
         statistics: pd.DataFrame,
         forecast_data=None,
         resid_cast_data: list = None,
+        precip_runoff_data: list = None,
         data_manager=None,
     ) -> go.Figure:
         """
@@ -556,6 +562,8 @@ class VisualizationManager:
             fig = self._add_forecast_overlay(fig, forecast_data)
         if resid_cast_data:
             fig = self._add_resid_cast_overlay(fig, resid_cast_data)
+        if precip_runoff_data:
+            fig = self._add_precip_overlay(fig, precip_runoff_data)
 
         # ── Range controls ─────────────────────────────────────────────────
         fig = self._add_range_controls(fig, current_day_of_wy)

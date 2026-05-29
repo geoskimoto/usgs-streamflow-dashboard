@@ -59,6 +59,8 @@ data_manager = get_data_manager()
 map_component = get_map_component()
 viz_manager = get_visualization_manager()
 filter_panel = SimplifiedFilterPanel()
+from resid_cast.precip_runoff_adapter import PrecipRunoffAdapter
+_precip_adapter = PrecipRunoffAdapter()
 
 # Start percentile background refresh thread (fetches from StreamflowOps every 30 min)
 data_manager.start_percentile_background_refresh(interval_seconds=1800)
@@ -1871,6 +1873,7 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
     except Exception as e:
         logger.warning(f"Forecast fetch failed for {selected_gauge}: {e}")
     resid_cast_data = data_manager.get_resid_cast_forecasts(selected_gauge, num_runs=5)
+    precip_runoff_data = _precip_adapter.get_forecasts(selected_gauge, num_runs=5)
 
     # ── Water year plot: fast vs full-history paths ───────────────────────
     fast_fig_dict = None
@@ -1889,6 +1892,7 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
             data_manager=data_manager,
             forecast_data=forecast_data,
             resid_cast_data=resid_cast_data,
+            precip_runoff_data=precip_runoff_data,
             history_mode=history_mode,
         )
     else:
@@ -1918,6 +1922,7 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
                 statistics=statistics,
                 forecast_data=forecast_data,
                 resid_cast_data=resid_cast_data,
+                precip_runoff_data=precip_runoff_data,
                 data_manager=data_manager,
             )
             plot_cache_manager.save(selected_gauge, wy_fig)
