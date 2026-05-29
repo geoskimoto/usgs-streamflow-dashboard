@@ -1156,6 +1156,98 @@ class VisualizationManager:
 
         return fig
 
+    def _add_precip_overlay(self, fig: go.Figure, precip_runoff_data: list) -> go.Figure:
+        """Add EA-LSTM precip-runoff forecast traces to a water year plot.
+
+        Uses amber/orange palette to distinguish from ResidCast teal/green/blue family.
+        Multiple runs shown newest-visible / older-legendonly, with dot-dash lines
+        to distinguish from ResidCast dashed traces.
+
+        Parameters
+        ----------
+        fig : go.Figure
+        precip_runoff_data : list
+            List of dicts from PrecipRunoffAdapter.get_forecasts():
+            run_date, model_label, model_key, source, data (DataFrame).
+        """
+        if not precip_runoff_data:
+            return fig
+
+        _PRECIP_COLORS = ["#E67E22", "#F0A500", "#F5C842", "#F7D98B", "#FBF3D0"]
+        run_index = 0
+
+        try:
+            for entry in precip_runoff_data:
+                fc_df = entry.get("data")
+                if fc_df is None or fc_df.empty:
+                    continue
+                if "datetime" not in fc_df.columns:
+                    continue
+
+                fc_data = fc_df.copy()
+                fc_data["datetime"] = pd.to_datetime(fc_data["datetime"], errors="coerce")
+                fc_data = fc_data.dropna(subset=["datetime"])
+                if fc_data.empty:
+                    continue
+
+                if fc_data["datetime"].dt.tz is not None:
+                    fc_data["datetime"] = fc_data["datetime"].dt.tz_localize(None)
+
+                def _fractional_day_of_wy(d):
+                    if d.month >= WATER_YEAR_START:
+                        wy_start = pd.Timestamp(d.year, WATER_YEAR_START, 1)
+                    else:
+                        wy_start = pd.Timestamp(d.year - 1, WATER_YEAR_START, 1)
+                    return (d - wy_start).total_seconds() / 86400.0 + 1.0
+
+                fc_data["day_of_wy"] = fc_data["datetime"].map(_fractional_day_of_wy)
+
+                discharge_col = next(
+                    (c for c in fc_data.columns
+                     if any(t in c.lower() for t in ["discharge", "flow", "cfs"])),
+                    None,
+                )
+                if discharge_col is None:
+                    continue
+
+                fc_data = fc_data.sort_values("day_of_wy")
+                fc_data["hover_date"] = fc_data["datetime"].dt.strftime("%b %-d")
+
+                run_date = entry.get("run_date", "")
+                color = _PRECIP_COLORS[min(run_index, len(_PRECIP_COLORS) - 1)]
+                line_width = 2.5 if run_index == 0 else 1.5
+                visible = True if run_index == 0 else "legendonly"
+
+                try:
+                    from datetime import datetime as _dt
+                    run_dt = _dt.fromisoformat(run_date)
+                    date_label = run_dt.strftime("%b %-d")
+                except (ValueError, AttributeError):
+                    date_label = run_date[:10] if run_date else f"Run {run_index + 1}"
+
+                name = f"EA-LSTM \u2013 {date_label}"
+                run_index += 1
+
+                fig.add_trace(go.Scatter(
+                    x=fc_data["day_of_wy"],
+                    y=fc_data[discharge_col],
+                    mode="lines",
+                    name=name,
+                    line=dict(color=color, width=line_width, dash="dot"),
+                    visible=visible,
+                    customdata=fc_data["hover_date"],
+                    hovertemplate=(
+                        f"<b>{name}</b><br>"
+                        "%{customdata}<br>"
+                        "Discharge: %{y:,.0f} cfs<extra></extra>"
+                    ),
+                ))
+
+        except Exception as exc:
+            logger.warning("Error adding EA-LSTM precip overlay: %s", exc)
+
+        return fig
+
     def _add_range_controls(self, fig: go.Figure, current_day: int) -> go.Figure:
         """
         Add a range slider and preset window buttons to a water year plot.
