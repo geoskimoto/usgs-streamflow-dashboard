@@ -34,8 +34,9 @@ PERCENTILE_GROUP_CONFIG = [
     ('p99_100', '> 98th percentile',       '#041552', 0.95, 1.35),
     # Backward-compat alias: remove after StreamflowOps deploys new band keys
     ('p76_100', '> 75th percentile',       '#0D47A1', 0.92, 1.15),
-    ('no_data', 'No Flow Data',            '#808080', 0.60, 0.90),
-    ('inactive','Inactive',               '#404040', 0.40, 0.80),
+    ('active_no_band', 'Active — No Percentile', '#32CD32', 0.70, 0.90),
+    ('no_data',        'No Flow Data',           '#808080', 0.60, 0.90),
+    ('inactive',       'Inactive',               '#404040', 0.40, 0.80),
 ]
 
 PERCENTILE_LABELS = {cfg[0]: cfg[1] for cfg in PERCENTILE_GROUP_CONFIG}
@@ -245,10 +246,11 @@ class ModernMapComponent:
             map_data['map_group'] = map_data[station_col].map(percentile_bands)
             no_band = map_data['map_group'].isna()
             map_data.loc[no_band & (map_data['status'] == 'Inactive'), 'map_group'] = 'inactive'
-            map_data.loc[no_band & (map_data['status'] != 'Inactive'), 'map_group'] = 'no_data'
+            map_data.loc[no_band & (map_data['status'] == 'Active'), 'map_group'] = 'active_no_band'
+            map_data.loc[no_band & (map_data['status'] != 'Active') & (map_data['status'] != 'Inactive'), 'map_group'] = 'no_data'
         else:
             map_data['map_group'] = map_data['status'].map(
-                {'Active': 'no_data', 'Inactive': 'inactive'}
+                {'Active': 'active_no_band', 'Inactive': 'inactive'}
             ).fillna('no_data')
 
         known_keys = {cfg[0] for cfg in PERCENTILE_GROUP_CONFIG}
