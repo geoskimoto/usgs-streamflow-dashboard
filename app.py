@@ -1915,20 +1915,39 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
             current_year_data = data_manager.get_current_year_data(selected_gauge)
             statistics = data_manager.get_flow_statistics(selected_gauge)
             if current_year_data is None or current_year_data.empty:
-                return [dbc.Alert(f"No streamflow data available for site {selected_gauge}", color="warning")], None, None
-            wy_fig = viz_manager.create_fast_water_year_plot(
-                site_id=selected_gauge,
-                current_year_data=current_year_data,
-                statistics=statistics,
-                forecast_data=forecast_data,
-                resid_cast_data=resid_cast_data,
-                precip_runoff_data=precip_runoff_data,
-                data_manager=data_manager,
-            )
-            plot_cache_manager.save(selected_gauge, wy_fig)
-            now_iso = datetime.now().isoformat()
-            cache_meta = {'cached': False, 'generated_at': now_iso, 'age_seconds': 0}
-            fast_fig_dict = wy_fig.to_dict()
+                # Station has no current water-year data (inactive/historical).
+                # Fall back to full period of record so historical stations are still viewable.
+                streamflow_data = data_manager.get_streamflow_data(selected_gauge)
+                if streamflow_data is None or streamflow_data.empty:
+                    return [dbc.Alert(f"No streamflow data available for site {selected_gauge}", color="warning")], None, None
+                wy_fig = viz_manager.create_streamflow_plot(
+                    selected_gauge, streamflow_data,
+                    plot_type='water_year',
+                    highlight_years=highlight_years,
+                    show_percentiles=True, show_statistics=True,
+                    data_manager=data_manager,
+                    forecast_data=forecast_data,
+                    resid_cast_data=resid_cast_data,
+                    precip_runoff_data=precip_runoff_data,
+                    history_mode='all',
+                )
+                now_iso = datetime.now().isoformat()
+                cache_meta = {'cached': False, 'generated_at': now_iso, 'age_seconds': 0}
+                fast_fig_dict = wy_fig.to_dict()
+            else:
+                wy_fig = viz_manager.create_fast_water_year_plot(
+                    site_id=selected_gauge,
+                    current_year_data=current_year_data,
+                    statistics=statistics,
+                    forecast_data=forecast_data,
+                    resid_cast_data=resid_cast_data,
+                    precip_runoff_data=precip_runoff_data,
+                    data_manager=data_manager,
+                )
+                plot_cache_manager.save(selected_gauge, wy_fig)
+                now_iso = datetime.now().isoformat()
+                cache_meta = {'cached': False, 'generated_at': now_iso, 'age_seconds': 0}
+                fast_fig_dict = wy_fig.to_dict()
 
     # ── Build plot option config ───────────────────────────────────────────
     selected_options = plot_options or []

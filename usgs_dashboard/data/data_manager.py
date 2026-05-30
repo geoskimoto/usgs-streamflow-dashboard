@@ -553,8 +553,7 @@ class USGSDataManager:
             if years_back:
                 start_date = (datetime.now() - timedelta(days=years_back*365)).strftime('%Y-%m-%d')
             else:
-                # Default to MAX_YEARS_LOAD from config
-                start_date = (datetime.now() - timedelta(days=MAX_YEARS_LOAD*365)).strftime('%Y-%m-%d')
+                start_date = '1800-01-01'  # full period of record — no artificial floor
         
         logger.debug(f"Fetching streamflow data: {site_id} ({start_date} to {end_date})")
         
