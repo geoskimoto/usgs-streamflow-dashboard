@@ -162,7 +162,7 @@ The dashboard displays bias-corrected forecasts from the resid-cast service alon
 
 ### Station config: `config/resid_cast_stations.json`
 
-Maps USGS gage ID → `{nwrfc_id, models[]}`. **Do not edit by hand.** Regenerate it from the resid-cast repo whenever stations or models change:
+Maps USGS gage ID → `{nwrfc_id, models[], ealstm_available}`. **Do not edit by hand.** Regenerate it from the resid-cast repo whenever stations or models change:
 
 ```bash
 cd /home/geoskimoto/projects/resid-cast
@@ -170,21 +170,32 @@ cd /home/geoskimoto/projects/resid-cast
 # Writes to ../usgs-streamflow-dashboard/config/resid_cast_stations.json
 ```
 
-Current coverage: **60 stations**.
+Current coverage: **239 stations total** (all NWRFC stations visible in dashboard).
 
-| Station type | Model list |
-|---|---|
-| 13 original quality stations | `xgboost/raw`, `muthre/standalone`, `lstm/raw/general`, `xgboost/raw/general` |
-| 47 expanded stations | `muthre/standalone`, `lstm/raw/general`, `xgboost/raw/general` |
+| Station type | Count | `ealstm_available` | Model list |
+|---|---|---|---|
+| 13 original quality stations | 13 | some | `xgboost/raw`, `muthre/standalone`, `lstm/raw/general`, `xgboost/raw/general` |
+| 47 expanded stations | 47 | some | `muthre/standalone`, `lstm/raw/general`, `xgboost/raw/general` |
+| CAMELS-overlap PNW basins | 37 | **true** | EA-LSTM precip-runoff forecasts available |
 
-### Data flow on gauge selection
+The `ealstm_available` flag is set manually for the 37 CAMELS-overlap stations that have trained EA-LSTM artifacts and CAMELS forcing data in StreamflowOps.
+
+### Data flow on gauge selection — residual correction
 
 1. `app.py` callback → `data_manager.get_resid_cast_forecasts(site_id, num_runs=5)`
 2. `ResidCastAdapter` dispatches to `ResidCastApiClient` (API mode) or `ResidCastDbClient` (direct DB mode) based on `RESID_CAST_USE_API` env var
 3. Client hits `GET /api/v1/stations/{nwrfc_id}/forecasts/?limit=5` on the resid-cast FastAPI service (port 8001)
 4. Results passed to `viz_manager._add_resid_cast_overlay()` — dashed traces, color-coded by model
 
-### ResidCast environment variables
+### Data flow on gauge selection — EA-LSTM precip-runoff
+
+1. `app.py` callback → `_precip_adapter.get_forecasts(usgs_station_id, num_runs=5)` (module-level singleton)
+2. `PrecipRunoffAdapter` (`resid_cast/precip_runoff_adapter.py`) checks `ealstm_available` flag; returns `[]` if false or no `RESID_CAST_API_URL`
+3. Calls `GET {RESID_CAST_API_URL}/api/v1/precip-forecasts/{nwrfc_id}/?limit=5` with Bearer token
+4. Returns list of `{run_date, model_label="EA-LSTM", model_key="ealstm/precip_runoff", source="precip_runoff", data: DataFrame}`
+5. Results passed to `viz_manager._add_precip_overlay()` — dotted amber traces (`["#E67E22","#F0A500",...]`); newest run visible, rest hidden
+
+### Environment variables
 
 | Variable | Purpose |
 |---|---|
@@ -193,12 +204,15 @@ Current coverage: **60 stations**.
 | `RESID_CAST_API_TOKEN` | Bearer token matching `FORECAST_API_TOKEN` in resid-cast `.env` |
 | `RESID_CAST_DB_URL` | SQLAlchemy URL for direct DB access when `RESID_CAST_USE_API=false` |
 
+`PrecipRunoffAdapter` reads `RESID_CAST_API_URL` and `RESID_CAST_API_TOKEN` — same vars as `ResidCastApiClient`.
+
 ### Updating after a resid-cast station expansion
 
 1. Run `python scripts/build_dashboard_config.py` in the resid-cast repo
 2. Commit the updated `config/resid_cast_stations.json` to the dashboard repo
-3. Deploy the dashboard (rsync or manual copy)
-4. No code changes required — the adapter discovers stations from the JSON config at startup
+3. If new stations have EA-LSTM coverage, manually set `ealstm_available: true` in the JSON
+4. Deploy the dashboard (rsync or manual copy)
+5. No code changes required — the adapters discover stations from the JSON config at startup
 
 ---
 
