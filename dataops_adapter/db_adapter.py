@@ -275,7 +275,7 @@ class DirectDBAdapter:
 
     def get_active_station_numbers(self, months_back: int = 6) -> set:
         """
-        Get station numbers for all active USGS stations.
+        Get station numbers for all active stations (any agency).
 
         Reads stations.is_active (maintained by the dataOps pipeline) rather
         than scanning discharge_observations, which is orders of magnitude
@@ -285,12 +285,12 @@ class DirectDBAdapter:
             months_back: Unused — kept for interface compatibility.
 
         Returns:
-            Set of station number strings for active USGS stations
+            Set of station number strings for active stations
         """
         query = """
             SELECT station_number
             FROM stations
-            WHERE is_active = TRUE AND agency = 'USGS'
+            WHERE is_active = TRUE
         """
         try:
             with self._get_connection() as conn:
@@ -301,7 +301,7 @@ class DirectDBAdapter:
             logger.error(f"Error fetching active station numbers: {e}")
             return set()
 
-        logger.info(f"Found {len(result)} active USGS stations (via is_active flag)")
+        logger.info(f"Found {len(result)} active stations (via is_active flag)")
         return result
 
     def _load_crosswalk(self) -> dict:
