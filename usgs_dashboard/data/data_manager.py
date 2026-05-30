@@ -251,12 +251,13 @@ class USGSDataManager:
                 inactive_count = (df['station_status'] == 'Inactive').sum()
                 logger.info(f"Station activity: {active_count} active, {inactive_count} inactive")
             else:
-                # Fallback: mark all as unknown if we can't determine activity
-                logger.warning("Could not determine station activity, defaulting to 'Active'")
-                df['station_status'] = 'Active'
+                # Fallback: mark all as Unknown when activity cannot be determined.
+                # 'Unknown' renders as gray (no_data) on the map — never falsely green.
+                logger.warning("Could not determine station activity — empty active-station set returned; defaulting to 'Unknown'")
+                df['station_status'] = 'Unknown'
         except Exception as e:
             logger.error(f"Error classifying station activity: {e}")
-            df['station_status'] = 'Active'
+            df['station_status'] = 'Unknown'
         
         return df
     
