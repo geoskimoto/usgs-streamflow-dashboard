@@ -232,6 +232,7 @@ All design docs live in `Documentation/`:
 - `DATABASE_SCHEMA.md` — legacy SQLite schema (for reference only)
 - `DEPLOYMENT.md` — deployment steps
 - `QUICK_START.md` — onboarding
+- **`DISPLAY_BEHAVIOR_SPEC.md` — canonical definition of station classification (Active/Inactive/Unknown), filter logic, map coloring, and plot display behavior. All code changes affecting these systems must be validated against this spec.**
 
 Planning specs at root:
 - `PERCENTILE_IMPLEMENTATION_PLAN.md`
