@@ -387,70 +387,46 @@ class DataOpsAdapter:
     
     def get_active_station_numbers(self, months_back: int = 6) -> set:
         """
-        Get set of station numbers that have discharge data in the last N months.
-        
-        Queries the discharge observations API for recent data and returns the
-        unique station numbers found. This is used to classify stations as
-        'Active' (has recent data) vs 'Inactive' (no recent data).
-        
-        NOTE: Does NOT filter by agency since the observations endpoint doesn't 
-        support agency filtering - it returns all agencies' observations naturally.
-        
+        Get set of station numbers where is_active=True.
+
+        Uses GET /api/v1/stations/?is_active=true — the same flag the db_adapter
+        queries via WHERE is_active = TRUE. This is faster and more reliable than
+        scanning discharge observations, which can return empty or partial sets.
+
         Args:
-            months_back: Number of months to look back (default: 6)
-        
+            months_back: Unused — kept for interface compatibility with db_adapter.
+
         Returns:
-            Set of station number strings with recent discharge data
+            Set of station number strings for active stations.
         """
         if not self.api_enabled or not self.api_client:
             logger.warning("API not available for active station lookup")
             return set()
-        
+
         try:
-            start_date = (datetime.now() - timedelta(days=months_back * 30)).strftime('%Y-%m-%d')
             active_stations = set()
-            page_num = 1
-            page_limit = 1000
-            max_pages = 50  # Increased to handle more stations across all agencies
-            
-            for _ in range(max_pages):
-                response = self.api_client._request(
-                    'GET',
-                    '/api/v1/observations/discharge/',
-                    params={
-                        'start_date': start_date,
-                        'limit': page_limit,
-                        'page': page_num,
-                        'ordering': 'station_number'
-                    }
+            page_size = 1000
+            offset = 0
+
+            while True:
+                response = self.api_client.get_stations(
+                    is_active=True,
+                    limit=page_size,
+                    offset=offset
                 )
-                
-                if not isinstance(response, dict) or 'results' not in response:
+
+                for station in response.results:
+                    if station.station_number:
+                        active_stations.add(station.station_number)
+
+                if not response.next:
                     break
-                
-                results = response['results']
-                if not results:
-                    break
-                
-                prev_count = len(active_stations)
-                for obs in results:
-                    sn = obs.get('station_number', '')
-                    if sn:
-                        active_stations.add(sn)
-                
-                # Stop if no new stations found (we've seen them all)
-                if len(active_stations) == prev_count:
-                    break
-                
-                # Stop if no more pages
-                if not response.get('next'):
-                    break
-                
-                page_num += 1
-            
-            logger.info(f"Found {len(active_stations)} stations with data in the last {months_back} months")
+
+                offset += page_size
+
+            logger.info(f"Found {len(active_stations)} active stations (via is_active flag)")
             return active_stations
-            
+
         except Exception as e:
             logger.error(f"Error fetching active station numbers: {e}")
             return set()
