@@ -40,17 +40,19 @@
         }
     });
 
-    /* Hide the tooltip panel when the cursor leaves the map element. */
+    /* Hide the tooltip panel when the cursor leaves a point or the map element. */
     function attachMapLeaveHandler() {
         var mapEl = document.getElementById('gauge-map');
         if (!mapEl) {
             setTimeout(attachMapLeaveHandler, 500);
             return;
         }
-        mapEl.addEventListener('mouseleave', function () {
+        function hidePanel() {
             var panel = document.getElementById('map-hover-panel');
             if (panel) panel.style.display = 'none';
-        });
+        }
+        mapEl.addEventListener('mouseleave', hidePanel);
+        mapEl.on('plotly_unhover', hidePanel);
     }
     attachMapLeaveHandler();
 
