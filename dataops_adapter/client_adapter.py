@@ -581,6 +581,79 @@ class DataOpsAdapter:
             logger.warning(f"Error fetching forecast for {usgs_station_number}: {e}")
             return None
 
+    def _load_ec_nwrfc_crosswalk(self) -> dict:
+        """Load EC gauge ID → NWRFC LID from data/ec_nwrfc_crosswalk.json."""
+        if hasattr(self, '_ec_to_nwrfc') and self._ec_to_nwrfc:
+            return self._ec_to_nwrfc
+
+        self._ec_to_nwrfc = {}
+        crosswalk_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'data', 'ec_nwrfc_crosswalk.json',
+        )
+        try:
+            if os.path.exists(crosswalk_path):
+                with open(crosswalk_path, 'r') as f:
+                    self._ec_to_nwrfc = json.load(f)
+                logger.info("Loaded EC→NWRFC crosswalk: %d mappings", len(self._ec_to_nwrfc))
+        except Exception as exc:
+            logger.warning("Failed to load EC→NWRFC crosswalk: %s", exc)
+
+        return self._ec_to_nwrfc
+
+    def _get_nwrfc_lid(self, site_id: str) -> Optional[str]:
+        """Return NWRFC LID for a USGS or EC gauge ID, or None if no mapping."""
+        usgs_map = getattr(self, '_usgs_to_nwrfc', {})
+        lid = usgs_map.get(site_id)
+        if lid:
+            return lid
+        return self._load_ec_nwrfc_crosswalk().get(site_id)
+
+    def get_nwrfc_web_forecasts(self, site_id: str, num_days: int = 5) -> Optional[List[Dict]]:
+        """Get nwrfc_web forecast runs for a USGS or EC station.
+
+        Returns list of {'run_date': str, 'data': DataFrame} or None.
+        """
+        if not self.api_client:
+            return None
+
+        lid = self._get_nwrfc_lid(site_id)
+        if not lid:
+            logger.debug("get_nwrfc_web_forecasts: no NWRFC LID for %s", site_id)
+            return None
+
+        try:
+            forecasts = self.api_client.get_nwrfc_web_forecasts(lid, num_days=num_days)
+            if not forecasts:
+                return None
+
+            result = []
+            for run in forecasts:
+                rows = []
+                for point in run.get('data', []):
+                    dt = pd.to_datetime(point.get('date'), errors='coerce', utc=True)
+                    val = point.get('value')
+                    if pd.notna(dt) and val is not None:
+                        rows.append({'datetime': dt, 'discharge_cfs': float(val)})
+                if not rows:
+                    continue
+                df = pd.DataFrame(rows).sort_values('datetime').reset_index(drop=True)
+                result.append({'run_date': run.get('run_date'), 'data': df})
+
+            return result if result else None
+
+        except Exception as exc:
+            logger.warning("get_nwrfc_web_forecasts(%s / %s): %s", site_id, lid, exc)
+            return None
+
+    def get_nwrfc_forecasts(self, site_id: str, num_days: int = 5) -> Optional[List[Dict]]:
+        """Get NWRFC forecasts preferring nwrfc_web with NOAA API fallback."""
+        result = self.get_nwrfc_web_forecasts(site_id, num_days=num_days)
+        if result:
+            return result
+        logger.debug("get_nwrfc_forecasts(%s): nwrfc_web empty, falling back to NOAA API", site_id)
+        return self.get_forecast_data(site_id, num_days=num_days)
+
     def get_percentile_date_range(self) -> Dict[str, Optional[str]]:
         """
         Fetch the min/max dates available in daily_flow_percentiles.

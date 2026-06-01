@@ -1869,7 +1869,7 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
     # Fetch NWRFC and ResidCast forecasts (fast — small payloads)
     forecast_data = None
     try:
-        forecast_data = data_manager.get_forecast_data(selected_gauge, num_days=5)
+        forecast_data = data_manager.get_nwrfc_forecasts(selected_gauge, num_runs=5)
     except Exception as e:
         logger.warning(f"Forecast fetch failed for {selected_gauge}: {e}")
     resid_cast_data = data_manager.get_resid_cast_forecasts(selected_gauge, num_runs=5)

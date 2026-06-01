@@ -615,6 +615,80 @@ class DataOpsClient:
             logger.warning(f"Error fetching forecast for {nwrfc_code}: {e}")
             return []
 
+    def get_nwrfc_web_forecasts(
+        self,
+        nwrfc_code: str,
+        num_days: int = 5,
+        use_cache: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get nwrfc_web forecast runs for a station (two-step pattern).
+
+        Step 1: GET list summary with source=nwrfc_web filter.
+        Step 2: GET full detail for each selected run.
+        Returns list of full forecast run dicts (newest-first).
+        """
+        try:
+            data = self._request(
+                'GET',
+                '/api/v1/forecasts/',
+                params={
+                    'station_number': nwrfc_code,
+                    'source': 'nwrfc_web',
+                    'is_forecast': 'true',
+                    'ordering': '-run_date',
+                    'page_size': 50,
+                },
+                use_cache=use_cache,
+            )
+
+            runs = []
+            if isinstance(data, dict) and 'results' in data:
+                runs = data['results']
+            elif isinstance(data, list):
+                runs = data
+
+            if not runs:
+                return []
+
+            # Deduplicate to one run per calendar day (newest first)
+            from datetime import datetime as dt_cls
+            seen_dates = {}
+            for run in runs:
+                run_date_str = run.get('run_date', '')
+                try:
+                    run_dt = dt_cls.fromisoformat(run_date_str.replace('Z', '+00:00'))
+                    cal_date = run_dt.date()
+                except (ValueError, AttributeError):
+                    continue
+                if cal_date not in seen_dates:
+                    seen_dates[cal_date] = run
+                if len(seen_dates) >= num_days:
+                    break
+
+            # Step 2: fetch full detail for each selected run
+            detailed_runs = []
+            for cal_date in sorted(seen_dates.keys(), reverse=True):
+                run = seen_dates[cal_date]
+                run_id = run.get('id')
+                if run_id:
+                    try:
+                        detail = self._request(
+                            'GET',
+                            f'/api/v1/forecasts/{run_id}/',
+                            use_cache=use_cache,
+                        )
+                        if detail and 'data' in detail:
+                            detailed_runs.append(detail)
+                    except Exception as exc:
+                        logger.debug("get_nwrfc_web_forecasts detail %s: %s", run_id, exc)
+
+            return detailed_runs
+
+        except Exception as exc:
+            logger.warning("get_nwrfc_web_forecasts(%s): %s", nwrfc_code, exc)
+            return []
+
     def get_latest_forecast(self, use_cache: bool = True) -> Optional[Dict[str, Any]]:
         """
         Get the most recent forecast across all stations.

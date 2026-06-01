@@ -81,6 +81,9 @@ class USGSDataManager:
         self._forecast_date_range_cache: dict = {}
         self._forecast_date_range_cache_time: float = 0.0
 
+        # NWRFC web forecast flag (off by default — set USE_NWRFC_WEB_FORECASTS=true to enable)
+        self._use_nwrfc_web = os.getenv('USE_NWRFC_WEB_FORECASTS', 'false').lower() == 'true'
+
         # ResidCast ML forecast adapter (None when USE_RESID_CAST is false)
         self._resid_cast: Optional[Any] = None
         if _USE_RESID_CAST:
@@ -895,6 +898,34 @@ class USGSDataManager:
         except Exception as e:
             logger.warning(f"Error getting ResidCast forecasts for {site_id}: {e}")
             return []
+
+    def get_nwrfc_forecasts(self, site_id: str, num_runs: int = 5) -> Optional[List[Dict]]:
+        """Get NWRFC forecast runs. Respects USE_NWRFC_WEB_FORECASTS flag.
+
+        When USE_NWRFC_WEB_FORECASTS=true, tries nwrfc_web source first
+        and falls back to NOAA API. When false, uses NOAA API only.
+
+        Parameters:
+        -----------
+        site_id : str
+            USGS station number (e.g., '14187500')
+        num_runs : int
+            Number of recent forecast runs to return (default: 5)
+
+        Returns:
+        --------
+        list or None
+            List of dicts with 'run_date' (str) and 'data' (DataFrame),
+            ordered newest-first. None if no forecast available.
+        """
+        try:
+            if self._use_nwrfc_web:
+                return self.adapter.get_nwrfc_forecasts(site_id)
+            else:
+                return self.adapter.get_forecast_data(site_id)
+        except Exception as exc:
+            logger.warning(f"get_nwrfc_forecasts({site_id}): {exc}")
+            return None
 
     def get_forecast_station_ids(self) -> set:
         """
