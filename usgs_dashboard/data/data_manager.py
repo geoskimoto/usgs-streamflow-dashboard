@@ -868,6 +868,17 @@ class USGSDataManager:
             logger.warning(f"Error getting ResidCast per-station IDs: {e}")
             return set()
 
+    def get_ealstm_station_ids(self) -> set:
+        """Return the set of USGS station IDs with EA-LSTM precip-runoff forecasts."""
+        if self._resid_cast is None:
+            return set()
+        try:
+            config = self._resid_cast._config
+            return {usgs_id for usgs_id, cfg in config.items() if cfg.get('ealstm_available', False)}
+        except Exception as e:
+            logger.warning(f"Error getting EA-LSTM station IDs: {e}")
+            return set()
+
     def get_resid_cast_forecasts(
         self, site_id: str, num_runs: int = 5
     ) -> List[Dict]:

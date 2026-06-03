@@ -1450,13 +1450,14 @@ def update_date_selection(prev_clicks, next_clicks, picker_value, range_data, fc
      Input('station-status-filter', 'value'),
      Input('forecast-filter', 'value'),
      Input('resid-cast-filter', 'value'),
+     Input('ealstm-filter', 'value'),
      Input('percentile-bands-store', 'data'),
      Input('dark-mode-store', 'data')],
     [State('selected-gauge-store', 'data')]
 )
 def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin_boundaries, search_text, states,
                                      drainage_range, basins, hucs, show_realtime_only, station_status, show_forecast_only,
-                                     show_resid_cast_only, percentile_bands, dark_mode, selected_gauge):
+                                     show_resid_cast_only, show_ealstm_only, percentile_bands, dark_mode, selected_gauge):
     """Update the gauge map based on simplified filters."""
     if not gauges_data:
         empty_fig = go.Figure()
@@ -1563,6 +1564,17 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
                 filtered_gauges = pd.DataFrame()
         except Exception as e:
             logger.warning(f"Error filtering by ResidCast stations: {e}")
+
+    # EA-LSTM precip-runoff forecast filter — 37 CAMELS-overlap basins
+    if show_ealstm_only:
+        try:
+            ealstm_ids = data_manager.get_ealstm_station_ids()
+            if ealstm_ids:
+                filtered_gauges = filtered_gauges[filtered_gauges['site_id'].isin(ealstm_ids)]
+            else:
+                filtered_gauges = pd.DataFrame()
+        except Exception as e:
+            logger.warning(f"Error filtering by EA-LSTM stations: {e}")
 
     # Create map figure
     if len(filtered_gauges) > 0:

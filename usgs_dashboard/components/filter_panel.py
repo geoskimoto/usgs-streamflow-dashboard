@@ -87,8 +87,18 @@ class SimplifiedFilterPanel:
                                 className="mb-1"
                             ),
                             html.Small(
-                                className="text-muted d-block",
+                                className="text-muted d-block mb-2",
                                 children="Stations with per-station bias-corrected models (XGBoost/LSTM/MuTHRE, 13 stations)"
+                            ),
+                            dbc.Switch(
+                                id="ealstm-filter",
+                                label="Show only EA-LSTM forecast stations",
+                                value=False,
+                                className="mb-1"
+                            ),
+                            html.Small(
+                                className="text-muted d-block",
+                                children="CAMELS-overlap basins with precipitation-runoff forecasts (37 stations)"
                             ),
                         ])
                     ], className="mb-3")
