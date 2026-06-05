@@ -31,7 +31,11 @@ class PrecipRunoffAdapter:
 
     def __init__(self):
         self._config = self._load_config()
-        self._api_url = os.environ.get("RESID_CAST_API_URL", "").rstrip("/")
+        self._api_url = (
+            os.environ.get("PRECIP_CAST_API_URL")
+            or os.environ.get("RESID_CAST_API_URL")
+            or ""
+        ).rstrip("/")
         self._token = os.environ.get("RESID_CAST_API_TOKEN", "")
 
     def _load_config(self) -> dict[str, dict]:
