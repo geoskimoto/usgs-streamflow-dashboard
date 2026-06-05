@@ -200,11 +200,12 @@ The `ealstm_available` flag is set manually for the 37 CAMELS-overlap stations t
 | Variable | Purpose |
 |---|---|
 | `RESID_CAST_USE_API` | `true` = call FastAPI on port 8001; `false` = query SQLite/Postgres directly |
-| `RESID_CAST_API_URL` | Base URL of the resid-cast API (default: `http://localhost:8001`) |
+| `RESID_CAST_API_URL` | Base URL of the resid-cast residual correction API (default: `http://localhost:8001`) |
 | `RESID_CAST_API_TOKEN` | Bearer token matching `FORECAST_API_TOKEN` in resid-cast `.env` |
 | `RESID_CAST_DB_URL` | SQLAlchemy URL for direct DB access when `RESID_CAST_USE_API=false` |
+| `PRECIP_CAST_API_URL` | Base URL of the precip-runoff-cast EA-LSTM API (default: `http://localhost:8002`); production: `https://pr-cast.3rdplaces.io` |
 
-`PrecipRunoffAdapter` reads `RESID_CAST_API_URL` and `RESID_CAST_API_TOKEN` — same vars as `ResidCastApiClient`.
+`PrecipRunoffAdapter` reads `PRECIP_CAST_API_URL` first, falls back to `RESID_CAST_API_URL` for backward compatibility. Uses `RESID_CAST_API_TOKEN` for Bearer auth.
 
 ### Updating after a resid-cast station expansion
 
