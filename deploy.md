@@ -1,4 +1,4 @@
-# Deploy to streamflow-dashboard.3rdplaces.io
+# Deploy to dashboard.streamflows.org
 
 ## Quick Deploy
 
@@ -34,7 +34,7 @@ sudo systemctl status streamflow-dashboard.service
 journalctl -u streamflow-dashboard.service -f
 ```
 
-Then hard-refresh browser (Ctrl+Shift+R) at https://streamflow-dashboard.3rdplaces.io
+Then hard-refresh browser (Ctrl+Shift+R) at https://dashboard.streamflows.org
 
 If Varnish cache is enabled in CloudPanel, purge it too:
 

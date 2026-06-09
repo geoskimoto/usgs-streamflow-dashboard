@@ -3,7 +3,7 @@
 ## What This Is
 A Plotly Dash dashboard visualizing USGS streamflow data for the Pacific Northwest and western US. It fetches station data and discharge observations from a private REST API (StreamflowOps/DataOps) and renders interactive maps and water-year overlay plots.
 
-- **Live URL:** `streamflow-dashboard.3rdplaces.io`
+- **Live URL:** `dashboard.streamflows.org`
 - **Local dev:** `python app.py` → `http://localhost:8050`
 - **Primary language:** Python 3.12
 - **Framework:** Plotly Dash + Dash Bootstrap Components
@@ -76,7 +76,7 @@ Never hardcode these. Never commit `.env`.
 | Path | Purpose |
 |---|---|
 | `/home/geoskimoto/projects/usgs-streamflow-dashboard/` | Dev working directory (this repo) |
-| `/home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/` | Live deployed app |
+| `/home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/` | Live deployed app (htdocs dir retains old name) |
 
 The deployed app runs under the `streamflowdash` system user via systemd + gunicorn, proxied through nginx. It uses `.venv/` (not `venv/`) as its virtualenv.
 
