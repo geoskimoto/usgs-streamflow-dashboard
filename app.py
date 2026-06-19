@@ -15,10 +15,7 @@ from datetime import date, datetime, timedelta
 import warnings
 warnings.filterwarnings('ignore')
 
-# Authentication imports
 import flask
-from flask_login import LoginManager, UserMixin, login_user, logout_user, current_user
-import bcrypt
 import logging
 import os
 import threading
@@ -35,24 +32,6 @@ from usgs_dashboard.utils.config import (
     APP_TITLE, APP_DESCRIPTION, GAUGE_COLORS, 
     TARGET_STATES, DEFAULT_ZOOM_LEVEL, SUBSET_CONFIG
 )
-
-# Authentication configuration
-class User(UserMixin):
-    def __init__(self, id):
-        self.id = id
-
-# Admin credentials — set ADMIN_PASSWORD_BCRYPT in .env (bcrypt hash of the password)
-# Generate with: python -c "import bcrypt; print(bcrypt.hashpw(b'yourpassword', bcrypt.gensalt()).decode())"
-ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
-_ADMIN_PASSWORD_BCRYPT = os.environ.get('ADMIN_PASSWORD_BCRYPT', '').encode()
-
-def verify_password(username, password):
-    """Verify admin credentials using bcrypt."""
-    if username != ADMIN_USERNAME:
-        return False
-    if not _ADMIN_PASSWORD_BCRYPT:
-        return False
-    return bcrypt.checkpw(password.encode(), _ADMIN_PASSWORD_BCRYPT)
 
 # Initialize components
 data_manager = get_data_manager()
@@ -300,15 +279,9 @@ app.index_string = '''
 # Expose the server for gunicorn
 server = app.server
 
-# Configure Flask-Login
 server.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-in-production')
-login_manager = LoginManager()
-login_manager.init_app(server)
-login_manager.login_view = '/login'
-
-@login_manager.user_loader
-def load_user(user_id):
-    return User(user_id)
+from streamflows_auth import protect_app
+protect_app(server, "streamflow")
 
 # Global variables
 gauges_df = pd.DataFrame()
@@ -356,46 +329,6 @@ def create_header():
     ], fluid=True)
 
 
-def create_login_modal():
-    """Create the login modal for admin authentication."""
-    return dbc.Modal([
-        dbc.ModalHeader(dbc.ModalTitle("🔐 Admin Login")),
-        dbc.ModalBody([
-            dbc.Form([
-                dbc.Row([
-                    dbc.Label("Username", html_for="login-username", width=3),
-                    dbc.Col([
-                        dbc.Input(
-                            type="text",
-                            id="login-username",
-                            placeholder="Enter username",
-                            className="mb-2"
-                        )
-                    ], width=9)
-                ]),
-                dbc.Row([
-                    dbc.Label("Password", html_for="login-password", width=3),
-                    dbc.Col([
-                        dbc.Input(
-                            type="password",
-                            id="login-password",
-                            placeholder="Enter password",
-                            className="mb-2"
-                        )
-                    ], width=9)
-                ]),
-            ]),
-            html.Div(id="login-feedback", className="mt-2")
-        ]),
-        dbc.ModalFooter([
-            dbc.Button("Cancel", id="login-cancel-btn", className="me-2", n_clicks=0),
-            dbc.Button("Login", id="login-submit-btn", color="primary", n_clicks=0)
-        ]),
-    ],
-    id="login-modal",
-    is_open=False,
-    centered=True,
-    backdrop="static")
 
 
 def create_sidebar():
@@ -640,7 +573,7 @@ def create_admin_content():
             dbc.Card([
                 dbc.CardHeader([
                     html.H4("🔧 Admin Dashboard", className="mb-0"),
-                    dbc.Button("🚪 Logout", id="logout-btn", color="outline-danger", size="sm", className="float-end")
+                    html.A("🚪 Sign out", href="https://apps.streamflows.org/logout", className="btn btn-outline-danger btn-sm float-end")
                 ]),
                 dbc.CardBody([
                     # Enhanced Station Configuration Management
@@ -958,9 +891,6 @@ app.layout = dbc.Container([
         create_admin_content()
     ], id="admin-content", style={"display": "none"}),
     
-    # Login modal - ALWAYS exists in layout
-    create_login_modal(),
-    
     # Location component for URL tracking
     dcc.Location(id='url', refresh=False),
     
@@ -972,7 +902,6 @@ app.layout = dbc.Container([
     dcc.Store(id='history-mode-store', data=None),
     dcc.Store(id='streamflow-data-store'),
     dcc.Store(id='site-limit-store', data=300),
-    dcc.Store(id='auth-store', data={'authenticated': False}),
     dcc.Store(id='percentile-bands-store', data={}),
     dcc.Store(id='percentile-date-range-store', data={}),
     dcc.Store(id='forecast-date-range-store', storage_type='memory'),
@@ -1068,117 +997,15 @@ app.clientside_callback(
     [Output('dashboard-content', 'style'),
      Output('admin-content', 'style')],
     [Input('show-dashboard-btn', 'n_clicks'),
-     Input('show-admin-btn', 'n_clicks'),
-     Input('auth-store', 'data')],
+     Input('show-admin-btn', 'n_clicks')],
     prevent_initial_call=False
 )
-def show_hide_content(dashboard_clicks, admin_clicks, auth_data):
-    """Show/hide dashboard and admin content based on navigation and authentication."""
+def show_hide_content(dashboard_clicks, admin_clicks):
+    """Toggle between dashboard and admin panel views."""
     ctx = callback_context
-    
-    if not ctx.triggered:
-        # Default: show dashboard
-        return {"display": "block"}, {"display": "none"}
-    
-    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
-    
-    if trigger_id == 'show-dashboard-btn':
-        return {"display": "block"}, {"display": "none"}
-    
-    elif trigger_id == 'show-admin-btn':
-        # Check if authenticated
-        if auth_data and auth_data.get('authenticated', False):
-            return {"display": "none"}, {"display": "block"}
-        else:
-            # Not authenticated - stay on dashboard (modal will be opened by separate callback)
-            return {"display": "block"}, {"display": "none"}
-    
-    elif trigger_id == 'auth-store':
-        # Authentication state changed - if authenticated, show admin content
-        if auth_data and auth_data.get('authenticated', False):
-            return {"display": "none"}, {"display": "block"}
-    
-    # Default
+    if ctx.triggered and ctx.triggered[0]['prop_id'].split('.')[0] == 'show-admin-btn':
+        return {"display": "none"}, {"display": "block"}
     return {"display": "block"}, {"display": "none"}
-
-
-@app.callback(
-    [Output('login-modal', 'is_open')],
-    [Input('show-admin-btn', 'n_clicks'),
-     Input('login-cancel-btn', 'n_clicks'),
-     Input('auth-store', 'data')],
-    [State('login-modal', 'is_open'),
-     State('auth-store', 'data')],
-    prevent_initial_call=True
-)
-def toggle_login_modal(admin_clicks, cancel_clicks, auth_data_changed, is_open, current_auth):
-    """Toggle the login modal."""
-    ctx = callback_context
-    if ctx.triggered:
-        trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
-        
-        # Close modal on successful login
-        if trigger_id == 'auth-store' and auth_data_changed and auth_data_changed.get('authenticated'):
-            return [False]
-        
-        # Open modal when admin button clicked but not authenticated
-        if trigger_id == 'show-admin-btn':
-            if not current_auth or not current_auth.get('authenticated'):
-                return [True]
-        
-        # Close modal on cancel
-        if trigger_id == 'login-cancel-btn':
-            return [False]
-            
-    return [is_open]
-
-
-# Authentication callback
-@app.callback(
-    [Output('auth-store', 'data'),
-     Output('login-feedback', 'children'),
-     Output('login-username', 'value'),
-     Output('login-password', 'value')],
-    [Input('login-submit-btn', 'n_clicks')],
-    [State('login-username', 'value'),
-     State('login-password', 'value'),
-     State('auth-store', 'data')],
-    prevent_initial_call=True
-)
-def handle_login(login_clicks, username, password, auth_data):
-    """Handle login authentication."""
-    if login_clicks and login_clicks > 0:
-        if not username or not password:
-            return (auth_data or {'authenticated': False},
-                    dbc.Alert("Please enter both username and password", color="warning"),
-                    username or "", password or "")
-
-        if verify_password(username, password):
-            logger.info(f"Login successful for user: {username}")
-            return ({'authenticated': True, 'username': username},
-                    dbc.Alert("Login successful!", color="success"),
-                    "", "")
-        else:
-            logger.warning(f"Failed login attempt for user: {username}")
-            return (auth_data or {'authenticated': False},
-                    dbc.Alert("Invalid username or password", color="danger"),
-                    username, "")
-    
-    return auth_data or {'authenticated': False}, "", username or "", password or ""
-
-
-@app.callback(
-    [Output('auth-store', 'data', allow_duplicate=True)],
-    [Input('logout-btn', 'n_clicks')],
-    prevent_initial_call=True
-)
-def handle_logout(logout_clicks):
-    """Handle logout."""
-    if logout_clicks and logout_clicks > 0:
-        logger.info("User logged out")
-        return [{'authenticated': False}]
-    
-    return [no_update]
 
 
 # Data Update Management Callbacks

@@ -243,45 +243,6 @@ class TestGaugeSelection:
 # ==========================================================================
 # Authentication Callback Tests
 # ==========================================================================
-
-class TestAuthentication:
-    """Test login/logout callbacks."""
-
-    @patch("app.verify_password")
-    def test_login_success(self, mock_verify):
-        mock_verify.return_value = True
-
-        from app import handle_login
-        auth_data, feedback, username, password = handle_login(
-            1, "admin", "password", None
-        )
-
-        assert auth_data["authenticated"] is True
-        assert auth_data["username"] == "admin"
-
-    @patch("app.verify_password")
-    def test_login_failure(self, mock_verify):
-        mock_verify.return_value = False
-
-        from app import handle_login
-        auth_data, feedback, _, _ = handle_login(
-            1, "admin", "wrong", None
-        )
-
-        assert not auth_data.get("authenticated", False)
-
-    def test_login_missing_credentials(self):
-        from app import handle_login
-        auth_data, feedback, _, _ = handle_login(1, "", "", None)
-        assert not auth_data.get("authenticated", False)
-
-    def test_logout(self):
-        from app import handle_logout
-        result = handle_logout(1)
-        assert result[0]["authenticated"] is False
-
-
-# ==========================================================================
 # Map Height Callback Tests
 # ==========================================================================
 

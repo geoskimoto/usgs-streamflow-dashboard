@@ -8,6 +8,11 @@ import os
 import sys
 import json
 import pytest
+
+# Required by protect_app — must be set before app is imported
+os.environ.setdefault("JWT_SECRET", "test-jwt-secret-for-pytest-32bytes!!")
+os.environ.setdefault("AUTH_LOGIN_URL", "https://apps.streamflows.org/login")
+os.environ.setdefault("AUTH_PORTAL_URL", "https://apps.streamflows.org/")
 import tempfile
 import pandas as pd
 from datetime import datetime, timedelta
