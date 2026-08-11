@@ -301,3 +301,42 @@ class TestDrainageDisplay:
         result = update_drainage_display([100, 5000])
         assert "100" in result
         assert "5,000" in result or "5000" in result
+
+
+# ==========================================================================
+# Map Hover Panel Dismissal Tests
+# ==========================================================================
+
+def _find_component_by_id(component, target_id):
+    """Recursively search a Dash layout tree for a component by id."""
+    if getattr(component, "id", None) == target_id:
+        return component
+    children = getattr(component, "children", None)
+    if children is None:
+        return None
+    if not isinstance(children, (list, tuple)):
+        children = [children]
+    for child in children:
+        found = _find_component_by_id(child, target_id)
+        if found is not None:
+            return found
+    return None
+
+
+class TestMapHoverPanelDismissal:
+    """The hover panel must disappear as soon as the mouse leaves a station."""
+
+    def test_gauge_map_clears_hover_data_on_unhover(self):
+        """Without clear_on_unhover=True, hoverData persists after mouse-out
+        and the callback that hides the panel never fires."""
+        import app as app_module
+        graph = _find_component_by_id(app_module.app.layout, "gauge-map")
+        assert graph is not None, "gauge-map Graph not found in layout"
+        assert getattr(graph, "clear_on_unhover", False) is True
+
+    def test_tooltip_store_hides_panel_on_cleared_hover_data(self):
+        """When hoverData is cleared (None), the store must signal hide."""
+        from app import update_map_tooltip_store
+        store, info = update_map_tooltip_store(None)
+        assert store == {"show": False}
+        assert info == []

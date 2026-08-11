@@ -40,10 +40,13 @@
         }
     });
 
-    /* Hide the tooltip panel when the cursor leaves a point or the map element. */
+    /* Hide the tooltip panel when the cursor leaves a point or the map element.
+       plotly_unhover must be bound on the inner .js-plotly-plot graph div —
+       the outer Dash wrapper (#gauge-map) is a plain DOM element with no .on(). */
     function attachMapLeaveHandler() {
         var mapEl = document.getElementById('gauge-map');
-        if (!mapEl) {
+        var gd = mapEl && mapEl.querySelector('.js-plotly-plot');
+        if (!gd || typeof gd.on !== 'function') {
             setTimeout(attachMapLeaveHandler, 500);
             return;
         }
@@ -52,7 +55,7 @@
             if (panel) panel.style.display = 'none';
         }
         mapEl.addEventListener('mouseleave', hidePanel);
-        mapEl.on('plotly_unhover', hidePanel);
+        gd.on('plotly_unhover', hidePanel);
     }
     attachMapLeaveHandler();
 

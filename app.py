@@ -691,7 +691,8 @@ def create_main_content():
                         dcc.Graph(
                             id="gauge-map",
                             style={"height": "700px"},  # This will be updated dynamically
-                            config={"displayModeBar": "hover", "displaylogo": False}
+                            config={"displayModeBar": "hover", "displaylogo": False},
+                            clear_on_unhover=True,  # reset hoverData on mouse-out so the hover panel hides
                         )
                     ]
                 )
