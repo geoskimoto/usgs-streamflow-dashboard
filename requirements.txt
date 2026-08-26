@@ -2,16 +2,21 @@
 # For Render deployment
 
 # Web Framework
-dash>=2.14.0
+# dash pinned: it bundles its own plotly.js client-side at package build time
+# (independent of the separately pip-installed `plotly` package below), and
+# 4.4.1 changed usgs_dashboard/components/map_component.py's go.Scattermap
+# rendering enough to break the map. 4.0.0 is the last version verified working.
+dash==4.0.0
 dash-bootstrap-components>=1.5.0
 gunicorn>=21.2.0
 streamflows-auth @ file:///home/geoskimoto/projects/streamflows-auth
 PyJWT>=2.9.0
 
 # Visualization
-# Pinned: plotly 7.0.0 broke go.Scattermap client-side rendering (map wouldn't
-# load) after a clean venv rebuild resolved the unpinned >= to latest. 6.5.2
-# is the last version verified working with usgs_dashboard/components/map_component.py.
+# Pinned to match the last verified-working venv exactly (see dash note
+# above) after a clean rebuild resolved the unpinned >= to 7.0.0. Python-side
+# figure construction was confirmed unaffected either way; kept pinned as a
+# known-good baseline rather than re-introducing an untested version.
 plotly==6.5.2
 matplotlib>=3.5.0
 kaleido>=1.0.0
