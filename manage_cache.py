@@ -145,6 +145,18 @@ def _build_station_list(args, dm) -> list[str]:
             logger.warning("No 'is_active' column found; falling back to all stations.")
             return all_ids
 
+    # Narrower than --forecast: only the stations configured in
+    # config/resid_cast_stations.json. --forecast additionally unions in the
+    # full NWRFC crosswalk, which resolves to ~5x as many stations.
+    if getattr(args, "nwrfc", False):
+        resid_cast_ids = dm.get_resid_cast_station_ids()
+        filtered = [sid for sid in all_ids if sid in resid_cast_ids]
+        logger.info(
+            f"NWRFC filter: {len(resid_cast_ids)} configured stations "
+            f"→ {len(filtered)} matching dashboard stations"
+        )
+        return filtered
+
     if args.forecast:
         nwrfc_ids = _load_nwrfc_usgs_ids()
         resid_cast_ids = dm.get_resid_cast_station_ids()
@@ -302,17 +314,19 @@ def cmd_rebuild_plots(args):
     dm = _get_data_manager()
     vm = get_visualization_manager()
 
-    # Always filter to NWRFC forecast stations (union with ResidCast)
+    # Filter to forecast stations: --nwrfc for the resid_cast_stations.json set,
+    # otherwise the wider NWRFC-crosswalk union.
     if args.site:
         site_ids = [args.site]
     else:
-        _forecast_args = _argparse.Namespace(
+        _sel_args = _argparse.Namespace(
             site=None,
             all_stations=False,
             active=False,
-            forecast=True,
+            nwrfc=args.nwrfc,
+            forecast=not args.nwrfc,
         )
-        site_ids = _build_station_list(_forecast_args, dm)
+        site_ids = _build_station_list(_sel_args, dm)
 
     if not site_ids:
         logger.error("No stations to process — exiting.")
@@ -575,16 +589,29 @@ def _rebuild_png_one(site_id: str, force: bool) -> tuple[str, str, float]:
 
 def cmd_rebuild_pngs(args):
     """Entry point for the rebuild_pngs sub-command."""
+    import argparse as _argparse
     from usgs_dashboard.data import plot_cache_manager
     from usgs_dashboard.data import png_cache_manager
 
     if args.site:
         site_ids = [args.site]
+    elif args.nwrfc:
+        # Explicit station set, so the nightly job is deterministic rather than
+        # "whatever happens to be in the JSON cache". Stations without a JSON
+        # plot cache report 'no_json' — run rebuild_plots --nwrfc first.
+        _sel_args = _argparse.Namespace(
+            site=None,
+            all_stations=False,
+            active=False,
+            nwrfc=True,
+            forecast=False,
+        )
+        site_ids = _build_station_list(_sel_args, _get_data_manager())
     else:
         site_ids = plot_cache_manager.list_cached()
 
     if not site_ids:
-        logger.error("No stations with JSON plot cache found — run rebuild_plots first.")
+        logger.error("No stations selected — run rebuild_plots first, or pass --nwrfc.")
         sys.exit(1)
 
     logger.info(
@@ -756,6 +783,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Parallel worker threads (default: 4)",
     )
     rebuild_plots.add_argument(
+        "--nwrfc",
+        action="store_true",
+        help="Only stations in config/resid_cast_stations.json (~239) instead of "
+             "the wider NWRFC-crosswalk union (~1186)",
+    )
+    rebuild_plots.add_argument(
         "--force",
         action="store_true",
         help="Rebuild even when a valid cache already exists",
@@ -790,6 +823,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "--workers", type=int, default=4, metavar="N",
         help="Parallel worker threads (default: 4)",
     )
+    rebuild_pngs.add_argument("--nwrfc", action="store_true",
+        help="Only stations in config/resid_cast_stations.json (~239) instead of "
+             "every JSON-cached station")
     rebuild_pngs.add_argument("--force", action="store_true",
         help="Rebuild even when a valid PNG already exists")
     rebuild_pngs.add_argument("--dry-run", action="store_true",
