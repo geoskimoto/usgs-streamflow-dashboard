@@ -937,10 +937,27 @@ app.layout = dbc.Container([
         'width': 'min(350px, calc(100vw - 20px))'
     }),
 
-    # Map station hover panel — follows cursor, shows station info + PNG thumbnail
+    # Map station hover panel — follows cursor, shows station info + PNG thumbnail.
+    # display/left/top are owned exclusively by assets/hover_zoom.js. Everything
+    # here is written once by React at mount and never updated — no callback may
+    # output this component's `style`, or the two writers desync (see hover_zoom.js).
     html.Div(
         id='map-hover-panel',
-        style={'display': 'none'},
+        style={
+            'display': 'none',
+            'position': 'fixed',
+            'left': '0px',
+            'top': '0px',
+            'width': '462px',      # must match PW in hover_zoom.js
+            'zIndex': 9000,
+            'backgroundColor': '#252525',
+            'border': '1px solid #444444',
+            'borderRadius': '8px',
+            'boxShadow': '0 6px 24px rgba(0,0,0,0.65)',
+            'padding': '0',
+            'overflow': 'hidden',
+            'pointerEvents': 'none',
+        },
         children=[
             html.Div(id='map-hover-info-text', style={
                 'padding': '5px 9px 4px 9px',
@@ -2195,56 +2212,29 @@ def update_map_tooltip_store(hover_data):
     return {'show': True, 'src': src, 'has_png': has_png}, info
 
 
-# Map hover panel: position near cursor using window._hoverCursor (populated by hover_zoom.js).
+# Map hover panel: hand the panel's visibility and placement to hover_zoom.js, which
+# is its sole owner. This callback only fills in the thumbnail — it must never
+# output 'map-hover-panel'.'style' (see the comment in hover_zoom.js).
 app.clientside_callback(
     """
     function(storeData) {
-        var hidden = {'display': 'none'};
         var noUpdate = window.dash_clientside.no_update;
 
         if (!storeData || !storeData.show) {
-            return [hidden, noUpdate, {'display': 'none'}];
+            if (window._hideHoverPanel) { window._hideHoverPanel(false); }
+            return [noUpdate, {'display': 'none'}];
         }
 
-        var cx = (window._hoverCursor && window._hoverCursor.x) || 0;
-        var cy = (window._hoverCursor && window._hoverCursor.y) || 0;
+        if (window._showHoverPanel) { window._showHoverPanel(storeData); }
 
-        var hasPng  = storeData.has_png;
-        var PW      = 462;
-        var PH      = hasPng ? 357 : 116;
-        var OFFSET  = 14;
-        var vw = window.innerWidth, vh = window.innerHeight;
-        var left = cx + OFFSET;
-        var top  = cy - Math.round(PH / 2);
-        if (left + PW > vw - 8) { left = cx - PW - OFFSET; }
-        if (top < 8)             { top  = 8; }
-        if (top + PH > vh - 8)  { top  = vh - PH - 8; }
-
-        var panelStyle = {
-            'display': 'block',
-            'position': 'fixed',
-            'left': left + 'px',
-            'top':  top  + 'px',
-            'width': PW + 'px',
-            'zIndex': 9000,
-            'backgroundColor': '#252525',
-            'border': '1px solid #444444',
-            'borderRadius': '8px',
-            'boxShadow': '0 6px 24px rgba(0,0,0,0.65)',
-            'padding': '0',
-            'overflow': 'hidden',
-            'pointerEvents': 'none',
-        };
-
-        var imgStyle = hasPng
+        var imgStyle = storeData.has_png
             ? {'display': 'block', 'width': '462px', 'height': '268px', 'borderRadius': '0 0 6px 6px'}
             : {'display': 'none'};
 
-        return [panelStyle, storeData.src || '', imgStyle];
+        return [storeData.src || '', imgStyle];
     }
     """,
-    [Output('map-hover-panel', 'style'),
-     Output('map-hover-tooltip-img', 'src'),
+    [Output('map-hover-tooltip-img', 'src'),
      Output('map-hover-tooltip-img', 'style')],
     Input('map-tooltip-store', 'data'),
 )
