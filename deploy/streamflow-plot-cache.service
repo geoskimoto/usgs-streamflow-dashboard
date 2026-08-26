@@ -5,8 +5,8 @@ After=network.target
 [Service]
 Type=oneshot
 User=streamflowdash
-WorkingDirectory=/home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io
-ExecStart=/home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/.venv/bin/python \
+WorkingDirectory=/home/streamflowdash/htdocs/dashboard.streamflows.org
+ExecStart=/home/streamflowdash/htdocs/dashboard.streamflows.org/.venv/bin/python \
     manage_cache.py rebuild_plots --workers 4
 StandardOutput=journal
 StandardError=journal

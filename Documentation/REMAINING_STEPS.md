@@ -22,10 +22,10 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 
 ```bash
 sudo cp /home/geoskimoto/projects/usgs-streamflow-dashboard/usgs_dashboard/components/map_component.py \
-  /home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/usgs_dashboard/components/map_component.py
+  /home/streamflowdash/htdocs/dashboard.streamflows.org/usgs_dashboard/components/map_component.py
 
 sudo chown streamflowdash:streamflowdash \
-  /home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/usgs_dashboard/components/map_component.py
+  /home/streamflowdash/htdocs/dashboard.streamflows.org/usgs_dashboard/components/map_component.py
 
 sudo systemctl restart streamflow-dashboard.service
 ```
@@ -37,4 +37,4 @@ systemctl is-active streamflow-dashboard.service
 journalctl -u streamflow-dashboard.service -f
 ```
 
-Check the live site at https://streamflow-dashboard.3rdplaces.io — the map should load on all devices.
+Check the live site at https://dashboard.streamflows.org — the map should load on all devices.

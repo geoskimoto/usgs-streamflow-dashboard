@@ -2,7 +2,7 @@
 set -e
 
 DEV=/home/geoskimoto/projects/usgs-streamflow-dashboard
-DEPLOY=/home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io
+DEPLOY=/home/streamflowdash/htdocs/dashboard.streamflows.org
 SERVICE=streamflow-dashboard.service
 
 echo "==> Syncing files..."

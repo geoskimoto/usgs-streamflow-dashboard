@@ -13,7 +13,7 @@ From the dev directory on the VPS:
 ## If new Python dependencies were added
 
 ```bash
-sudo -u streamflowdash /home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/.venv/bin/pip install -r /home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/requirements.txt -q
+sudo -u streamflowdash /home/streamflowdash/htdocs/dashboard.streamflows.org/.venv/bin/pip install -r /home/streamflowdash/htdocs/dashboard.streamflows.org/requirements.txt -q
 ```
 
 ## Pre-warm the stats cache (optional but recommended)
@@ -21,7 +21,7 @@ sudo -u streamflowdash /home/streamflowdash/htdocs/streamflow-dashboard.3rdplace
 The water-year statistics cache (parquet files in `data/stats_cache/`) is excluded from rsync and builds automatically on first gauge click. To pre-warm it on the server instead:
 
 ```bash
-cd /home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io
+cd /home/streamflowdash/htdocs/dashboard.streamflows.org
 sudo -u streamflowdash .venv/bin/python manage_cache.py rebuild_stats --active
 ```
 

@@ -1,10 +1,10 @@
-# Deployment Guide — streamflow-dashboard.3rdplaces.io
+# Deployment Guide — dashboard.streamflows.org
 
 ## Overview
 
 The deployed app lives at:
 ```
-/home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/
+/home/streamflowdash/htdocs/dashboard.streamflows.org/
 ```
 
 The source code lives at:
@@ -32,7 +32,7 @@ rsync -av --checksum \
   --exclude='.well-known' \
   --exclude='CLAUDE.md' \
   /home/geoskimoto/projects/usgs-streamflow-dashboard/ \
-  /home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/
+  /home/streamflowdash/htdocs/dashboard.streamflows.org/
 ```
 
 **Key exclusions — never overwrite these:**
@@ -43,12 +43,12 @@ rsync -av --checksum \
 ### 2. Check if dependencies changed
 ```bash
 diff /home/geoskimoto/projects/usgs-streamflow-dashboard/requirements.txt \
-     /home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/requirements.txt
+     /home/streamflowdash/htdocs/dashboard.streamflows.org/requirements.txt
 ```
 
 If `requirements.txt` changed, install new deps before restarting:
 ```bash
-sudo -u streamflowdash /home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/.venv/bin/pip install -r /home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/requirements.txt
+sudo -u streamflowdash /home/streamflowdash/htdocs/dashboard.streamflows.org/.venv/bin/pip install -r /home/streamflowdash/htdocs/dashboard.streamflows.org/requirements.txt
 ```
 
 ### 3. Restart the service

@@ -76,7 +76,7 @@ Never hardcode these. Never commit `.env`.
 | Path | Purpose |
 |---|---|
 | `/home/geoskimoto/projects/usgs-streamflow-dashboard/` | Dev working directory (this repo) |
-| `/home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/` | Live deployed app (htdocs dir retains old name) |
+| `/home/streamflowdash/htdocs/dashboard.streamflows.org/` | Live deployed app |
 
 The deployed app runs under the `streamflowdash` system user via systemd + gunicorn, proxied through nginx. It uses `.venv/` (not `venv/`) as its virtualenv.
 
@@ -87,7 +87,7 @@ The deployed app runs under the `streamflowdash` system user via systemd + gunic
 git push
 
 # 2. Pull in the deployed directory
-cd /home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io
+cd /home/streamflowdash/htdocs/dashboard.streamflows.org
 sudo -u streamflowdash git pull
 
 # 3. Restart the service
@@ -96,7 +96,7 @@ sudo systemctl restart streamflow-dashboard.service
 
 **If new Python dependencies were added**, install them after pulling:
 ```bash
-sudo -u streamflowdash /home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/.venv/bin/pip install -r /home/streamflowdash/htdocs/streamflow-dashboard.3rdplaces.io/requirements.txt -q
+sudo -u streamflowdash /home/streamflowdash/htdocs/dashboard.streamflows.org/.venv/bin/pip install -r /home/streamflowdash/htdocs/dashboard.streamflows.org/requirements.txt -q
 ```
 
 **To tail logs after deploy:**
