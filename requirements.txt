@@ -9,7 +9,10 @@ streamflows-auth @ file:///home/geoskimoto/projects/streamflows-auth
 PyJWT>=2.9.0
 
 # Visualization
-plotly>=5.15.0
+# Pinned: plotly 7.0.0 broke go.Scattermap client-side rendering (map wouldn't
+# load) after a clean venv rebuild resolved the unpinned >= to latest. 6.5.2
+# is the last version verified working with usgs_dashboard/components/map_component.py.
+plotly==6.5.2
 matplotlib>=3.5.0
 kaleido>=1.0.0
 
