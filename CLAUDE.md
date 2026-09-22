@@ -204,8 +204,21 @@ The `ealstm_available` flag is set manually for the 37 CAMELS-overlap stations t
 | `RESID_CAST_API_TOKEN` | Bearer token matching `FORECAST_API_TOKEN` in resid-cast `.env` |
 | `RESID_CAST_DB_URL` | SQLAlchemy URL for direct DB access when `RESID_CAST_USE_API=false` |
 | `PRECIP_CAST_API_URL` | Base URL of the precip-runoff-cast EA-LSTM API (default: `http://localhost:8002`); production: `https://pr-cast.3rdplaces.io` |
+| `USE_BLENDED_FORECAST` | `true` = enable the blended forecast trace via model-blender |
+| `BLENDED_FORECAST_API_URL` | Base URL of the model-blender API (default: `http://localhost:8011`) |
+| `BLENDED_FORECAST_API_TOKEN` | Bearer token matching `BLENDER_API_TOKEN` in model-blender's `.env` |
 
 `PrecipRunoffAdapter` reads `PRECIP_CAST_API_URL` first, falls back to `RESID_CAST_API_URL` for backward compatibility. Uses `RESID_CAST_API_TOKEN` for Bearer auth.
+
+### Data flow on gauge selection — blended forecast (model-blender)
+
+model-blender is a separate internal service that picks, per lead day, which upstream forecast (StreamflowOps NWRFC baseline for lead days 0-7, precip-runoff-cast EA-LSTM for lead days 8-13) to trust, and serves the result as one continuous forecast — see `/home/geoskimoto/projects/model-blender/DESIGN.md` for the full design.
+
+1. `app.py` callback → `data_manager.get_blended_forecasts(site_id, num_runs=5)` (routed through `data_manager`, unlike `PrecipRunoffAdapter`'s module-level singleton, per this package's "single entry point for callbacks" rule)
+2. `BlendedForecastAdapter` (`resid_cast/blended_forecast_adapter.py`) checks the same `ealstm_available` flag `PrecipRunoffAdapter` uses (model-blender's longer-lead-day coverage shares the same 37-station binding constraint); returns `[]` if false or no `BLENDED_FORECAST_API_URL`
+3. Calls `GET {BLENDED_FORECAST_API_URL}/api/v1/blended-forecasts/{nwrfc_id}/` with Bearer token — no `limit`/pagination param; the endpoint always returns the single current blend, not historical runs
+4. Reshapes the flat per-lead-day response (`{valid_date, lead_day, value_cfs, source, model_artifact}` rows) into the same `{run_date, model_label, model_key, source, data}` shape the other two adapters use, so `viz_manager` needs no special-casing. `run_date` is back-computed from the lowest-lead_day row (`valid_date - lead_day` days), since model-blender's response has no top-level as-of field. Always 0 or 1 entries.
+5. Results passed to `viz_manager._add_blended_overlay()` — dash-dot purple/magenta traces (`["#8E44AD","#A569BD",...]`), distinct from ResidCast's dashed teal/green/blue and precip-runoff's dotted amber/orange
 
 ### Updating after a resid-cast station expansion
 

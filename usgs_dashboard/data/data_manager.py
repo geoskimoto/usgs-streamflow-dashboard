@@ -25,6 +25,11 @@ _USE_RESID_CAST = _os.environ.get("USE_RESID_CAST", "false").lower() == "true"
 if _USE_RESID_CAST:
     from resid_cast import ResidCastAdapter
 
+# Import BlendedForecastAdapter (optional — only active when USE_BLENDED_FORECAST=true)
+_USE_BLENDED_FORECAST = _os.environ.get("USE_BLENDED_FORECAST", "false").lower() == "true"
+if _USE_BLENDED_FORECAST:
+    from resid_cast import BlendedForecastAdapter
+
 logger = logging.getLogger(__name__)
 
 
@@ -92,6 +97,15 @@ class USGSDataManager:
                 logger.info("ResidCast adapter initialised")
             except Exception as e:
                 logger.warning(f"ResidCast adapter failed to initialise: {e}")
+
+        # model-blender blended forecast adapter (None when USE_BLENDED_FORECAST is false)
+        self._blended_forecast: Optional[Any] = None
+        if _USE_BLENDED_FORECAST:
+            try:
+                self._blended_forecast = BlendedForecastAdapter()
+                logger.info("BlendedForecast adapter initialised")
+            except Exception as e:
+                logger.warning(f"BlendedForecast adapter failed to initialise: {e}")
 
         logger.info(f"✅ USGSDataManager initialized with DataOps adapter")
         logger.info(f"   Mode: {self.adapter.mode}")
@@ -908,6 +922,39 @@ class USGSDataManager:
             return runs
         except Exception as e:
             logger.warning(f"Error getting ResidCast forecasts for {site_id}: {e}")
+            return []
+
+    def get_blended_forecasts(
+        self, site_id: str, num_runs: int = 5
+    ) -> List[Dict]:
+        """
+        Get the current model-blender blended forecast for a USGS station.
+
+        Parameters:
+        -----------
+        site_id : str
+            USGS station number (e.g., '14187500')
+        num_runs : int
+            Accepted for interface parity with get_resid_cast_forecasts;
+            model-blender exposes only the current blend, not historical
+            runs, so this has no effect.
+
+        Returns:
+        --------
+        list
+            List of dicts with keys: run_date, model_label, model_key,
+            source ('model_blender'), data (DataFrame with datetime/discharge_cfs).
+            Always 0 or 1 entries. Empty list if disabled or no data available.
+        """
+        if self._blended_forecast is None:
+            return []
+        try:
+            runs = self._blended_forecast.get_forecasts(site_id, num_runs=num_runs)
+            if runs:
+                logger.info(f"Got blended forecast for {site_id}")
+            return runs
+        except Exception as e:
+            logger.warning(f"Error getting blended forecast for {site_id}: {e}")
             return []
 
     def get_nwrfc_forecasts(self, site_id: str, num_runs: int = 5) -> Optional[List[Dict]]:

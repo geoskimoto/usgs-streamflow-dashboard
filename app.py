@@ -1731,6 +1731,7 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
         logger.warning(f"Forecast fetch failed for {selected_gauge}: {e}")
     resid_cast_data = data_manager.get_resid_cast_forecasts(selected_gauge, num_runs=5)
     precip_runoff_data = _precip_adapter.get_forecasts(selected_gauge, num_runs=5)
+    blended_data = data_manager.get_blended_forecasts(selected_gauge, num_runs=5)
 
     # ── Water year plot: fast vs full-history paths ───────────────────────
     fast_fig_dict = None
@@ -1750,6 +1751,7 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
             forecast_data=forecast_data,
             resid_cast_data=resid_cast_data,
             precip_runoff_data=precip_runoff_data,
+            blended_data=blended_data,
             history_mode=history_mode,
         )
     else:
@@ -1786,6 +1788,7 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
                     forecast_data=forecast_data,
                     resid_cast_data=resid_cast_data,
                     precip_runoff_data=precip_runoff_data,
+                    blended_data=blended_data,
                     history_mode='all',
                 )
                 now_iso = datetime.now().isoformat()
@@ -1799,6 +1802,7 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
                     forecast_data=forecast_data,
                     resid_cast_data=resid_cast_data,
                     precip_runoff_data=precip_runoff_data,
+                    blended_data=blended_data,
                     data_manager=data_manager,
                 )
                 plot_cache_manager.save(selected_gauge, wy_fig)

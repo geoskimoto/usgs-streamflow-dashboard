@@ -50,6 +50,7 @@ class VisualizationManager:
                              forecast_data: pd.DataFrame = None,
                              resid_cast_data: list = None,
                              precip_runoff_data: list = None,
+                             blended_data: list = None,
                              history_mode: str = "all") -> go.Figure:
         """
         Create streamflow visualization plot.
@@ -122,6 +123,10 @@ class VisualizationManager:
         # Add precip-runoff EA-LSTM forecast overlay
         if plot_type == 'water_year' and precip_runoff_data:
             fig = self._add_precip_overlay(fig, precip_runoff_data)
+
+        # Add model-blender blended forecast overlay
+        if plot_type == 'water_year' and blended_data:
+            fig = self._add_blended_overlay(fig, blended_data)
 
         # Add range slider and window buttons to water year plots
         if plot_type == 'water_year':
@@ -371,6 +376,7 @@ class VisualizationManager:
         forecast_data=None,
         resid_cast_data: list = None,
         precip_runoff_data: list = None,
+        blended_data: list = None,
         data_manager=None,
     ) -> go.Figure:
         """
@@ -391,6 +397,7 @@ class VisualizationManager:
             day_of_wy, q10, q25, q50, q75, q90, mean, median.
         forecast_data : list, optional
         resid_cast_data : list, optional
+        blended_data : list, optional
         data_manager : optional
             If provided, real-time 15-min data will be fetched.
         """
@@ -564,6 +571,8 @@ class VisualizationManager:
             fig = self._add_resid_cast_overlay(fig, resid_cast_data)
         if precip_runoff_data:
             fig = self._add_precip_overlay(fig, precip_runoff_data)
+        if blended_data:
+            fig = self._add_blended_overlay(fig, blended_data)
 
         # ── Range controls ─────────────────────────────────────────────────
         fig = self._add_range_controls(fig, current_day_of_wy)
@@ -1253,6 +1262,100 @@ class VisualizationManager:
 
         except Exception as exc:
             logger.warning("Error adding EA-LSTM precip overlay: %s", exc)
+
+        return fig
+
+    def _add_blended_overlay(self, fig: go.Figure, blended_data: list) -> go.Figure:
+        """Add model-blender blended forecast traces to a water year plot.
+
+        Uses a purple/magenta palette to distinguish from ResidCast's
+        teal/green/blue family and precip-runoff's amber/orange family.
+        Structurally identical to _add_precip_overlay -- see that method
+        for the day-of-water-year conversion and hover-formatting details.
+
+        Parameters
+        ----------
+        fig : go.Figure
+        blended_data : list
+            List of dicts from BlendedForecastAdapter.get_forecasts():
+            run_date, model_label, model_key, source, data (DataFrame).
+            Always 0 or 1 entries (model-blender has no historical runs).
+        """
+        if not blended_data:
+            return fig
+
+        _BLENDED_COLORS = ["#8E44AD", "#A569BD", "#BB8FCE", "#D2B4DE", "#EBDEF0"]
+        run_index = 0
+
+        try:
+            for entry in blended_data:
+                fc_df = entry.get("data")
+                if fc_df is None or fc_df.empty:
+                    continue
+                if "datetime" not in fc_df.columns:
+                    continue
+
+                fc_data = fc_df.copy()
+                fc_data["datetime"] = pd.to_datetime(fc_data["datetime"], errors="coerce")
+                fc_data = fc_data.dropna(subset=["datetime"])
+                if fc_data.empty:
+                    continue
+
+                if fc_data["datetime"].dt.tz is not None:
+                    fc_data["datetime"] = fc_data["datetime"].dt.tz_localize(None)
+
+                def _fractional_day_of_wy(d):
+                    if d.month >= WATER_YEAR_START:
+                        wy_start = pd.Timestamp(d.year, WATER_YEAR_START, 1)
+                    else:
+                        wy_start = pd.Timestamp(d.year - 1, WATER_YEAR_START, 1)
+                    return (d - wy_start).total_seconds() / 86400.0 + 1.0
+
+                fc_data["day_of_wy"] = fc_data["datetime"].map(_fractional_day_of_wy)
+
+                discharge_col = next(
+                    (c for c in fc_data.columns
+                     if any(t in c.lower() for t in ["discharge", "flow", "cfs"])),
+                    None,
+                )
+                if discharge_col is None:
+                    continue
+
+                fc_data = fc_data.sort_values("day_of_wy")
+                fc_data["hover_date"] = fc_data["datetime"].dt.strftime("%b %-d")
+
+                run_date = entry.get("run_date", "")
+                color = _BLENDED_COLORS[min(run_index, len(_BLENDED_COLORS) - 1)]
+                line_width = 2.5 if run_index == 0 else 1.5
+                visible = True if run_index == 0 else "legendonly"
+
+                try:
+                    from datetime import datetime as _dt
+                    run_dt = _dt.fromisoformat(run_date)
+                    date_label = run_dt.strftime("%b %-d")
+                except (ValueError, AttributeError):
+                    date_label = run_date[:10] if run_date else f"Run {run_index + 1}"
+
+                name = f"Blended – {date_label}"
+                run_index += 1
+
+                fig.add_trace(go.Scatter(
+                    x=fc_data["day_of_wy"],
+                    y=fc_data[discharge_col],
+                    mode="lines",
+                    name=name,
+                    line=dict(color=color, width=line_width, dash="dashdot"),
+                    visible=visible,
+                    customdata=fc_data["hover_date"],
+                    hovertemplate=(
+                        f"<b>{name}</b><br>"
+                        "%{customdata}<br>"
+                        "Discharge: %{y:,.0f} cfs<extra></extra>"
+                    ),
+                ))
+
+        except Exception as exc:
+            logger.warning("Error adding blended forecast overlay: %s", exc)
 
         return fig
 
