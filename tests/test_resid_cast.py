@@ -372,8 +372,10 @@ class TestVizManagerResidCastOverlay:
         fig = go.Figure()
         data = self._make_resid_cast_data()
         fig = vm._add_resid_cast_overlay(fig, data)
-        for trace in fig.data:
-            assert trace.line.dash == "dash"
+        # MuTHRE (and the served selection/composite) are drawn solid by design; others dashed.
+        for trace, entry in zip(fig.data, data):
+            expected = "solid" if entry["model_key"] in ("muthre/standalone", "selection/composite") else "dash"
+            assert trace.line.dash == expected
 
     def test_empty_data_returns_unchanged_figure(self):
         import plotly.graph_objects as go

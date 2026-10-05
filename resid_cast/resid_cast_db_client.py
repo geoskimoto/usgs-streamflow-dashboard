@@ -15,16 +15,15 @@ from .resid_cast_api_client import _variant_key, model_label
 
 logger = logging.getLogger(__name__)
 
+# The newest :num_runs runs overall — not the newest runs that happen to have rows for
+# this station. A station resid-cast stops correcting (raw NWRFC served) has no rows in
+# new runs; ranking only runs with rows would keep showing its old corrections.
 _FORECASTS_QUERY = text("""
-    WITH ranked_runs AS (
-        SELECT DISTINCT fp.forecast_run_id,
-               ROW_NUMBER() OVER (ORDER BY fp.forecast_run_id DESC) AS rn
-        FROM   forecast_predictions fp
-        JOIN   stations s ON s.id = fp.station_id
-        WHERE  s.nwrfc_id = :nwrfc_id
-    ),
-    recent_runs AS (
-        SELECT forecast_run_id FROM ranked_runs WHERE rn <= :num_runs
+    WITH recent_runs AS (
+        SELECT id AS forecast_run_id
+        FROM   forecast_runs
+        ORDER  BY id DESC
+        LIMIT  :num_runs
     )
     SELECT
         fr.id          AS run_id,

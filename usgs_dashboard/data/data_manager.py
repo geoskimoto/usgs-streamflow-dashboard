@@ -872,12 +872,17 @@ class USGSDataManager:
             return set()
 
     def get_resid_cast_perstation_ids(self) -> set:
-        """Return only the stations with per-station (3-model) ResidCast artifacts."""
+        """Return the stations that get a ResidCast-corrected forecast.
+
+        resid-cast's selection mode serves one composite forecast per corrected station
+        (models == ["selection/composite"]); stations with no models get the raw NWRFC
+        forecast only.
+        """
         if self._resid_cast is None:
             return set()
         try:
             config = self._resid_cast._config
-            return {usgs_id for usgs_id, cfg in config.items() if len(cfg.get('models', [])) >= 3}
+            return {usgs_id for usgs_id, cfg in config.items() if cfg.get('models')}
         except Exception as e:
             logger.warning(f"Error getting ResidCast per-station IDs: {e}")
             return set()

@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 # Maps variant key → human-readable legend label
 _LABEL_MAP: dict[str, str] = {
+    # The one forecast resid-cast's runner serves per station in selection mode:
+    # per-lead, damped mix of its models chosen by walk-forward CV.
+    "selection/composite":  "ResidCast",
     "xgboost/raw":          "XGBoost",
     "muthre/standalone":    "MUTHRE",
     "lstm/raw/general":     "LSTM (general)",

@@ -1080,12 +1080,14 @@ class VisualizationManager:
 
         # One base colour per model variant (dark → light for run age)
         _MODEL_COLORS: dict[str, list[str]] = {
+            "selection/composite": ["#6A1B9A", "#8E44AD", "#BB8FCE", "#D2B4DE", "#E8DAEF"],
             "xgboost/raw":       ["#0D6B5E", "#2A9D8F", "#76C7BD", "#B2E4DF", "#D9F2F0"],
             "muthre/standalone": ["#00C853", "#2ECC71", "#82E0AA", "#A9DFBF", "#D5F5E3"],
             "lstm/raw/general":  ["#1F5C8B", "#2E86C1", "#72B6DA", "#AED6F1", "#D6EAF8"],
         }
-        # MuTHRE uses solid lines; all other models use dashed
+        # The served ResidCast forecast and MuTHRE use solid lines; all other models use dashed
         _MODEL_DASH: dict[str, str] = {
+            "selection/composite": "solid",
             "muthre/standalone": "solid",
         }
         _DEFAULT_COLORS = ["#555555", "#888888", "#AAAAAA", "#CCCCCC", "#EEEEEE"]
