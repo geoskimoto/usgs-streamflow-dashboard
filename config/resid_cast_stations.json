@@ -1631,5 +1631,131 @@
     "models": [
       "selection/composite"
     ]
+  },
+  "12353000": {
+    "nwrfc_id": "BELM8",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "12352500": {
+    "nwrfc_id": "BITM8",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "13135500": {
+    "nwrfc_id": "BWKI1",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "14211010": {
+    "nwrfc_id": "COCO3",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "14171600": {
+    "nwrfc_id": "CORO3",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "12413500": {
+    "nwrfc_id": "CTLI1",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "13052200": {
+    "nwrfc_id": "DGGI1",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "13249500": {
+    "nwrfc_id": "EMMI1",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "12105900": {
+    "nwrfc_id": "HAHW1",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "13139510": {
+    "nwrfc_id": "HALI1",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "13042500": {
+    "nwrfc_id": "ISLI1",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "14182500": {
+    "nwrfc_id": "LSMO3",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "13237920": {
+    "nwrfc_id": "MFPI1",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "13213000": {
+    "nwrfc_id": "PARI1",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "13075500": {
+    "nwrfc_id": "PIHI1",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "13345000": {
+    "nwrfc_id": "PLOI1",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "13341570": {
+    "nwrfc_id": "PRII1",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "13302500": {
+    "nwrfc_id": "SMNI1",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "13213100": {
+    "nwrfc_id": "SNYI1",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "12354000": {
+    "nwrfc_id": "STRM8",
+    "models": [
+      "selection/composite"
+    ]
+  },
+  "13269000": {
+    "nwrfc_id": "WEII1",
+    "models": [
+      "selection/composite"
+    ]
   }
 }
