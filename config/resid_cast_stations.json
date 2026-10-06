@@ -212,9 +212,7 @@
   },
   "12452000": {
     "nwrfc_id": "CHDW1",
-    "models": [
-      "selection/composite"
-    ],
+    "models": [],
     "ealstm_available": false
   },
   "13049500": {
