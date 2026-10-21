@@ -261,11 +261,6 @@ app.index_string = '''
         </style>
     </head>
     <body>
-        <script>
-            /* Apply dark mode immediately on load, before React renders */
-            document.documentElement.classList.add('dark-mode-init');
-            document.body.classList.add('dark-mode');
-        </script>
         {%app_entry%}
         <footer>
             {%config%}
@@ -850,7 +845,7 @@ app.layout = dbc.Container([
             ),
             dbc.ButtonGroup([
                 dbc.Button(
-                    "Light Mode",
+                    "Dark Mode",
                     id="dark-mode-btn",
                     color="outline-secondary",
                     size="sm",
@@ -896,7 +891,7 @@ app.layout = dbc.Container([
     dcc.Location(id='url', refresh=False),
     
     # Store components for data persistence and authentication
-    dcc.Store(id='dark-mode-store', data=True),  # True = dark mode (default on)
+    dcc.Store(id='dark-mode-store', data=False),  # True = dark mode (default off; light mode)
     dcc.Store(id='annual-summary-requested', data=False),
     dcc.Store(id='gauges-store'),
     dcc.Store(id='selected-gauge-store'),

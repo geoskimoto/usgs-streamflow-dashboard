@@ -544,20 +544,20 @@ def _rebuild_png_one(site_id: str, force: bool) -> tuple[str, str, float]:
                 ticktext=None,
                 rangeslider=dict(visible=False),
                 showgrid=True,
-                gridcolor="rgba(255,255,255,0.1)",
-                color="#cccccc",
-                tickfont=dict(color="#cccccc", size=10),
-                linecolor="#444444",
+                gridcolor="rgba(0,0,0,0.1)",
+                color="#444444",
+                tickfont=dict(color="#444444", size=10),
+                linecolor="#cccccc",
             ),
             yaxis=dict(
                 range=[0, y_ceiling],
                 autorange=False,
                 showgrid=True,
-                gridcolor="rgba(255,255,255,0.1)",
-                title=dict(text="Flow (cfs)", font=dict(size=10, color="#cccccc")),
-                color="#cccccc",
-                tickfont=dict(color="#cccccc", size=10),
-                linecolor="#444444",
+                gridcolor="rgba(0,0,0,0.1)",
+                title=dict(text="Flow (cfs)", font=dict(size=10, color="#444444")),
+                color="#444444",
+                tickfont=dict(color="#444444", size=10),
+                linecolor="#cccccc",
             ),
             showlegend=False,
             title=None,
@@ -574,8 +574,8 @@ def _rebuild_png_one(site_id: str, force: bool) -> tuple[str, str, float]:
                 s for s in (fig.layout.shapes or [])
                 if not (getattr(s, "type", None) == "line" and getattr(s, "x0", None) == getattr(s, "x1", None))
             ],
-            plot_bgcolor="#2d2d2d",
-            paper_bgcolor="#252525",
+            plot_bgcolor="#ffffff",
+            paper_bgcolor="#ffffff",
         )
 
         ok = png_cache_manager.save(site_id, fig)
