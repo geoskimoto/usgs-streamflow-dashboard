@@ -44,3 +44,11 @@ smoke test that the layout tree still contains every required callback id (writt
 ## Deploy
 Dev tree is deployed only via the documented push-to-main + pull in `/home/streamflowdash/...` flow. Nothing is
 deployed from this branch until reviewed.
+
+## Status (2026-10-31)
+Steps 1-8 implemented on `design/map-first`; not yet merged or deployed. Outcomes that differ from the plan:
+- Dark basemap skipped by decision (tiles stay light in dark mode).
+- Map percentile display regrouped to 5 classes (spec updated); non-percentile states keep their spec colors.
+- Sidebar toggle labels and filter state labels lost their emoji (string edits inside two callbacks).
+- Known leftovers: duplicate empty-state text in the detail panel (callback-owned); `create_sidebar()` is unused dead code
+  from before the redesign; `viz_manager` figure height/margins still tuned for a wide plot area.

@@ -97,6 +97,14 @@ body {
 .font-mono, code, kbd, samp { font-family: var(--font-mono); }
 
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* Bootstrap swaps outlines for faint box-shadows on these; keep one visible ring everywhere. */
+.btn:focus-visible, .btn-check:focus-visible + .btn,
+.form-control:focus, .form-select:focus, .form-check-input:focus-visible,
+.legend-item:focus-visible, summary:focus-visible, .Select-control:focus-within {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    box-shadow: none;
+}
 
 .text-muted, .text-secondary { color: var(--fg-3) !important; }
 hr { border-color: var(--line); opacity: 1; }
@@ -239,7 +247,6 @@ body.dark-mode ::-webkit-scrollbar-thumb { background-color: var(--line); border
 .date-picker-compact .SingleDatePickerInput { border-radius: 4px; }
 @media (max-width: 992px) {
     .sidebar-col { font-size: 0.9rem; }
-    .sidebar-col .card-header h5 { font-size: 1rem; }
 }
 
 /* ---- Icons (CSS masks; inherit text color) ------------------------------
@@ -280,8 +287,12 @@ body.dark-mode ::-webkit-scrollbar-thumb { background-color: var(--line); border
 .topbar-date-label, .topbar-date-source { color: var(--fg-3); white-space: nowrap; font-size: 12px; }
 .topbar-date-input { width: 138px; font-family: var(--font-mono); font-size: 12.5px; }
 .topbar .topbar-step { min-width: 32px; min-height: 32px; padding: 0; }
+@media (max-width: 991.98px) {
+    .topbar { flex-wrap: wrap; row-gap: 6px; }
+    .topbar-spacer { display: none; }
+}
 @media (max-width: 575.98px) {
-    .topbar { gap: 8px; padding: 6px 10px; flex-wrap: wrap; }
+    .topbar { position: static; gap: 8px; padding: 6px 10px; }
     .topbar-nav { display: none; }
     .topbar-spacer { display: none; }
 }
@@ -450,6 +461,10 @@ body.dark-mode ::-webkit-scrollbar-thumb { background-color: var(--line); border
 .detail-scroll .card-header { background: transparent; border-bottom: 0; padding: 0 0 6px; }
 .detail-scroll .card-header > div:first-child { font-size: 13px; font-weight: 600; color: var(--fg); }
 .detail-scroll .card-body { padding: 0; background: transparent !important; }
+
+.map-stage #gauge-map { max-width: 100%; }
+@media (max-width: 1199.98px) { #gauge-map { max-height: 80vh; } }
+@media (max-width: 575.98px) { #gauge-map { max-height: 62vh; } }
 
 @media (prefers-reduced-motion: reduce) {
     * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }

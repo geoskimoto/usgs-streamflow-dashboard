@@ -32,8 +32,10 @@ _PERCENTILE_CLASSES = [
     # 'p76_100' is the backward-compat alias: remove after StreamflowOps deploys the new band keys
     ('Above normal (75th–90th)',    '#56B4E9', 0.90, 1.10, ['p76_85', 'p86_90', 'p76_100']),
     ('Much above normal (> 90th)',  '#0A4F9C', 0.93, 1.25, ['p91_95', 'p96_98', 'p99_100']),
-    ('Active — no percentile',      '#9AA7B5', 0.70, 0.90, ['active_no_band']),
-    ('No flow data',                '#6F7C8B', 0.60, 0.90, ['no_data']),
+    # Non-percentile states keep the colors defined in Documentation/DISPLAY_BEHAVIOR_SPEC.md
+    ('Active — No Percentile',      '#32CD32', 0.70, 0.90, ['active_no_band']),
+    ('No Flow Data',                '#808080', 0.60, 0.90, ['no_data']),
+    ('Inactive',                    '#404040', 0.40, 0.80, ['inactive']),
 ]
 
 # Per-band view of the same table: (band_key, label, color, opacity, size_factor).

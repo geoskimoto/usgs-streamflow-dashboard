@@ -35,20 +35,19 @@ On a normal page load with a healthy API:
 
 ### Percentile Band Coloring
 
-Active stations with a current percentile value are colored by their discharge percentile relative to the same day-of-water-year historically:
+Active stations with a current percentile value are colored by their discharge percentile relative to the same day-of-water-year historically.
 
-| Band Key | Percentile Range | Color | Meaning |
-|---|---|---|---|
-| `p0_4` | < 5th | `#880E4F` Dark Maroon | Extreme low / drought |
-| `p5_10` | 5th–10th | `#E64A19` Red-Orange | Very low |
-| `p11_25` | 10th–25th | `#F9A825` Orange | Low |
-| `p26_50` | 25th–50th | `#2E7D32` Dark Green | Below median |
-| `p51_75` | 50th–75th | `#1976D2` Blue | Above median |
-| `p76_85` | 75th–85th | `#1565C0` Deep Blue | High |
-| `p86_90` | 85th–90th | `#0D47A1` Navy | Very high |
-| `p91_95` | 90th–95th | `#0A3585` Dark Navy | Flood range |
-| `p96_98` | 95th–98th | `#07256B` Darker Navy | Major flood |
-| `p99_100` | > 98th | `#041552` Near-black | Extreme flood |
+The API reports 10 fine bands (`p0_4` … `p99_100`). The map **shows 5 classes** (the usual "much below … much above normal" reading); bands in the same class share one color, one legend entry and one map trace. Colors are colorblind-safe (orange → green → blue). Band keys and `PERCENTILE_GROUP_CONFIG` are unchanged, so the API contract is unaffected. *(Changed from the original 10-color table in the map-first redesign, 2026-10; approved by the project owner.)*
+
+| Class (legend label) | Percentile Range | API band keys | Color | Meaning |
+|---|---|---|---|---|
+| Much below normal | < 10th | `p0_4`, `p5_10` | `#D55E00` Vermilion | Drought range |
+| Below normal | 10th–25th | `p11_25` | `#E69F00` Orange | Low |
+| Normal | 25th–75th | `p26_50`, `p51_75` | `#4C9A7B` Teal green | Typical |
+| Above normal | 75th–90th | `p76_85`, `p86_90`, `p76_100` (legacy alias) | `#56B4E9` Sky blue | High |
+| Much above normal | > 90th | `p91_95`, `p96_98`, `p99_100` | `#0A4F9C` Deep blue | Flood range |
+
+The legend is rendered in the filter rail (`#map-legend`, built from the figure's traces; clicking an entry shows or hides it on the map), not inside the Plotly figure.
 
 ### Non-Percentile Marker States
 
