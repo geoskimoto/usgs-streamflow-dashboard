@@ -116,8 +116,8 @@ selected_gauge_id = None
 
 
 def _icon(name: str) -> html.Span:
-    """CSS-mask icon (see .icon-* in assets/theme.css); inherits the text color."""
-    return html.Span(className=f"icon icon-{name}", **{"aria-hidden": "true"})
+    """CSS-mask icon (see .ui-icon-* in assets/theme.css); inherits the text color."""
+    return html.Span(className=f"ui-icon ui-icon-{name}", **{"aria-hidden": "true"})
 
 
 def create_header():
@@ -638,6 +638,7 @@ app.layout = html.Div([
     # output this component's `style`, or the two writers desync (see hover_zoom.js).
     html.Div(
         id='map-hover-panel',
+        className='hover-card',
         style={
             'display': 'none',
             'position': 'fixed',
@@ -645,19 +646,12 @@ app.layout = html.Div([
             'top': '0px',
             'width': '462px',      # must match PW in hover_zoom.js
             'zIndex': 9000,
-            'backgroundColor': '#252525',
-            'border': '1px solid #444444',
-            'borderRadius': '8px',
-            'boxShadow': '0 6px 24px rgba(0,0,0,0.65)',
             'padding': '0',
             'overflow': 'hidden',
             'pointerEvents': 'none',
         },
         children=[
-            html.Div(id='map-hover-info-text', style={
-                'padding': '5px 9px 4px 9px',
-                'backgroundColor': '#252525',
-            }),
+            html.Div(id='map-hover-info-text', className='hover-info'),
             html.Img(
                 id='map-hover-tooltip-img',
                 src='',
@@ -1879,31 +1873,28 @@ def update_map_tooltip_store(hover_data):
     else:
         src = ''
 
+    # Classes (not inline colors): the hover card is a light card in both themes; see assets/theme.css.
     info = html.Div([
-        html.Div(name, style={
-            'fontSize': '12px', 'fontWeight': '700', 'color': '#e0e0e0',
-            'marginBottom': '2px', 'lineHeight': '1.2',
-        }),
-        html.Hr(style={'margin': '2px 0 4px 0', 'borderColor': '#444', 'borderWidth': '1px'}),
+        html.Div(name, className="hover-name"),
+        html.Hr(className="hover-rule"),
         html.Div([
-            html.Span("Site: ", style={'color': '#aaaaaa', 'fontSize': '10px'}),
-            html.Span(site_id, style={'fontSize': '10px', 'fontWeight': '600', 'color': '#e0e0e0', 'marginRight': '10px'}),
-            html.Span("State: ", style={'color': '#aaaaaa', 'fontSize': '10px'}),
-            html.Span(state, style={'fontSize': '10px', 'color': '#e0e0e0'}),
-        ], style={'marginBottom': '2px'}),
-        html.Div([
-            html.Span("Area: ", style={'color': '#aaaaaa', 'fontSize': '10px'}),
-            html.Span(area, style={'fontSize': '10px', 'color': '#e0e0e0', 'marginRight': '10px'}),
-            html.Span("Record: ", style={'color': '#aaaaaa', 'fontSize': '10px'}),
-            html.Span(years, style={'fontSize': '10px', 'color': '#e0e0e0'}),
-        ], style={'marginBottom': '2px'}),
-        html.Div([
-            html.Span("Condition: ", style={'color': '#aaaaaa', 'fontSize': '10px'}),
-            html.Span(condition, style={'fontSize': '10px', 'fontWeight': '700', 'color': cond_color}),
-        ], style={'marginBottom': '2px'}),
-        html.Div([
-            html.Span(f"{lat:.4f}°N, {lon:.4f}°W", style={'fontSize': '9px', 'color': '#888888'}),
+            html.Span("Site ", className="hover-key"),
+            html.Span(site_id, className="hover-val hover-mono me-3"),
+            html.Span("State ", className="hover-key"),
+            html.Span(state, className="hover-val"),
         ]),
+        html.Div([
+            html.Span("Area ", className="hover-key"),
+            html.Span(area, className="hover-val me-3"),
+            html.Span("Record ", className="hover-key"),
+            html.Span(years, className="hover-val"),
+        ]),
+        html.Div([
+            html.Span("Condition ", className="hover-key"),
+            html.Span(className="hover-dot", style={'backgroundColor': cond_color}),
+            html.Span(condition, className="hover-val hover-strong"),
+        ]),
+        html.Div(f"{lat:.4f}°N, {lon:.4f}°W", className="hover-coord"),
     ])
 
     return {'show': True, 'src': src, 'has_png': has_png}, info

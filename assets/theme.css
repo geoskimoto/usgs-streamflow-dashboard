@@ -242,8 +242,9 @@ body.dark-mode ::-webkit-scrollbar-thumb { background-color: var(--line); border
     .sidebar-col .card-header h5 { font-size: 1rem; }
 }
 
-/* ---- Icons (CSS masks; inherit text color) ------------------------------ */
-.icon {
+/* ---- Icons (CSS masks; inherit text color) ------------------------------
+   Namespaced `ui-icon`: plain `.icon` collides with Plotly's modebar svg.icon. */
+.ui-icon {
     display: inline-block;
     flex: none;
     width: 20px;
@@ -252,7 +253,7 @@ body.dark-mode ::-webkit-scrollbar-thumb { background-color: var(--line); border
     -webkit-mask: var(--icon) center / contain no-repeat;
     mask: var(--icon) center / contain no-repeat;
 }
-.icon-waves {
+.ui-icon-waves {
     --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8c3 0 3-2 6-2s3 2 6 2 3-2 6-2'/%3E%3Cpath d='M3 14c3 0 3-2 6-2s3 2 6 2 3-2 6-2'/%3E%3Cpath d='M3 20c3 0 3-2 6-2s3 2 6 2 3-2 6-2'/%3E%3C/svg%3E");
 }
 
@@ -421,6 +422,28 @@ body.dark-mode ::-webkit-scrollbar-thumb { background-color: var(--line); border
     .panel-collapsed #refresh-live-plot-btn { display: none !important; }
     .panel-collapsed .detail-head { justify-content: center; padding: 10px 4px; border-bottom: 0; }
 }
+
+/* ---- Map hover card -------------------------------------------------------
+   A light card in BOTH themes: the pre-rendered hover PNGs use the light plot theme,
+   so the card keeps fixed light colors on purpose (not theme tokens).
+   Position, size and visibility are owned by assets/hover_zoom.js. */
+.hover-card {
+    background-color: #FFFFFF;
+    border: 1px solid #D9E1EA;
+    border-radius: var(--radius);
+    box-shadow: 0 8px 28px rgba(12, 21, 34, .28);
+    font-family: var(--font-ui);
+    color: #14243A;
+}
+.hover-info { padding: 8px 12px 6px; background-color: #FFFFFF; font-size: 12px; line-height: 1.5; }
+.hover-name { font-size: 13px; font-weight: 600; line-height: 1.25; color: #14243A; }
+.hover-rule { margin: 4px 0 5px; border: 0; border-top: 1px solid #D9E1EA; opacity: 1; }
+.hover-key { color: #5A6B80; font-size: 11px; }
+.hover-val { color: #14243A; font-size: 12px; }
+.hover-mono { font-family: var(--font-mono); font-size: 11.5px; }
+.hover-strong { font-weight: 600; }
+.hover-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: baseline; }
+.hover-coord { color: #5A6B80; font-family: var(--font-mono); font-size: 10.5px; margin-top: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
     * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
