@@ -114,19 +114,11 @@ class ModernMapComponent:
         
         # Update layout with modern map configuration
         fig.update_layout(
-            margin=dict(r=0, t=30, l=0, b=0),
+            margin=dict(r=0, t=0, l=0, b=0),
             font=dict(family="Arial", size=12),
-            legend=dict(
-                orientation="v",
-                yanchor="top",
-                y=0.99,
-                xanchor="left",
-                x=0.01,
-                bgcolor="rgba(255, 255, 255, 0.9)",
-                bordercolor="black",
-                borderwidth=1,
-                font=dict(size=10),
-            ),
+            # The legend is rendered in the filter rail (#map-legend), built from the
+            # trace names/colors by a clientside callback in app.py.
+            showlegend=False,
             # NEW: hover configuration for modern maps
             hoverlabel=dict(
                 bgcolor="white",
@@ -330,11 +322,9 @@ class ModernMapComponent:
                      uirevision=map_style),
             uirevision=map_style,
             height=height,
-            margin=dict(r=0, t=50, l=0, b=0),
-            title=f"USGS Streamflow Gauges - Pacific Northwest ({len(gauges_df)} gauges) - {tile['label']}",
+            margin=dict(r=0, t=0, l=0, b=0),
             font=dict(family="Arial", size=12),
-            legend=dict(orientation="v", yanchor="top", y=0.99, xanchor="left", x=0.01,
-                        bgcolor="rgba(255, 255, 255, 0.9)", bordercolor="black", borderwidth=1),
+            showlegend=False,   # legend lives in the filter rail (#map-legend)
         )
 
         return fig

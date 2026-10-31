@@ -278,8 +278,12 @@ def create_public_sidebar():
 
     Every control id and default value is unchanged from the card-based layout.
     """
+    legend = html.Section([
+        html.H3("Map legend", className="rail-heading"),
+        html.Div(id="map-legend", className="legend-list"),
+    ], className="rail-section")
     return [
-        filter_panel.create_filter_panel(),
+        filter_panel.create_filter_panel(legend=legend),
 
         # Map display settings (view-only)
         html.Section([
@@ -313,12 +317,13 @@ def create_public_sidebar():
             dcc.Dropdown(
                 id="map-height-dropdown",
                 options=[
+                    {"label": "Fit to window", "value": "fit"},
                     {"label": "Compact (500px)", "value": 500},
                     {"label": "Standard (700px)", "value": 700},
                     {"label": "Large (900px)", "value": 900},
                     {"label": "Extra large (1200px)", "value": 1200},
                 ],
-                value=700,
+                value="fit",
             ),
         ], className="rail-section"),
 
@@ -404,42 +409,36 @@ def create_main_content():
         # Status alerts
         html.Div(id="status-alerts"),
         
-        # Map section
-        dbc.Card([
-            dbc.CardHeader(
-                html.Div([
-                    html.Span("Streamflow Gauges Map", className="fw-semibold me-2 d-none d-sm-inline"),
-                    html.Span("Map", className="fw-semibold me-2 d-sm-none"),
-                    dbc.Badge(id="gauge-count-badge", color="info", className="align-middle"),
-                ], className="d-flex align-items-center"),
-                className="py-2",
+        # Map stage: flush to the content area; the count chip floats over the map
+        html.Div([
+            html.Div(
+                dbc.Badge(id="gauge-count-badge", color="info"),
+                className="map-chip",
             ),
-            dbc.CardBody([
-                dcc.Loading(
-                    id="loading-map",
-                    type="default",
-                    custom_spinner=html.Div(
-                        className="hydro-loading-wrapper",
-                        children=[
-                            html.Div(
-                                className="hydro-wave-container",
-                                children=[html.Div(className="hydro-wave-bar") for _ in range(7)],
-                            ),
-                            html.Div("Loading map data…", className="hydro-loading-label"),
-                        ],
-                    ),
+            dcc.Loading(
+                id="loading-map",
+                type="default",
+                custom_spinner=html.Div(
+                    className="hydro-loading-wrapper",
                     children=[
-                        dcc.Graph(
-                            id="gauge-map",
-                            style={"height": "700px"},  # This will be updated dynamically
-                            config={"displayModeBar": "hover", "displaylogo": False},
-                            clear_on_unhover=True,  # reset hoverData on mouse-out so the hover panel hides
-                        )
-                    ]
-                )
-            ])
-        ], className="mb-3"),
-        
+                        html.Div(
+                            className="hydro-wave-container",
+                            children=[html.Div(className="hydro-wave-bar") for _ in range(7)],
+                        ),
+                        html.Div("Loading map data…", className="hydro-loading-label"),
+                    ],
+                ),
+                children=[
+                    dcc.Graph(
+                        id="gauge-map",
+                        style={"height": "calc(100vh - 140px)", "minHeight": "420px"},  # updated by the map-height callback
+                        config={"displayModeBar": "hover", "displaylogo": False},
+                        clear_on_unhover=True,  # reset hoverData on mouse-out so the hover panel hides
+                    )
+                ]
+            ),
+        ], className="map-stage"),
+
         # Multi-plot visualization section
         dbc.Card([
             dbc.CardHeader(
@@ -1135,19 +1134,14 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
             filtered_gauges,
             selected_gauge=selected_gauge,
             map_style=map_style,
-            height=map_height,
+            height=None if map_height == 'fit' else map_height,   # None = autosize to the container
             auto_fit_bounds=auto_fit,
             percentile_bands=percentile_bands or {}
         )
         
-        # Apply dark mode legend / tooltip styling (basemap is unchanged)
+        # Apply dark mode tooltip styling (basemap is unchanged)
         if dark_mode:
             fig.update_layout(
-                legend=dict(
-                    bgcolor="rgba(40,40,40,0.92)",
-                    bordercolor="#555555",
-                    font=dict(color="#e0e0e0"),
-                ),
                 hoverlabel=dict(
                     bgcolor="#2d2d2d",
                     bordercolor="#555555",
@@ -1200,6 +1194,8 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
 )
 def update_map_container_height(map_height):
     """Update the map container height based on user selection."""
+    if map_height == 'fit':
+        return {"height": "calc(100vh - 140px)", "minHeight": "420px"}   # viewport minus top bar + gutters
     return {"height": f"{map_height}px"}
 
 
@@ -1949,6 +1945,51 @@ app.clientside_callback(
     [Output('map-hover-tooltip-img', 'src'),
      Output('map-hover-tooltip-img', 'style')],
     Input('map-tooltip-store', 'data'),
+)
+
+
+# Map legend: built in the browser from the figure's traces so the rail legend always
+# matches what is drawn (percentile bands with counts, NWRFC marker, HUC boundary layers).
+# Click handling lives in assets/map_legend.js.
+app.clientside_callback(
+    """
+    function(fig) {
+        var data = (fig && fig.data) || [];
+        var items = [], groups = {};
+        data.forEach(function(t, i) {
+            if (!t) { return; }
+            var g = t.legendgroup;
+            if (g && groups[g] !== undefined) { items[groups[g]].idx.push(i); return; }
+            if (t.showlegend === false || !t.name) { return; }
+            var isLine = t.mode === 'lines';
+            var c = isLine ? (t.line && t.line.color) : (t.marker && t.marker.color);
+            items.push({
+                idx: [i], line: isLine, name: t.name,
+                color: (typeof c === 'string') ? c : '#888888',
+                off: t.visible === 'legendonly' || t.visible === false
+            });
+            if (g) { groups[g] = items.length - 1; }
+        });
+        return items.map(function(it) {
+            var m = /^(.*?)\\s*\\((\\d[\\d,]*)\\)$/.exec(it.name);
+            var label = m ? m[1] : it.name, count = m ? m[2] : '';
+            return {namespace: 'dash_html_components', type: 'Button', props: {
+                className: 'legend-item' + (it.off ? ' is-off' : ''),
+                'data-traces': it.idx.join(','),
+                'aria-pressed': it.off ? 'false' : 'true',
+                title: 'Show / hide on map',
+                children: [
+                    {namespace: 'dash_html_components', type: 'Span', props: {
+                        className: it.line ? 'legend-swatch legend-swatch-line' : 'legend-swatch',
+                        style: {backgroundColor: it.color}}},
+                    {namespace: 'dash_html_components', type: 'Span', props: {className: 'legend-label', children: label}},
+                    {namespace: 'dash_html_components', type: 'Span', props: {className: 'legend-count', children: count}}
+                ]}};
+        });
+    }
+    """,
+    Output('map-legend', 'children'),
+    Input('gauge-map', 'figure'),
 )
 
 

@@ -22,8 +22,11 @@ class SimplifiedFilterPanel:
             className="rail-section",
         )
 
-    def create_filter_panel(self) -> html.Div:
-        """Create the filter rail: flat sections, no card stack. All control ids are unchanged."""
+    def create_filter_panel(self, legend=None) -> html.Div:
+        """Create the filter rail: flat sections, no card stack. All control ids are unchanged.
+
+        `legend` is an optional section placed directly under Results (the map legend).
+        """
 
         results = self._section(
             "Results",
@@ -169,7 +172,7 @@ class SimplifiedFilterPanel:
         )
 
         return html.Div(
-            [results, search, realtime, forecasts, status, region, drainage, watershed],
+            [results, *([legend] if legend is not None else []), search, realtime, forecasts, status, region, drainage, watershed],
             className="filter-rail",
         )
 
