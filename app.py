@@ -362,13 +362,6 @@ def create_public_sidebar():
             ),
         ], className="rail-section"),
 
-        # Selected gauge details (moves to the right-hand panel in step 5)
-        html.Section([
-            html.H3("Selected gauge", className="rail-heading"),
-            html.Div(id="gauge-info-content", children=[
-                html.P("Select a gauge on the map to view details.", className="rail-hint")
-            ]),
-        ], className="rail-section"),
     ]
 
 
@@ -409,161 +402,157 @@ def create_main_content():
         # Status alerts
         html.Div(id="status-alerts"),
         
-        # Map stage: flush to the content area; the count chip floats over the map
         html.Div([
-            html.Div(
-                dbc.Badge(id="gauge-count-badge", color="info"),
-                className="map-chip",
-            ),
-            dcc.Loading(
-                id="loading-map",
-                type="default",
-                custom_spinner=html.Div(
-                    className="hydro-loading-wrapper",
-                    children=[
-                        html.Div(
-                            className="hydro-wave-container",
-                            children=[html.Div(className="hydro-wave-bar") for _ in range(7)],
-                        ),
-                        html.Div("Loading map data…", className="hydro-loading-label"),
-                    ],
+            # Map stage: flush to the content area; the count chip floats over the map
+            html.Div([
+                html.Div(
+                    dbc.Badge(id="gauge-count-badge", color="info"),
+                    className="map-chip",
                 ),
-                children=[
-                    dcc.Graph(
-                        id="gauge-map",
-                        style={"height": "calc(100vh - 140px)", "minHeight": "420px"},  # updated by the map-height callback
-                        config={"displayModeBar": "hover", "displaylogo": False},
-                        clear_on_unhover=True,  # reset hoverData on mouse-out so the hover panel hides
-                    )
-                ]
-            ),
-        ], className="map-stage"),
+                dcc.Loading(
+                    id="loading-map",
+                    type="default",
+                    custom_spinner=html.Div(
+                        className="hydro-loading-wrapper",
+                        children=[
+                            html.Div(
+                                className="hydro-wave-container",
+                                children=[html.Div(className="hydro-wave-bar") for _ in range(7)],
+                            ),
+                            html.Div("Loading map data…", className="hydro-loading-label"),
+                        ],
+                    ),
+                    children=[
+                        dcc.Graph(
+                            id="gauge-map",
+                            style={"height": "calc(100vh - 140px)", "minHeight": "420px"},  # updated by the map-height callback
+                            config={"displayModeBar": "hover", "displaylogo": False},
+                            clear_on_unhover=True,  # reset hoverData on mouse-out so the hover panel hides
+                        )
+                    ]
+                ),
+            ], className="map-stage"),
 
-        # Multi-plot visualization section
-        dbc.Card([
-            dbc.CardHeader(
+            # Detail panel: selected-gauge info + water-year plot + period-of-record analysis.
+            # Sits beside the map on wide screens (>= 1200px) and stacks below it on narrower ones.
+            html.Aside([
                 html.Div([
-                    html.H5("📊 Streamflow Analysis", className="mb-0"),
-                    html.Div([
-                        dbc.Badge(
-                            id="cache-age-badge",
-                            color="secondary",
-                            style={"display": "none", "cursor": "default", "fontSize": "11px"},
-                        ),
-                        dbc.Button(
-                            "🔄 Refresh",
-                            id="refresh-live-plot-btn",
-                            color="outline-info",
-                            size="sm",
-                            n_clicks=0,
-                            style={"display": "none"},
-                        ),
-                        dbc.Badge(
-                            id="selected-gauge-badge",
-                            color="success",
-                            style={"display": "none"},
-                        ),
-                    ], className="d-flex align-items-center gap-2"),
-                ], className="d-flex justify-content-between align-items-center"),
-            ),
-            dbc.CardBody([
-                # History-load buttons (hidden until a station is selected)
-                html.Div(
-                    id="history-buttons-row",
-                    style={"display": "none"},
-                    children=[
-                        html.Small(
-                            "Water Year Plot shows current year + historical statistics. "
-                            "Load additional history on demand:",
-                            className="text-muted d-block mb-2",
-                        ),
-                        dbc.ButtonGroup([
-                            dbc.Button(
-                                "📈 Last 30 Years",
-                                id="show-30yr-history-btn",
-                                color="outline-primary",
-                                size="sm",
-                                n_clicks=0,
-                            ),
-                            dbc.Button(
-                                "📜 Full Period of Record",
-                                id="show-full-history-btn",
-                                color="outline-secondary",
-                                size="sm",
-                                n_clicks=0,
-                            ),
-                            dbc.Button(
-                                "↩ Current Year Only",
-                                id="show-fast-plot-btn",
-                                color="outline-success",
-                                size="sm",
-                                n_clicks=0,
-                            ),
-                        ], className="mb-3"),
-                    ],
-                ),
-                dcc.Loading(
-                    id="loading-multiplot",
-                    type="default",
-                    custom_spinner=html.Div(
-                        className="hydro-loading-wrapper",
+                    html.H2("Gauge detail", className="detail-title"),
+                    dbc.Badge(id="selected-gauge-badge", color="success", style={"display": "none"}),
+                    dbc.Badge(
+                        id="cache-age-badge",
+                        color="secondary",
+                        style={"display": "none", "cursor": "default", "fontSize": "11px"},
+                    ),
+                    html.Div(className="detail-spacer"),
+                    dbc.Button(
+                        "Refresh",
+                        id="refresh-live-plot-btn",
+                        color="outline-secondary",
+                        size="sm",
+                        n_clicks=0,
+                        style={"display": "none"},
+                    ),
+                    dbc.Button(
+                        "Collapse",
+                        id="detail-collapse-btn",
+                        color="outline-secondary",
+                        size="sm",
+                        n_clicks=0,
+                        title="Collapse or expand the detail panel",
+                        className="d-none d-xl-inline-block",
+                    ),
+                ], className="detail-head"),
+                html.Div([
+                    html.Details([
+                        html.Summary("Station information"),
+                        html.Div(id="gauge-info-content", children=[
+                            html.P("Select a gauge on the map to view its water-year plot.",
+                                   className="detail-empty")
+                        ]),
+                    ], open=True, className="detail-info"),
+
+                    # History-load buttons (hidden until a station is selected)
+                    html.Div(
+                        id="history-buttons-row",
+                        style={"display": "none"},
                         children=[
-                            html.Div(
-                                className="hydro-wave-container",
-                                children=[html.Div(className="hydro-wave-bar") for _ in range(7)],
+                            html.Small(
+                                "Showing the current water year with historical statistics. "
+                                "Load more history on demand:",
+                                className="rail-hint d-block mb-2",
                             ),
-                            html.Div("Loading streamflow data…", className="hydro-loading-label"),
+                            dbc.ButtonGroup([
+                                dbc.Button("30 years", id="show-30yr-history-btn",
+                                           color="outline-primary", size="sm", n_clicks=0),
+                                dbc.Button("Full record", id="show-full-history-btn",
+                                           color="outline-primary", size="sm", n_clicks=0),
+                                dbc.Button("Current year", id="show-fast-plot-btn",
+                                           color="outline-primary", size="sm", n_clicks=0),
+                            ], className="detail-range mb-3"),
                         ],
                     ),
-                    children=[
-                        html.Div(id="multi-plot-container", style={"maxHeight": "1200px", "overflowY": "auto"})
-                    ]
-                ),
-                # Period-of-record prompt (hidden until a station is selected)
-                html.Div(
-                    id="annual-summary-prompt-row",
-                    style={"display": "none"},
-                    children=[
-                        dbc.Card([
-                            dbc.CardBody([
-                                html.Div([
-                                    html.P(
-                                        "Annual Summary and Flow Duration Curve use the full "
-                                        "period of record and may take a moment to load.",
-                                        className="text-muted mb-3",
-                                    ),
-                                    dbc.Button(
-                                        "📊 Load Period-of-Record Analysis",
-                                        id="load-annual-summary-btn",
-                                        color="primary",
-                                        outline=True,
-                                        size="md",
-                                        n_clicks=0,
-                                    ),
-                                ], className="text-center py-2"),
-                            ])
-                        ], className="mb-3"),
-                    ],
-                ),
-                dcc.Loading(
-                    id="loading-annual-summary",
-                    type="default",
-                    custom_spinner=html.Div(
-                        className="hydro-loading-wrapper",
+                    dcc.Loading(
+                        id="loading-multiplot",
+                        type="default",
+                        custom_spinner=html.Div(
+                            className="hydro-loading-wrapper",
+                            children=[
+                                html.Div(
+                                    className="hydro-wave-container",
+                                    children=[html.Div(className="hydro-wave-bar") for _ in range(7)],
+                                ),
+                                html.Div("Loading streamflow data…", className="hydro-loading-label"),
+                            ],
+                        ),
                         children=[
-                            html.Div(
-                                className="hydro-wave-container",
-                                children=[html.Div(className="hydro-wave-bar") for _ in range(7)],
-                            ),
-                            html.Div("Loading period-of-record analysis…", className="hydro-loading-label"),
+                            html.Div(id="multi-plot-container")
+                        ]
+                    ),
+
+                    # Period-of-record prompt (hidden until a station is selected)
+                    html.Div(
+                        id="annual-summary-prompt-row",
+                        style={"display": "none"},
+                        children=[
+                            html.Div([
+                                html.P(
+                                    "Annual Summary and Flow Duration Curve use the full "
+                                    "period of record and may take a moment to load.",
+                                    className="rail-hint mb-2",
+                                ),
+                                dbc.Button(
+                                    "Load period-of-record analysis",
+                                    id="load-annual-summary-btn",
+                                    color="primary",
+                                    outline=True,
+                                    size="sm",
+                                    n_clicks=0,
+                                ),
+                            ], className="detail-prompt"),
                         ],
                     ),
-                    children=[
-                        html.Div(id="annual-summary-container")
-                    ]
-                )
-            ])
-        ])
+                    dcc.Loading(
+                        id="loading-annual-summary",
+                        type="default",
+                        custom_spinner=html.Div(
+                            className="hydro-loading-wrapper",
+                            children=[
+                                html.Div(
+                                    className="hydro-wave-container",
+                                    children=[html.Div(className="hydro-wave-bar") for _ in range(7)],
+                                ),
+                                html.Div("Loading period-of-record analysis…", className="hydro-loading-label"),
+                            ],
+                        ),
+                        children=[
+                            html.Div(id="annual-summary-container")
+                        ]
+                    ),
+                ], className="detail-scroll"),
+            ], id="detail-panel", className="detail-panel"),
+        ], id="workspace", className="workspace")
+
     ]
 
 
@@ -702,7 +691,7 @@ app.clientside_callback(
     """
     function(children) {
         if (children && children.length && children[0] && children[0].type === 'Card'
-                && window.innerWidth < 992) {
+                && window.innerWidth < 1200) {
             setTimeout(function() {
                 var el = document.getElementById('multi-plot-container');
                 if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
@@ -1990,6 +1979,22 @@ app.clientside_callback(
     """,
     Output('map-legend', 'children'),
     Input('gauge-map', 'figure'),
+)
+
+
+# Detail panel collapse (wide screens): toggles a class on the workspace grid. Pure CSS does the layout.
+app.clientside_callback(
+    """
+    function(n) {
+        var collapsed = !!(n && n % 2 === 1);
+        // Plotly only re-measures on window resize; nudge it after the grid transition.
+        setTimeout(function() { window.dispatchEvent(new Event('resize')); }, 260);
+        return ['workspace' + (collapsed ? ' panel-collapsed' : ''), collapsed ? 'Expand' : 'Collapse'];
+    }
+    """,
+    [Output('workspace', 'className'),
+     Output('detail-collapse-btn', 'children')],
+    Input('detail-collapse-btn', 'n_clicks'),
 )
 
 
