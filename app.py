@@ -39,6 +39,7 @@ map_component = get_map_component()
 viz_manager = get_visualization_manager()
 filter_panel = SimplifiedFilterPanel()
 from resid_cast.precip_runoff_adapter import PrecipRunoffAdapter
+from usgs_dashboard.utils import plot_theme
 _precip_adapter = PrecipRunoffAdapter()
 
 # Start percentile background refresh thread (fetches from StreamflowOps every 30 min)
@@ -79,7 +80,7 @@ def serve_plot_png(site_id):
         return flask.abort(404)
     return flask.send_file(str(png_path), mimetype="image/png")
 
-# Add custom CSS for responsive sidebar layout
+# Page template. All styling lives in assets/theme.css (tokens, light/dark) and assets/spinner.css.
 app.index_string = '''
 <!DOCTYPE html>
 <html>
@@ -88,177 +89,9 @@ app.index_string = '''
         <title>{%title%}</title>
         {%favicon%}
         {%css%}
-        <style>
-            /* Sidebar base styles */
-            .sidebar-col {
-                background-color: #f8f9fa;
-                border-right: 1px solid #dee2e6;
-                padding: 1rem;
-                overflow-y: auto;
-            }
-
-            .main-content-col {
-                padding: 1rem;
-                transition: all 0.3s ease-in-out;
-                min-width: 0;  /* Allow shrinking */
-            }
-
-            /* Desktop: side-by-side layout */
-            @media (min-width: 992px) {
-                .sidebar-col {
-                    min-height: 100vh;
-                    flex: 0 0 auto !important;
-                }
-                .layout-row {
-                    flex-wrap: nowrap !important;
-                    display: flex !important;
-                }
-            }
-
-            /* Mobile: stack and hide sidebar */
-            @media (max-width: 991.98px) {
-                .sidebar-col {
-                    border-right: none;
-                }
-                .main-content-col {
-                    padding: 0.5rem;
-                }
-            }
-
-            /* Ensure plots scale properly */
-            .plotly-graph-div {
-                width: 100% !important;
-                height: auto !important;
-            }
-
-            /* Card spacing */
-            .main-content-col .card {
-                margin-bottom: 1rem;
-            }
-
-            /* Compact date picker in map card header */
-            .date-picker-compact .DateInput,
-            .date-picker-compact .DateInput_input {
-                font-size: 0.8rem !important;
-                width: 110px !important;
-                padding: 4px 6px !important;
-            }
-            .date-picker-compact .SingleDatePickerInput {
-                border-radius: 4px;
-            }
-
-            /* Ensure responsive text on smaller screens */
-            @media (max-width: 992px) {
-                .sidebar-col {
-                    font-size: 0.9rem;
-                }
-                .sidebar-col .card-header h5 {
-                    font-size: 1rem;
-                }
-            }
-
-            /* =============================================
-               DARK MODE
-               ============================================= */
-            body.dark-mode {
-                --bs-body-bg: #1e1e1e;
-                --bs-body-bg-rgb: 30, 30, 30;
-                --bs-body-color: #e0e0e0;
-                --bs-border-color: #444444;
-                --bs-card-bg: #2d2d2d;
-                --bs-card-border-color: #444;
-                background-color: #1e1e1e !important;
-                color: #e0e0e0;
-            }
-            body.dark-mode .container-fluid,
-            body.dark-mode .container { background-color: #1e1e1e; }
-
-            body.dark-mode .sidebar-col {
-                background-color: #252525 !important;
-                border-right-color: #444 !important;
-            }
-
-            body.dark-mode .card {
-                background-color: #2d2d2d !important;
-                border-color: #444 !important;
-                color: #e0e0e0 !important;
-            }
-            body.dark-mode .card-header {
-                background-color: #252525 !important;
-                border-bottom-color: #444 !important;
-                color: #e0e0e0 !important;
-            }
-            body.dark-mode .card-body { background-color: #2d2d2d !important; color: #e0e0e0; }
-            body.dark-mode .card-footer { background-color: #252525 !important; border-top-color: #444 !important; }
-
-            body.dark-mode .form-control,
-            body.dark-mode .form-select,
-            body.dark-mode input[type="text"],
-            body.dark-mode input[type="password"],
-            body.dark-mode input[type="number"],
-            body.dark-mode select,
-            body.dark-mode textarea {
-                background-color: #3a3a3a !important;
-                border-color: #555 !important;
-                color: #e0e0e0 !important;
-            }
-            body.dark-mode label,
-            body.dark-mode .form-label,
-            body.dark-mode .form-check-label { color: #cccccc; }
-
-            /* React-Select (dcc.Dropdown) */
-            body.dark-mode .Select-control { background-color: #3a3a3a !important; border-color: #555 !important; }
-            body.dark-mode .Select-value-label,
-            body.dark-mode .Select-placeholder,
-            body.dark-mode .Select-input > input { color: #e0e0e0 !important; }
-            body.dark-mode .Select-arrow { border-top-color: #aaa !important; }
-            body.dark-mode .Select--single > .Select-control .Select-value { color: #e0e0e0 !important; }
-            body.dark-mode .Select-menu-outer { background-color: #3a3a3a !important; border-color: #555 !important; }
-            body.dark-mode .Select-option { background-color: #3a3a3a !important; color: #e0e0e0 !important; }
-            body.dark-mode .Select-option.is-focused,
-            body.dark-mode .Select-option:hover { background-color: #4a4a4a !important; color: #fff !important; }
-            body.dark-mode .Select-option.is-selected { background-color: #2979c8 !important; color: #fff !important; }
-
-            body.dark-mode .btn-outline-secondary { color: #aaa; border-color: #555; }
-            body.dark-mode .btn-outline-secondary:hover { background-color: #3a3a3a; color: #e0e0e0; border-color: #666; }
-            body.dark-mode .btn-secondary { background-color: #444; border-color: #555; color: #e0e0e0; }
-
-            body.dark-mode .badge.bg-secondary { background-color: #555 !important; }
-            body.dark-mode .badge.bg-light { background-color: #3a3a3a !important; color: #e0e0e0 !important; }
-
-            body.dark-mode .alert-info    { background-color: #1a3a5c; border-color: #2979c8; color: #9ecbff; }
-            body.dark-mode .alert-success { background-color: #0d2b14; border-color: #1a7a2c; color: #87dfa5; }
-            body.dark-mode .alert-warning { background-color: #3a2a00; border-color: #b37700; color: #ffd97d; }
-            body.dark-mode .alert-danger  { background-color: #2b0d0d; border-color: #7a1a1a; color: #e48787; }
-
-            body.dark-mode .table { color: #e0e0e0; --bs-table-bg: #2d2d2d; --bs-table-striped-bg: #333; --bs-table-border-color: #444; }
-
-            body.dark-mode .modal-content { background-color: #2d2d2d; color: #e0e0e0; border-color: #444; }
-            body.dark-mode .modal-header { border-bottom-color: #444; }
-            body.dark-mode .modal-footer { border-top-color: #444; }
-            body.dark-mode .modal-header .btn-close { filter: invert(1) grayscale(1) brightness(2); }
-
-            body.dark-mode hr { border-color: #444; }
-            body.dark-mode .text-muted { color: #aaaaaa !important; }
-            body.dark-mode .text-secondary { color: #aaaaaa !important; }
-            body.dark-mode .list-group-item { background-color: #2d2d2d !important; border-color: #444 !important; color: #e0e0e0 !important; }
-
-            body.dark-mode #site-header {
-                background: linear-gradient(135deg, #1e1e1e 0%, #252525 100%) !important;
-                border-color: #444 !important;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4) !important;
-            }
-
-            body.dark-mode input[type="date"] {
-                background-color: #3a3a3a !important;
-                border-color: #555 !important;
-                color: #e0e0e0 !important;
-                color-scheme: dark;
-            }
-
-            body.dark-mode ::-webkit-scrollbar { background-color: #2d2d2d; width: 8px; }
-            body.dark-mode ::-webkit-scrollbar-thumb { background-color: #555; border-radius: 4px; }
-        </style>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Fira+Sans:wght@400;500;600&display=swap">
     </head>
     <body>
         {%app_entry%}
@@ -283,47 +116,44 @@ gauges_df = pd.DataFrame()
 selected_gauge_id = None
 
 
+def _icon(name: str) -> html.Span:
+    """CSS-mask icon (see .ui-icon-* in assets/theme.css); inherits the text color."""
+    return html.Span(className=f"ui-icon ui-icon-{name}", **{"aria-hidden": "true"})
+
+
 def create_header():
-    """Create the application header with enhanced styling."""
-    return dbc.Container([
-        dbc.Row([
-            dbc.Col([
-                # Enhanced header with gradient background and better typography
-                html.Div([
-                    html.H1(APP_TITLE, 
-                           className="display-3 mb-2", 
-                           style={
-                               "fontWeight": "700",
-                               "background": "linear-gradient(135deg, #1f77b4 0%, #2ca02c 100%)",
-                               "webkitBackgroundClip": "text",
-                               "webkitTextFillColor": "transparent",
-                               "backgroundClip": "text",
-                               "textAlign": "center"
-                           }),
-                    html.P(APP_DESCRIPTION,
-                           className="lead mb-3 text-center d-none d-md-block",
-                           style={
-                               "fontSize": "1.1rem",
-                               "color": "#6c757d",
-                               "maxWidth": "800px",
-                               "margin": "0 auto",
-                               "lineHeight": "1.6"
-                           }),
-                    html.Hr(className="d-none d-md-block",
-                            style={"width": "60%", "margin": "1.5rem auto", "border": "2px solid #e9ecef"}),
-                ], id="site-header", style={
-                    "background": "linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)",
-                    "padding": "1rem",
-                    "borderRadius": "15px",
-                    "boxShadow": "0 4px 6px rgba(0, 0, 0, 0.07)",
-                    "border": "1px solid rgba(0, 0, 0, 0.05)",
-                    "marginBottom": "1rem"
-                })
-            ])
-        ])
-    ], fluid=True)
+    """Slim sticky top bar: brand, view switch, flow-date picker, filter and theme toggles.
 
-
+    Every control keeps the id it had before the redesign; callbacks are unchanged.
+    """
+    title, _, region = APP_TITLE.partition(" - ")
+    return html.Header(id="site-header", className="topbar", children=[
+        html.Div(className="topbar-brand", children=[
+            _icon("waves"),
+            html.Span(title, className="topbar-title"),
+            html.Span(region, className="topbar-sub d-none d-xl-inline"),
+        ]),
+        dbc.ButtonGroup([
+            dbc.Button("Dashboard", id="show-dashboard-btn", color="outline-secondary", size="sm"),
+            dbc.Button("Admin", id="show-admin-btn", color="outline-secondary", size="sm"),
+        ], className="topbar-nav"),
+        html.Div(className="topbar-spacer"),
+        html.Div(className="topbar-date", children=[
+            html.Small("Flow conditions for", className="topbar-date-label d-none d-lg-inline"),
+            dbc.Button("\u2212", id="prev-date-btn", color="outline-secondary", size="sm",
+                       title="Previous day", className="topbar-step"),
+            dbc.Input(type="date", id="percentile-date-picker", size="sm", className="topbar-date-input"),
+            dbc.Button("+", id="next-date-btn", color="outline-secondary", size="sm",
+                       title="Next day", className="topbar-step"),
+            html.Small(id="percentile-source-label", children="Observed conditions",
+                       className="topbar-date-source d-none d-xl-inline"),
+        ]),
+        dbc.Button("Filters", id="mobile-sidebar-btn", color="outline-primary", size="sm",
+                   className="d-lg-none", n_clicks=0),
+        dbc.Button("Hide filters", id="sidebar-toggle-btn", color="outline-secondary", size="sm",
+                   className="d-none d-lg-inline-block"),
+        dbc.Button("Dark Mode", id="dark-mode-btn", color="outline-secondary", size="sm"),
+    ])
 
 
 def create_sidebar():
@@ -445,120 +275,97 @@ def create_sidebar():
 
 
 def create_public_sidebar():
-    """Create the public sidebar without admin controls."""
+    """Create the public sidebar (filter rail) without admin controls.
+
+    Every control id and default value is unchanged from the card-based layout.
+    """
+    legend = html.Section([
+        html.H3("Map legend", className="rail-heading"),
+        html.Div(id="map-legend", className="legend-list"),
+    ], className="rail-section")
     return [
-        # Simplified Filter Panel
-        filter_panel.create_filter_panel(),
-        
-        html.Br(),
-        
-        # Public Dashboard Controls (View-only settings)
-        dbc.Card([
-            dbc.CardHeader(html.H5("⚙️ Display Settings", className="mb-0")),
-            dbc.CardBody([
-                # Map controls
-                html.H6("Map Settings", className="text-muted mb-2"),
-                
-                dbc.Label("Map Style:"),
-                dcc.Dropdown(
-                    id="map-style-dropdown",
-                    options=[
-                        {"label": "🏞️ USGS National Map", "value": "usgs-national"},
-                        {"label": "🏔️ Stamen Terrain", "value": "stamen-terrain"},
-                        {"label": "🌍 National Geographic", "value": "natgeo"},
-                        {"label": "🛰️ Satellite", "value": "esri-satellite"},
-                    ],
-                    value="usgs-national",
-                    className="mb-3"
-                ),
-                
-                dbc.Label("Watershed Boundaries:"),
-                dbc.Checklist(
-                    id="basin-boundaries-checklist",
-                    options=[
-                        {"label": " Major Basins (HUC2)", "value": "huc2"},
-                        {"label": " Sub-Regions (HUC4)", "value": "huc4"},
-                        {"label": " Accounting Units (HUC6)", "value": "huc6"},
-                        {"label": " Sub-Basins (HUC8)", "value": "huc8"}
-                    ],
-                    value=["huc2", "huc4"],  # Show HUC2 and HUC4 by default
-                    inline=False,
-                    className="mb-2"
-                ),
-                html.P("Display watershed boundaries on the map", 
-                      className="small text-muted mb-3"),
-                
-                html.Hr(),
-                
-                # Visualization controls
-                html.H6("Visualization Controls", className="text-muted mb-2"),
-                
-                dbc.Label("Years to Highlight:"),
-                dbc.Input(
-                    id="highlight-years-input",
-                    type="text",
-                    placeholder="e.g., 2025, 2024, 2023",
-                    className="mb-2"
-                ),
-                html.P("Highlight specific years in charts (comma-separated)", 
-                      className="small text-muted mb-3"),
-                
-                html.Hr(),
-                
-                # Plot size controls
-                html.H6("Plot Size Controls", className="text-muted mb-2"),
-                
-                dbc.Label("Map Height:"),
-                dcc.Dropdown(
-                    id="map-height-dropdown",
-                    options=[
-                        {"label": "📱 Compact (500px)", "value": 500},
-                        {"label": "📊 Standard (700px)", "value": 700},
-                        {"label": "🖥️ Large (900px)", "value": 900},
-                        {"label": "📺 Extra Large (1200px)", "value": 1200},
-                    ],
-                    value=700,
-                    className="mb-3"
-                ),
-                
-                dbc.Label("Chart Height:"),
-                dcc.Dropdown(
-                    id="chart-height-dropdown",
-                    options=[
-                        {"label": "📱 Compact (400px)", "value": 400},
-                        {"label": "📊 Standard (500px)", "value": 500},
-                        {"label": "🖥️ Large (600px)", "value": 600},
-                        {"label": "📺 Extra Large (800px)", "value": 800},
-                    ],
-                    value=600,
-                    className="mb-3"
-                ),
-                
-                dbc.Label("Additional Options:"),
-                dbc.Checklist(
-                    id="plot-options-checklist",
-                    options=[
-                        {"label": "🔍 Enable plot zoom & pan", "value": "enable_zoom"},
-                        {"label": "📱 Responsive sizing", "value": "responsive"},
-                        {"label": "🖼️ Show plot toolbar", "value": "show_toolbar"},
-                    ],
-                    value=["enable_zoom", "show_toolbar"],
-                    className="mb-3"
-                ),
-            ])
-        ], className="mb-3"),
-        
-        # Gauge information card
-        dbc.Card([
-            dbc.CardHeader(html.H5("📍 Selected Gauge", className="mb-0")),
-            dbc.CardBody([
-                html.Div(id="gauge-info-content", children=[
-                    html.P("Select a gauge on the map to view details.", 
-                          className="text-muted")
-                ])
-            ])
-        ], className="mb-3"),
+        filter_panel.create_filter_panel(legend=legend),
+
+        # Map display settings (view-only)
+        html.Section([
+            html.H3("Map", className="rail-heading"),
+            html.Label("Map style", className="rail-label"),
+            dcc.Dropdown(
+                id="map-style-dropdown",
+                options=[
+                    {"label": "USGS National Map", "value": "usgs-national"},
+                    {"label": "Stamen Terrain", "value": "stamen-terrain"},
+                    {"label": "National Geographic", "value": "natgeo"},
+                    {"label": "Satellite", "value": "esri-satellite"},
+                ],
+                value="usgs-national",
+                className="mb-3",
+            ),
+            html.Label("Watershed boundaries", className="rail-label"),
+            dbc.Checklist(
+                id="basin-boundaries-checklist",
+                options=[
+                    {"label": "Major basins (HUC2)", "value": "huc2"},
+                    {"label": "Sub-regions (HUC4)", "value": "huc4"},
+                    {"label": "Accounting units (HUC6)", "value": "huc6"},
+                    {"label": "Sub-basins (HUC8)", "value": "huc8"},
+                ],
+                value=["huc2", "huc4"],  # Show HUC2 and HUC4 by default
+                inline=False,
+                className="rail-checklist",
+            ),
+            html.Label("Map height", className="rail-label mt-3"),
+            dcc.Dropdown(
+                id="map-height-dropdown",
+                options=[
+                    {"label": "Fit to window", "value": "fit"},
+                    {"label": "Compact (500px)", "value": 500},
+                    {"label": "Standard (700px)", "value": 700},
+                    {"label": "Large (900px)", "value": 900},
+                    {"label": "Extra large (1200px)", "value": 1200},
+                ],
+                value="fit",
+            ),
+        ], className="rail-section"),
+
+        # Plot display settings (view-only)
+        html.Section([
+            html.H3("Plots", className="rail-heading"),
+            html.Label("Years to highlight", className="rail-label"),
+            dbc.Input(
+                id="highlight-years-input",
+                type="text",
+                placeholder="e.g., 2025, 2024, 2023",
+            ),
+            html.Small("Highlight specific years in charts (comma-separated)", className="rail-hint d-block mt-1 mb-3"),
+            html.Label("Chart height", className="rail-label"),
+            dcc.Dropdown(
+                id="chart-height-dropdown",
+                options=[
+                    {"label": "Compact (400px)", "value": 400},
+                    {"label": "Standard (500px)", "value": 500},
+                    {"label": "Large (600px)", "value": 600},
+                    {"label": "Extra large (800px)", "value": 800},
+                ],
+                value=600,
+                className="mb-3",
+            ),
+            html.Label("Additional options", className="rail-label"),
+            dbc.Checklist(
+                id="plot-options-checklist",
+                options=[
+                    {"label": "Enable plot zoom & pan", "value": "enable_zoom"},
+                    {"label": "Responsive sizing", "value": "responsive"},
+                    {"label": "Show plot toolbar", "value": "show_toolbar"},
+                ],
+                value=["enable_zoom", "show_toolbar"],
+                className="rail-checklist",
+            ),
+        ], className="rail-section"),
+
     ]
+
+
 def create_admin_content():
     """Create the admin panel content."""
     from dashboard_admin import create_enhanced_admin_content
@@ -596,79 +403,13 @@ def create_main_content():
         # Status alerts
         html.Div(id="status-alerts"),
         
-        # Map section
-        dbc.Card([
-            dbc.CardHeader(
-                dbc.Row([
-                    # Left: title + station count
-                    dbc.Col(
-                        [
-                            html.Span("🗺️ ", className="fw-semibold"),
-                            html.Span("Map", className="fw-semibold me-2 d-sm-none"),
-                            html.Span("Streamflow Gauges Map", className="fw-semibold me-2 d-none d-sm-inline"),
-                            dbc.Badge(id="gauge-count-badge", color="info", className="align-middle"),
-                        ],
-                        width="auto",
-                        className="d-flex align-items-center",
-                    ),
-                    # Right: label + [−] date picker [+]
-                    dbc.Col(
-                        dbc.Row(
-                            [
-                                dbc.Col(
-                                    html.Small(
-                                        "Flow conditions for date:",
-                                        className="text-muted",
-                                        style={"whiteSpace": "nowrap", "fontSize": "0.75rem"},
-                                    ),
-                                    width="auto",
-                                    className="d-none d-sm-block",  # hide label on phones
-                                ),
-                                dbc.Col(
-                                    dbc.Button(
-                                        "−", id="prev-date-btn",
-                                        color="secondary", outline=True, size="sm",
-                                        title="Previous day",
-                                        style={"minWidth": "32px", "minHeight": "32px"},
-                                    ),
-                                    width="auto",
-                                ),
-                                dbc.Col(
-                                    [
-                                        dbc.Input(
-                                            type="date",
-                                            id="percentile-date-picker",
-                                            size="sm",
-                                            style={"width": "140px", "fontSize": "0.8rem"},
-                                        ),
-                                        html.Small(
-                                            id='percentile-source-label',
-                                            children="Observed conditions",
-                                            className="text-muted d-block mt-1",
-                                            style={"fontSize": "0.7rem", "whiteSpace": "nowrap"},
-                                        ),
-                                    ],
-                                    width="auto",
-                                ),
-                                dbc.Col(
-                                    dbc.Button(
-                                        "+", id="next-date-btn",
-                                        color="secondary", outline=True, size="sm",
-                                        title="Next day",
-                                        style={"minWidth": "32px", "minHeight": "32px"},
-                                    ),
-                                    width="auto",
-                                ),
-                            ],
-                            align="center",
-                            className="g-1 flex-nowrap",
-                        ),
-                        width="auto",
-                    ),
-                ], align="center", className="g-0 flex-nowrap justify-content-between"),
-                className="py-2",
-            ),
-            dbc.CardBody([
+        html.Div([
+            # Map stage: flush to the content area; the count chip floats over the map
+            html.Div([
+                html.Div(
+                    dbc.Badge(id="gauge-count-badge", color="info"),
+                    className="map-chip",
+                ),
                 dcc.Loading(
                     id="loading-map",
                     type="default",
@@ -685,181 +426,141 @@ def create_main_content():
                     children=[
                         dcc.Graph(
                             id="gauge-map",
-                            style={"height": "700px"},  # This will be updated dynamically
+                            style={"height": "calc(100vh - 140px)", "minHeight": "420px"},  # updated by the map-height callback
                             config={"displayModeBar": "hover", "displaylogo": False},
                             clear_on_unhover=True,  # reset hoverData on mouse-out so the hover panel hides
                         )
                     ]
-                )
-            ])
-        ], className="mb-3"),
-        
-        # Multi-plot visualization section
-        dbc.Card([
-            dbc.CardHeader(
+                ),
+            ], className="map-stage"),
+
+            # Detail panel: selected-gauge info + water-year plot + period-of-record analysis.
+            # Sits beside the map on wide screens (>= 1200px) and stacks below it on narrower ones.
+            html.Aside([
                 html.Div([
-                    html.H5("📊 Streamflow Analysis", className="mb-0"),
-                    html.Div([
-                        dbc.Badge(
-                            id="cache-age-badge",
-                            color="secondary",
-                            style={"display": "none", "cursor": "default", "fontSize": "11px"},
-                        ),
-                        dbc.Button(
-                            "🔄 Refresh",
-                            id="refresh-live-plot-btn",
-                            color="outline-info",
-                            size="sm",
-                            n_clicks=0,
-                            style={"display": "none"},
-                        ),
-                        dbc.Badge(
-                            id="selected-gauge-badge",
-                            color="success",
-                            style={"display": "none"},
-                        ),
-                    ], className="d-flex align-items-center gap-2"),
-                ], className="d-flex justify-content-between align-items-center"),
-            ),
-            dbc.CardBody([
-                # History-load buttons (hidden until a station is selected)
-                html.Div(
-                    id="history-buttons-row",
-                    style={"display": "none"},
-                    children=[
-                        html.Small(
-                            "Water Year Plot shows current year + historical statistics. "
-                            "Load additional history on demand:",
-                            className="text-muted d-block mb-2",
-                        ),
-                        dbc.ButtonGroup([
-                            dbc.Button(
-                                "📈 Last 30 Years",
-                                id="show-30yr-history-btn",
-                                color="outline-primary",
-                                size="sm",
-                                n_clicks=0,
-                            ),
-                            dbc.Button(
-                                "📜 Full Period of Record",
-                                id="show-full-history-btn",
-                                color="outline-secondary",
-                                size="sm",
-                                n_clicks=0,
-                            ),
-                            dbc.Button(
-                                "↩ Current Year Only",
-                                id="show-fast-plot-btn",
-                                color="outline-success",
-                                size="sm",
-                                n_clicks=0,
-                            ),
-                        ], className="mb-3"),
-                    ],
-                ),
-                dcc.Loading(
-                    id="loading-multiplot",
-                    type="default",
-                    custom_spinner=html.Div(
-                        className="hydro-loading-wrapper",
+                    html.H2("Gauge detail", className="detail-title"),
+                    dbc.Badge(id="selected-gauge-badge", color="success", style={"display": "none"}),
+                    dbc.Badge(
+                        id="cache-age-badge",
+                        color="secondary",
+                        style={"display": "none", "cursor": "default", "fontSize": "11px"},
+                    ),
+                    html.Div(className="detail-spacer"),
+                    dbc.Button(
+                        "Refresh",
+                        id="refresh-live-plot-btn",
+                        color="outline-secondary",
+                        size="sm",
+                        n_clicks=0,
+                        style={"display": "none"},
+                    ),
+                    dbc.Button(
+                        "Collapse",
+                        id="detail-collapse-btn",
+                        color="outline-secondary",
+                        size="sm",
+                        n_clicks=0,
+                        title="Collapse or expand the detail panel",
+                        className="d-none d-xl-inline-block",
+                    ),
+                ], className="detail-head"),
+                html.Div([
+                    html.Details([
+                        html.Summary("Station information"),
+                        html.Div(id="gauge-info-content", children=[
+                            html.P("Select a gauge on the map to view its water-year plot.",
+                                   className="detail-empty")
+                        ]),
+                    ], open=True, className="detail-info"),
+
+                    # History-load buttons (hidden until a station is selected)
+                    html.Div(
+                        id="history-buttons-row",
+                        style={"display": "none"},
                         children=[
-                            html.Div(
-                                className="hydro-wave-container",
-                                children=[html.Div(className="hydro-wave-bar") for _ in range(7)],
+                            html.Small(
+                                "Showing the current water year with historical statistics. "
+                                "Load more history on demand:",
+                                className="rail-hint d-block mb-2",
                             ),
-                            html.Div("Loading streamflow data…", className="hydro-loading-label"),
+                            dbc.ButtonGroup([
+                                dbc.Button("30 years", id="show-30yr-history-btn",
+                                           color="outline-primary", size="sm", n_clicks=0),
+                                dbc.Button("Full record", id="show-full-history-btn",
+                                           color="outline-primary", size="sm", n_clicks=0),
+                                dbc.Button("Current year", id="show-fast-plot-btn",
+                                           color="outline-primary", size="sm", n_clicks=0),
+                            ], className="detail-range mb-3"),
                         ],
                     ),
-                    children=[
-                        html.Div(id="multi-plot-container", style={"maxHeight": "1200px", "overflowY": "auto"})
-                    ]
-                ),
-                # Period-of-record prompt (hidden until a station is selected)
-                html.Div(
-                    id="annual-summary-prompt-row",
-                    style={"display": "none"},
-                    children=[
-                        dbc.Card([
-                            dbc.CardBody([
-                                html.Div([
-                                    html.P(
-                                        "Annual Summary and Flow Duration Curve use the full "
-                                        "period of record and may take a moment to load.",
-                                        className="text-muted mb-3",
-                                    ),
-                                    dbc.Button(
-                                        "📊 Load Period-of-Record Analysis",
-                                        id="load-annual-summary-btn",
-                                        color="primary",
-                                        outline=True,
-                                        size="md",
-                                        n_clicks=0,
-                                    ),
-                                ], className="text-center py-2"),
-                            ])
-                        ], className="mb-3"),
-                    ],
-                ),
-                dcc.Loading(
-                    id="loading-annual-summary",
-                    type="default",
-                    custom_spinner=html.Div(
-                        className="hydro-loading-wrapper",
+                    dcc.Loading(
+                        id="loading-multiplot",
+                        type="default",
+                        custom_spinner=html.Div(
+                            className="hydro-loading-wrapper",
+                            children=[
+                                html.Div(
+                                    className="hydro-wave-container",
+                                    children=[html.Div(className="hydro-wave-bar") for _ in range(7)],
+                                ),
+                                html.Div("Loading streamflow data…", className="hydro-loading-label"),
+                            ],
+                        ),
                         children=[
-                            html.Div(
-                                className="hydro-wave-container",
-                                children=[html.Div(className="hydro-wave-bar") for _ in range(7)],
-                            ),
-                            html.Div("Loading period-of-record analysis…", className="hydro-loading-label"),
+                            html.Div(id="multi-plot-container")
+                        ]
+                    ),
+
+                    # Period-of-record prompt (hidden until a station is selected)
+                    html.Div(
+                        id="annual-summary-prompt-row",
+                        style={"display": "none"},
+                        children=[
+                            html.Div([
+                                html.P(
+                                    "Annual Summary and Flow Duration Curve use the full "
+                                    "period of record and may take a moment to load.",
+                                    className="rail-hint mb-2",
+                                ),
+                                dbc.Button(
+                                    "Load period-of-record analysis",
+                                    id="load-annual-summary-btn",
+                                    color="primary",
+                                    outline=True,
+                                    size="sm",
+                                    n_clicks=0,
+                                ),
+                            ], className="detail-prompt"),
                         ],
                     ),
-                    children=[
-                        html.Div(id="annual-summary-container")
-                    ]
-                )
-            ])
-        ])
+                    dcc.Loading(
+                        id="loading-annual-summary",
+                        type="default",
+                        custom_spinner=html.Div(
+                            className="hydro-loading-wrapper",
+                            children=[
+                                html.Div(
+                                    className="hydro-wave-container",
+                                    children=[html.Div(className="hydro-wave-bar") for _ in range(7)],
+                                ),
+                                html.Div("Loading period-of-record analysis…", className="hydro-loading-label"),
+                            ],
+                        ),
+                        children=[
+                            html.Div(id="annual-summary-container")
+                        ]
+                    ),
+                ], className="detail-scroll"),
+            ], id="detail-panel", className="detail-panel"),
+        ], id="workspace", className="workspace")
+
     ]
 
 
 # Simplified layout without complex tabs - everything always exists
-app.layout = dbc.Container([
+app.layout = html.Div([
     create_header(),
-    
-    # Navigation and control buttons
-    dbc.Row([
-        dbc.Col([
-            dbc.ButtonGroup([
-                dbc.Button("🏞️ Dashboard", id="show-dashboard-btn", color="primary", className="me-2"),
-                dbc.Button("🔧 Admin", id="show-admin-btn", color="secondary"),
-            ])
-        ], width="auto"),
-        dbc.Col([
-            dbc.Button(
-                "Filters",
-                id="mobile-sidebar-btn",
-                color="outline-primary",
-                size="sm",
-                className="d-lg-none me-2",
-                n_clicks=0,
-            ),
-            dbc.ButtonGroup([
-                dbc.Button(
-                    "Dark Mode",
-                    id="dark-mode-btn",
-                    color="outline-secondary",
-                    size="sm",
-                ),
-                dbc.Button(
-                    "◀️ Hide Sidebar",
-                    id="sidebar-toggle-btn",
-                    color="outline-secondary",
-                    size="sm",
-                    className="d-none d-lg-inline-block",
-                ),
-            ], className="float-end")
-        ], width="auto")
-    ], className="mb-3 d-flex justify-content-between align-items-center"),
+    dbc.Container([
     
     # Dashboard content (always exists, just hidden/shown)
     html.Div([
@@ -938,6 +639,7 @@ app.layout = dbc.Container([
     # output this component's `style`, or the two writers desync (see hover_zoom.js).
     html.Div(
         id='map-hover-panel',
+        className='hover-card',
         style={
             'display': 'none',
             'position': 'fixed',
@@ -945,19 +647,12 @@ app.layout = dbc.Container([
             'top': '0px',
             'width': '462px',      # must match PW in hover_zoom.js
             'zIndex': 9000,
-            'backgroundColor': '#252525',
-            'border': '1px solid #444444',
-            'borderRadius': '8px',
-            'boxShadow': '0 6px 24px rgba(0,0,0,0.65)',
             'padding': '0',
             'overflow': 'hidden',
             'pointerEvents': 'none',
         },
         children=[
-            html.Div(id='map-hover-info-text', style={
-                'padding': '5px 9px 4px 9px',
-                'backgroundColor': '#252525',
-            }),
+            html.Div(id='map-hover-info-text', className='hover-info'),
             html.Img(
                 id='map-hover-tooltip-img',
                 src='',
@@ -971,7 +666,8 @@ app.layout = dbc.Container([
         ],
     ),
 
-], fluid=True)
+    ], fluid=True, className="pt-3"),
+])
 
 
 # ── Mobile clientside helpers ─────────────────────────────────────────────────
@@ -990,7 +686,7 @@ app.clientside_callback(
     """
     function(children) {
         if (children && children.length && children[0] && children[0].type === 'Card'
-                && window.innerWidth < 992) {
+                && window.innerWidth < 1200) {
             setTimeout(function() {
                 var el = document.getElementById('multi-plot-container');
                 if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
@@ -1315,7 +1011,7 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
     if ctx.triggered:
         trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
         # Don't auto-fit for map style, height changes, or when map is just being built from store
-        if trigger_id in ['map-style-dropdown', 'map-height-dropdown', 'gauges-store', 'percentile-bands-store']:
+        if trigger_id in ['map-style-dropdown', 'map-height-dropdown', 'gauges-store', 'percentile-bands-store', 'dark-mode-store']:
             auto_fit = False
     
     # Convert data to DataFrame
@@ -1422,19 +1118,14 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
             filtered_gauges,
             selected_gauge=selected_gauge,
             map_style=map_style,
-            height=map_height,
+            height=None if map_height == 'fit' else map_height,   # None = autosize to the container
             auto_fit_bounds=auto_fit,
             percentile_bands=percentile_bands or {}
         )
         
-        # Apply dark mode legend / tooltip styling (basemap is unchanged)
+        # Apply dark mode tooltip styling (basemap is unchanged)
         if dark_mode:
             fig.update_layout(
-                legend=dict(
-                    bgcolor="rgba(40,40,40,0.92)",
-                    bordercolor="#555555",
-                    font=dict(color="#e0e0e0"),
-                ),
                 hoverlabel=dict(
                     bgcolor="#2d2d2d",
                     bordercolor="#555555",
@@ -1487,6 +1178,8 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
 )
 def update_map_container_height(map_height):
     """Update the map container height based on user selection."""
+    if map_height == 'fit':
+        return {"height": "calc(100vh - 140px)", "minHeight": "420px"}   # viewport minus top bar + gutters
     return {"height": f"{map_height}px"}
 
 
@@ -1822,10 +1515,9 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
     if nwrfc_id:
         site_label += f" / NWRFC {nwrfc_id}"
 
-    plot_template = 'plotly_dark' if dark_mode else 'plotly'
-
     def _card(title, fig, graph_id=None):
-        fig.update_layout(template=plot_template, hovermode='x unified')
+        plot_theme.apply_theme(fig, bool(dark_mode))
+        fig.update_layout(hovermode='x unified')
         graph_kwargs = dict(figure=fig, config=graph_config, style=graph_style)
         if graph_id:
             graph_kwargs['id'] = graph_id
@@ -1950,7 +1642,6 @@ def render_annual_summary(requested, dark_mode, selected_gauge, gauges_data,
     if nwrfc_id:
         site_label += f" / NWRFC {nwrfc_id}"
 
-    plot_template = 'plotly_dark' if dark_mode else 'plotly'
     selected_options = plot_options or []
     graph_config = {
         "displaylogo": False,
@@ -1964,7 +1655,7 @@ def render_annual_summary(requested, dark_mode, selected_gauge, gauges_data,
         graph_style["width"] = "100%"
 
     def _por_card(title, fig):
-        fig.update_layout(template=plot_template)
+        plot_theme.apply_theme(fig, bool(dark_mode))
         return dbc.Card([
             dbc.CardHeader([
                 html.Div(f"{title} — {site_label} — {station_name}",
@@ -2053,16 +1744,16 @@ def update_filter_summary(gauges_data):
         # Create dynamic state options with current counts
         state_options = []
         state_labels = {
-            'OR': '🌲 Oregon',
-            'WA': '🏔️ Washington', 
-            'ID': '⛰️ Idaho',
-            'MT': '⛰️ Montana',
-            'CA': '☀️ California',
-            'NV': '🏜️ Nevada',
-            'UT': '🏔️ Utah',
-            'AZ': '🌵 Arizona',
-            'CO': '⛰️ Colorado',
-            'BC': '🍁 British Columbia'
+            'OR': 'Oregon',
+            'WA': 'Washington', 
+            'ID': 'Idaho',
+            'MT': 'Montana',
+            'CA': 'California',
+            'NV': 'Nevada',
+            'UT': 'Utah',
+            'AZ': 'Arizona',
+            'CO': 'Colorado',
+            'BC': 'British Columbia'
         }
         
         for state in ['OR', 'WA', 'ID', 'MT', 'CA', 'NV', 'UT', 'AZ', 'CO', 'BC']:
@@ -2181,31 +1872,28 @@ def update_map_tooltip_store(hover_data):
     else:
         src = ''
 
+    # Classes (not inline colors): the hover card is a light card in both themes; see assets/theme.css.
     info = html.Div([
-        html.Div(name, style={
-            'fontSize': '12px', 'fontWeight': '700', 'color': '#e0e0e0',
-            'marginBottom': '2px', 'lineHeight': '1.2',
-        }),
-        html.Hr(style={'margin': '2px 0 4px 0', 'borderColor': '#444', 'borderWidth': '1px'}),
+        html.Div(name, className="hover-name"),
+        html.Hr(className="hover-rule"),
         html.Div([
-            html.Span("Site: ", style={'color': '#aaaaaa', 'fontSize': '10px'}),
-            html.Span(site_id, style={'fontSize': '10px', 'fontWeight': '600', 'color': '#e0e0e0', 'marginRight': '10px'}),
-            html.Span("State: ", style={'color': '#aaaaaa', 'fontSize': '10px'}),
-            html.Span(state, style={'fontSize': '10px', 'color': '#e0e0e0'}),
-        ], style={'marginBottom': '2px'}),
-        html.Div([
-            html.Span("Area: ", style={'color': '#aaaaaa', 'fontSize': '10px'}),
-            html.Span(area, style={'fontSize': '10px', 'color': '#e0e0e0', 'marginRight': '10px'}),
-            html.Span("Record: ", style={'color': '#aaaaaa', 'fontSize': '10px'}),
-            html.Span(years, style={'fontSize': '10px', 'color': '#e0e0e0'}),
-        ], style={'marginBottom': '2px'}),
-        html.Div([
-            html.Span("Condition: ", style={'color': '#aaaaaa', 'fontSize': '10px'}),
-            html.Span(condition, style={'fontSize': '10px', 'fontWeight': '700', 'color': cond_color}),
-        ], style={'marginBottom': '2px'}),
-        html.Div([
-            html.Span(f"{lat:.4f}°N, {lon:.4f}°W", style={'fontSize': '9px', 'color': '#888888'}),
+            html.Span("Site ", className="hover-key"),
+            html.Span(site_id, className="hover-val hover-mono me-3"),
+            html.Span("State ", className="hover-key"),
+            html.Span(state, className="hover-val"),
         ]),
+        html.Div([
+            html.Span("Area ", className="hover-key"),
+            html.Span(area, className="hover-val me-3"),
+            html.Span("Record ", className="hover-key"),
+            html.Span(years, className="hover-val"),
+        ]),
+        html.Div([
+            html.Span("Condition ", className="hover-key"),
+            html.Span(className="hover-dot", style={'backgroundColor': cond_color}),
+            html.Span(condition, className="hover-val hover-strong"),
+        ]),
+        html.Div(f"{lat:.4f}°N, {lon:.4f}°W", className="hover-coord"),
     ])
 
     return {'show': True, 'src': src, 'has_png': has_png}, info
@@ -2236,6 +1924,67 @@ app.clientside_callback(
     [Output('map-hover-tooltip-img', 'src'),
      Output('map-hover-tooltip-img', 'style')],
     Input('map-tooltip-store', 'data'),
+)
+
+
+# Map legend: built in the browser from the figure's traces so the rail legend always
+# matches what is drawn (percentile bands with counts, NWRFC marker, HUC boundary layers).
+# Click handling lives in assets/map_legend.js.
+app.clientside_callback(
+    """
+    function(fig) {
+        var data = (fig && fig.data) || [];
+        var items = [], groups = {};
+        data.forEach(function(t, i) {
+            if (!t) { return; }
+            var g = t.legendgroup;
+            if (g && groups[g] !== undefined) { items[groups[g]].idx.push(i); return; }
+            if (t.showlegend === false || !t.name) { return; }
+            var isLine = t.mode === 'lines';
+            var c = isLine ? (t.line && t.line.color) : (t.marker && t.marker.color);
+            items.push({
+                idx: [i], line: isLine, name: t.name,
+                color: (typeof c === 'string') ? c : '#888888',
+                off: t.visible === 'legendonly' || t.visible === false
+            });
+            if (g) { groups[g] = items.length - 1; }
+        });
+        return items.map(function(it) {
+            var m = /^(.*?)\\s*\\((\\d[\\d,]*)\\)$/.exec(it.name);
+            var label = m ? m[1] : it.name, count = m ? m[2] : '';
+            return {namespace: 'dash_html_components', type: 'Button', props: {
+                className: 'legend-item' + (it.off ? ' is-off' : ''),
+                'data-traces': it.idx.join(','),
+                'aria-pressed': it.off ? 'false' : 'true',
+                title: 'Show / hide on map',
+                children: [
+                    {namespace: 'dash_html_components', type: 'Span', props: {
+                        className: it.line ? 'legend-swatch legend-swatch-line' : 'legend-swatch',
+                        style: {backgroundColor: it.color}}},
+                    {namespace: 'dash_html_components', type: 'Span', props: {className: 'legend-label', children: label}},
+                    {namespace: 'dash_html_components', type: 'Span', props: {className: 'legend-count', children: count}}
+                ]}};
+        });
+    }
+    """,
+    Output('map-legend', 'children'),
+    Input('gauge-map', 'figure'),
+)
+
+
+# Detail panel collapse (wide screens): toggles a class on the workspace grid. Pure CSS does the layout.
+app.clientside_callback(
+    """
+    function(n) {
+        var collapsed = !!(n && n % 2 === 1);
+        // Plotly only re-measures on window resize; nudge it after the grid transition.
+        setTimeout(function() { window.dispatchEvent(new Event('resize')); }, 260);
+        return ['workspace' + (collapsed ? ' panel-collapsed' : ''), collapsed ? 'Expand' : 'Collapse'];
+    }
+    """,
+    [Output('workspace', 'className'),
+     Output('detail-collapse-btn', 'children')],
+    Input('detail-collapse-btn', 'n_clicks'),
 )
 
 
@@ -2277,25 +2026,25 @@ def toggle_sidebar(desktop_clicks, mobile_clicks, current_class):
         if "d-block" in current_class and "d-none" not in current_class:
             # Currently visible on mobile -> hide
             return ("sidebar-col d-none d-lg-block",
-                    "◀️ Hide Sidebar", "main-content-col flex-grow-1", "Filters")
+                    "Hide filters", "main-content-col flex-grow-1", "Filters")
         else:
             # Currently hidden on mobile -> show full-width
             return ("sidebar-col d-block",
-                    "◀️ Hide Sidebar", "main-content-col flex-grow-1", "Close")
+                    "Hide filters", "main-content-col flex-grow-1", "Close")
 
     if trigger == "sidebar-toggle-btn":
         # Desktop toggle
         is_hidden = desktop_clicks and (desktop_clicks % 2 == 1)
         if is_hidden:
             return ("sidebar-col d-none",
-                    "▶️ Show Sidebar", "main-content-col w-100", "Filters")
+                    "Show filters", "main-content-col w-100", "Filters")
         else:
             return ("sidebar-col d-none d-lg-block",
-                    "◀️ Hide Sidebar", "main-content-col flex-grow-1", "Filters")
+                    "Hide filters", "main-content-col flex-grow-1", "Filters")
 
     # Default state (initial load)
     return ("sidebar-col d-none d-lg-block",
-            "◀️ Hide Sidebar", "main-content-col flex-grow-1", "Filters")
+            "Hide filters", "main-content-col flex-grow-1", "Filters")
 
 
 # =============================================

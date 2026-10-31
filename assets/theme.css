@@ -1,0 +1,472 @@
+/* ==========================================================================
+   Streamflow Dashboard — theme tokens and base styles.
+
+   Light is the default. Dark is `body.dark-mode`, toggled by the existing
+   clientside callback behind #dark-mode-btn (it also writes dark-mode-store,
+   which the plot callbacks read). Do not add a second theme mechanism.
+
+   Rule: components take colors from the tokens below, never from literals.
+   Design reference: Documentation/design/map-first-mock.html
+   ========================================================================== */
+
+:root {
+    --bg: #F4F7FA;
+    --surface: #FFFFFF;
+    --surface-2: #EDF2F7;
+    --line: #D9E1EA;
+    --fg: #14243A;
+    --fg-2: #4A5C73;
+    --fg-3: #6B7C90;
+    --accent: #1E5FB4;
+    --accent-fg: #FFFFFF;
+    --accent-soft: #E3EEFB;
+    --focus: #1E5FB4;
+    --input-bg: #FFFFFF;
+    --shadow: 0 1px 2px rgba(20, 36, 58, .08), 0 4px 14px rgba(20, 36, 58, .08);
+
+    /* Flow percentile classes (colorblind-safe: orange -> green -> blue) */
+    --p-low: #D55E00;
+    --p-below: #E69F00;
+    --p-normal: #4C9A7B;
+    --p-above: #56B4E9;
+    --p-high: #0A4F9C;
+    --p-off: #8A96A3;
+
+    /* Forecast traces */
+    --f-resid: #00897B;
+    --f-ealstm: #C77700;
+    --f-blend: #8E3FB0;
+
+    /* Wave spinner */
+    --wave-a: #1a7fc1;
+    --wave-b: #5ab4d6;
+    --wave-c: #a8d8ea;
+
+    --font-ui: 'Fira Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'Fira Code', ui-monospace, Menlo, monospace;
+    --radius: 8px;
+}
+
+body.dark-mode {
+    --bg: #0C1522;
+    --surface: #142133;
+    --surface-2: #1B2B41;
+    --line: #26384F;
+    --fg: #E6EDF6;
+    --fg-2: #A4B4C8;
+    --fg-3: #8496AC;
+    --accent: #5AA2F0;
+    --accent-fg: #071426;
+    --accent-soft: #1B3250;
+    --focus: #7DB6F5;
+    --input-bg: #1B2B41;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .35);
+
+    --p-low: #F28A3A;
+    --p-below: #F2B84B;
+    --p-normal: #5DB596;
+    --p-above: #6EC1F0;
+    --p-high: #3E8EE0;
+    --p-off: #6F7C8B;
+
+    --f-resid: #3CC4B4;
+    --f-ealstm: #F0A63A;
+    --f-blend: #C48BE0;
+
+    --wave-a: #3E8EE0;
+    --wave-b: #6EC1F0;
+    --wave-c: #A9DDF7;
+}
+
+/* ---- Base + Bootstrap variable mapping ---------------------------------- */
+body {
+    --bs-body-bg: var(--bg);
+    --bs-body-color: var(--fg);
+    --bs-border-color: var(--line);
+    --bs-card-bg: var(--surface);
+    --bs-card-border-color: var(--line);
+    --bs-link-color: var(--accent);
+    --bs-link-hover-color: var(--accent);
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-ui);
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.font-mono, code, kbd, samp { font-family: var(--font-mono); }
+
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* Bootstrap swaps outlines for faint box-shadows on these; keep one visible ring everywhere. */
+.btn:focus-visible, .btn-check:focus-visible + .btn,
+.form-control:focus, .form-select:focus, .form-check-input:focus-visible,
+.legend-item:focus-visible, summary:focus-visible, .Select-control:focus-within {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+.text-muted, .text-secondary { color: var(--fg-3) !important; }
+hr { border-color: var(--line); opacity: 1; }
+
+.card {
+    background-color: var(--surface);
+    border-color: var(--line);
+    border-radius: var(--radius);
+    color: var(--fg);
+}
+.card-header {
+    background-color: var(--surface);
+    border-bottom-color: var(--line);
+    color: var(--fg);
+}
+.card-body { color: var(--fg); }
+.card-footer { background-color: var(--surface-2); border-top-color: var(--line); }
+
+/* Buttons: primary actions use the accent token */
+.btn { border-radius: var(--radius); transition: background-color .15s, border-color .15s, color .15s; }
+.btn-primary {
+    --bs-btn-bg: var(--accent);
+    --bs-btn-border-color: var(--accent);
+    --bs-btn-color: var(--accent-fg);
+    --bs-btn-hover-bg: var(--accent);
+    --bs-btn-hover-border-color: var(--accent);
+    --bs-btn-hover-color: var(--accent-fg);
+    --bs-btn-active-bg: var(--accent);
+    --bs-btn-active-border-color: var(--accent);
+    --bs-btn-active-color: var(--accent-fg);
+    --bs-btn-disabled-bg: var(--accent);
+    --bs-btn-disabled-border-color: var(--accent);
+    filter: none;
+}
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-outline-primary {
+    --bs-btn-color: var(--accent);
+    --bs-btn-border-color: var(--accent);
+    --bs-btn-hover-bg: var(--accent-soft);
+    --bs-btn-hover-color: var(--accent);
+    --bs-btn-hover-border-color: var(--accent);
+    --bs-btn-active-bg: var(--accent);
+    --bs-btn-active-color: var(--accent-fg);
+    --bs-btn-active-border-color: var(--accent);
+}
+.btn-outline-secondary {
+    --bs-btn-color: var(--fg-2);
+    --bs-btn-border-color: var(--line);
+    --bs-btn-hover-bg: var(--surface-2);
+    --bs-btn-hover-color: var(--fg);
+    --bs-btn-hover-border-color: var(--line);
+}
+.btn-secondary {
+    --bs-btn-bg: var(--surface-2);
+    --bs-btn-border-color: var(--line);
+    --bs-btn-color: var(--fg);
+    --bs-btn-hover-bg: var(--line);
+    --bs-btn-hover-border-color: var(--line);
+    --bs-btn-hover-color: var(--fg);
+}
+
+/* Form controls */
+.form-control, .form-select, textarea, select,
+input[type="text"], input[type="password"], input[type="number"], input[type="date"] {
+    background-color: var(--input-bg);
+    border-color: var(--line);
+    color: var(--fg);
+}
+.form-check-input:checked { background-color: var(--accent); border-color: var(--accent); }
+label, .form-label, .form-check-label { color: var(--fg-2); }
+body.dark-mode input[type="date"] { color-scheme: dark; }
+
+/* React-Select (dcc.Dropdown) */
+.Select-control { background-color: var(--input-bg); border-color: var(--line); }
+.Select-value-label, .Select-placeholder, .Select-input > input { color: var(--fg) !important; }
+.Select-arrow { border-top-color: var(--fg-3); }
+.Select--single > .Select-control .Select-value { color: var(--fg); }
+.Select-menu-outer { background-color: var(--surface); border-color: var(--line); }
+.Select-option { background-color: var(--surface); color: var(--fg); }
+.Select-option.is-focused, .Select-option:hover { background-color: var(--surface-2); color: var(--fg); }
+.Select-option.is-selected { background-color: var(--accent); color: var(--accent-fg); }
+
+/* Badges, alerts, tables, modals, lists */
+.badge.bg-secondary { background-color: var(--fg-3) !important; }
+.badge.bg-light { background-color: var(--surface-2) !important; color: var(--fg) !important; }
+
+body.dark-mode .alert-info    { background-color: #1a3a5c; border-color: #2979c8; color: #9ecbff; }
+body.dark-mode .alert-success { background-color: #0d2b14; border-color: #1a7a2c; color: #87dfa5; }
+body.dark-mode .alert-warning { background-color: #3a2a00; border-color: #b37700; color: #ffd97d; }
+body.dark-mode .alert-danger  { background-color: #2b0d0d; border-color: #7a1a1a; color: #e48787; }
+
+.table { color: var(--fg); --bs-table-bg: var(--surface); --bs-table-border-color: var(--line); }
+body.dark-mode .table { --bs-table-striped-bg: var(--surface-2); }
+
+.modal-content { background-color: var(--surface); color: var(--fg); border-color: var(--line); }
+.modal-header { border-bottom-color: var(--line); }
+.modal-footer { border-top-color: var(--line); }
+body.dark-mode .modal-header .btn-close { filter: invert(1) grayscale(1) brightness(2); }
+
+.list-group-item { background-color: var(--surface); border-color: var(--line); color: var(--fg); }
+
+/* Scrollbars */
+body.dark-mode ::-webkit-scrollbar { background-color: var(--surface); width: 8px; }
+body.dark-mode ::-webkit-scrollbar-thumb { background-color: var(--line); border-radius: 4px; }
+
+/* ---- Existing responsive layout (moved from app.index_string, unchanged) -- */
+.sidebar-col {
+    background-color: var(--surface);
+    border-right: 1px solid var(--line);
+    padding: 0;
+    overflow-y: auto;
+}
+.main-content-col {
+    padding: 1rem;
+    transition: all 0.3s ease-in-out;
+    min-width: 0;
+}
+@media (min-width: 992px) {
+    .sidebar-col {
+        flex: 0 0 auto !important;
+        position: sticky;
+        top: 48px;                       /* below the top bar */
+        align-self: flex-start;
+        height: calc(100vh - 48px);
+    }
+    .layout-row { flex-wrap: nowrap !important; display: flex !important; }
+}
+@media (max-width: 991.98px) {
+    .sidebar-col { border-right: none; }
+    .main-content-col { padding: 0.5rem; }
+}
+.plotly-graph-div { width: 100% !important; height: auto !important; }
+.main-content-col .card { margin-bottom: 1rem; }
+.date-picker-compact .DateInput,
+.date-picker-compact .DateInput_input {
+    font-size: 0.8rem !important;
+    width: 110px !important;
+    padding: 4px 6px !important;
+}
+.date-picker-compact .SingleDatePickerInput { border-radius: 4px; }
+@media (max-width: 992px) {
+    .sidebar-col { font-size: 0.9rem; }
+}
+
+/* ---- Icons (CSS masks; inherit text color) ------------------------------
+   Namespaced `ui-icon`: plain `.icon` collides with Plotly's modebar svg.icon. */
+.ui-icon {
+    display: inline-block;
+    flex: none;
+    width: 20px;
+    height: 20px;
+    background-color: currentColor;
+    -webkit-mask: var(--icon) center / contain no-repeat;
+    mask: var(--icon) center / contain no-repeat;
+}
+.ui-icon-waves {
+    --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8c3 0 3-2 6-2s3 2 6 2 3-2 6-2'/%3E%3Cpath d='M3 14c3 0 3-2 6-2s3 2 6 2 3-2 6-2'/%3E%3Cpath d='M3 20c3 0 3-2 6-2s3 2 6 2 3-2 6-2'/%3E%3C/svg%3E");
+}
+
+/* ---- Top bar -------------------------------------------------------------- */
+.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 48px;
+    padding: 6px 16px;
+    background-color: var(--surface);
+    border-bottom: 1px solid var(--line);
+}
+.topbar-brand { display: flex; align-items: center; gap: 8px; color: var(--accent); white-space: nowrap; }
+.topbar-title { color: var(--fg); font-weight: 600; font-size: 15px; letter-spacing: .01em; }
+.topbar-sub { color: var(--fg-3); font-size: 12px; }
+.topbar-spacer { flex: 1 1 auto; }
+.topbar .btn { font-size: 13px; padding: 4px 11px; white-space: nowrap; }
+.topbar-nav .btn { min-width: 84px; }
+.topbar-date { display: flex; align-items: center; gap: 6px; }
+.topbar-date-label, .topbar-date-source { color: var(--fg-3); white-space: nowrap; font-size: 12px; }
+.topbar-date-input { width: 138px; font-family: var(--font-mono); font-size: 12.5px; }
+.topbar .topbar-step { min-width: 32px; min-height: 32px; padding: 0; }
+@media (max-width: 991.98px) {
+    .topbar { flex-wrap: wrap; row-gap: 6px; }
+    .topbar-spacer { display: none; }
+}
+@media (max-width: 575.98px) {
+    .topbar { position: static; gap: 8px; padding: 6px 10px; }
+    .topbar-nav { display: none; }
+    .topbar-spacer { display: none; }
+}
+
+/* ---- Filter rail ----------------------------------------------------------- */
+.filter-rail, .rail-section { font-size: 13px; }
+.rail-section { padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.rail-heading {
+    margin: 0 0 10px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--fg-3);
+}
+.rail-label { display: block; margin: 0 0 4px; font-size: 12.5px; font-weight: 500; color: var(--fg-2); }
+.rail-hint { color: var(--fg-3); font-size: 12px; line-height: 1.35; margin-bottom: 8px; }
+.rail-results { font-size: 14px; font-weight: 500; color: var(--fg); display: block; margin-bottom: 4px; }
+.rail-section .form-control { font-size: 13px; }
+.rail-clear { padding: 0 12px; font-size: 18px; line-height: 1; }
+.rail-section .form-check { margin-bottom: 2px; }
+.rail-section .form-switch { margin-bottom: 2px; padding-top: 2px; }
+.rail-section .form-check-label { font-size: 13px; color: var(--fg); }
+.rail-checklist .form-check { padding-top: 1px; padding-bottom: 1px; }
+.rail-segmented { display: flex; width: 100%; }
+.rail-segmented .form-check { flex: 1; margin: 0; padding: 0; }
+.rail-segmented .btn { width: 100%; border-radius: 0; margin: 0; }
+.rail-segmented .form-check:first-child .btn { border-radius: var(--radius) 0 0 var(--radius); }
+.rail-segmented .form-check:last-child .btn { border-radius: 0 var(--radius) var(--radius) 0; }
+.rail-segmented .form-check + .form-check .btn { margin-left: -1px; }
+.rail-segmented .btn-check:checked + .btn,
+.rail-segmented .btn.active {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-fg);
+}
+.rail-section .btn-check:focus-visible + .btn { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* ---- Map stage and rail legend --------------------------------------------- */
+.map-stage {
+    position: relative;
+    margin-bottom: 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background-color: var(--surface);
+}
+.map-chip { position: absolute; top: 12px; left: 12px; z-index: 5; pointer-events: none; }
+.map-chip .badge {
+    background-color: var(--surface) !important;
+    color: var(--fg);
+    border: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 12px;
+    padding: 6px 10px;
+    box-shadow: var(--shadow);
+}
+.legend-list { display: grid; gap: 2px; }
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 4px 6px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--fg);
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color .15s, opacity .15s;
+}
+.legend-item:hover { background-color: var(--surface-2); }
+.legend-item.is-off { opacity: .4; }
+.legend-item.is-off .legend-label { text-decoration: line-through; }
+.legend-swatch { flex: none; width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--line); }
+.legend-swatch-line { height: 3px; border-radius: 2px; width: 16px; border: 0; }
+.legend-label { flex: 1; min-width: 0; }
+.legend-count { color: var(--fg-3); font-family: var(--font-mono); font-size: 12px; }
+
+/* ---- Workspace: map + detail panel ---------------------------------------- */
+.workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.detail-panel {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    margin-bottom: 1rem;
+    background-color: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+.detail-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+}
+.detail-title { margin: 0; font-size: 15px; font-weight: 600; color: var(--fg); }
+.detail-spacer { flex: 1 1 auto; }
+/* Site ID is already the first line of Station information, so the status badge is redundant here. */
+#selected-gauge-badge { display: none !important; }
+.detail-scroll { padding: 12px 14px 16px; min-width: 0; }
+.detail-empty { margin: 8px 0; color: var(--fg-3); font-size: 13px; }
+.detail-info { margin-bottom: 14px; font-size: 13px; }
+.detail-info summary {
+    cursor: pointer;
+    margin-bottom: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--fg-3);
+}
+.detail-info p { margin-bottom: 4px !important; color: var(--fg-2); }
+.detail-info h6 { font-family: var(--font-mono); font-size: 13px; color: var(--accent) !important; }
+.detail-range { display: flex; width: 100%; }
+.detail-range .btn { flex: 1; }
+.detail-prompt { padding: 12px; border: 1px dashed var(--line); border-radius: var(--radius); margin: 8px 0 14px; }
+.detail-scroll .js-plotly-plot, .detail-scroll .plotly-graph-div { max-width: 100%; }
+
+@media (min-width: 1200px) {
+    .workspace { grid-template-columns: minmax(0, 1fr) clamp(460px, 44%, 680px); transition: grid-template-columns .2s; }
+    .workspace.panel-collapsed { grid-template-columns: minmax(0, 1fr) 48px; }
+    .detail-panel {
+        position: sticky;
+        top: 64px;                         /* top bar + page gutter */
+        height: calc(100vh - 140px);       /* matches the fit-to-window map */
+    }
+    .detail-scroll { flex: 1 1 auto; overflow-y: auto; }
+    .panel-collapsed .detail-scroll,
+    .panel-collapsed .detail-title,
+    .panel-collapsed .detail-head .badge,
+    .panel-collapsed #refresh-live-plot-btn { display: none !important; }
+    .panel-collapsed .detail-head { justify-content: center; padding: 10px 4px; border-bottom: 0; }
+}
+
+/* ---- Map hover card -------------------------------------------------------
+   A light card in BOTH themes: the pre-rendered hover PNGs use the light plot theme,
+   so the card keeps fixed light colors on purpose (not theme tokens).
+   Position, size and visibility are owned by assets/hover_zoom.js. */
+.hover-card {
+    background-color: #FFFFFF;
+    border: 1px solid #D9E1EA;
+    border-radius: var(--radius);
+    box-shadow: 0 8px 28px rgba(12, 21, 34, .28);
+    font-family: var(--font-ui);
+    color: #14243A;
+}
+.hover-info { padding: 8px 12px 6px; background-color: #FFFFFF; font-size: 12px; line-height: 1.5; }
+.hover-name { font-size: 13px; font-weight: 600; line-height: 1.25; color: #14243A; }
+.hover-rule { margin: 4px 0 5px; border: 0; border-top: 1px solid #D9E1EA; opacity: 1; }
+.hover-key { color: #5A6B80; font-size: 11px; }
+.hover-val { color: #14243A; font-size: 12px; }
+.hover-mono { font-family: var(--font-mono); font-size: 11.5px; }
+.hover-strong { font-weight: 600; }
+.hover-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: baseline; }
+.hover-coord { color: #5A6B80; font-family: var(--font-mono); font-size: 10.5px; margin-top: 2px; }
+
+/* Plots inside the detail panel: drop the nested card chrome (the panel is the card). */
+.detail-scroll .card { border: 0; background: transparent; margin-bottom: 1rem; }
+.detail-scroll .card-header { background: transparent; border-bottom: 0; padding: 0 0 6px; }
+.detail-scroll .card-header > div:first-child { font-size: 13px; font-weight: 600; color: var(--fg); }
+.detail-scroll .card-body { padding: 0; background: transparent !important; }
+
+.map-stage #gauge-map { max-width: 100%; }
+@media (max-width: 1199.98px) { #gauge-map { max-height: 80vh; } }
+@media (max-width: 575.98px) { #gauge-map { max-height: 62vh; } }
+
+@media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+    .hydro-wave-bar { animation: none !important; height: 24px; }
+}

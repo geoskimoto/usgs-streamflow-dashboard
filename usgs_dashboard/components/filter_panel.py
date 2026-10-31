@@ -14,183 +14,168 @@ class SimplifiedFilterPanel:
     def __init__(self):
         pass
     
-    def create_filter_panel(self) -> dbc.Card:
-        """Create simplified, reliable filter panel."""
-        
-        return dbc.Card([
-            dbc.CardHeader([
-                html.H5("🔍 Site Filters", className="mb-0"),
-                html.Small(id="filter-summary-text", className="text-muted")
+    @staticmethod
+    def _section(title: str, *children) -> html.Section:
+        """One flat rail section: small uppercase heading, then its controls."""
+        return html.Section(
+            [html.H3(title, className="rail-heading"), *children],
+            className="rail-section",
+        )
+
+    def create_filter_panel(self, legend=None) -> html.Div:
+        """Create the filter rail: flat sections, no card stack. All control ids are unchanged.
+
+        `legend` is an optional section placed directly under Results (the map legend).
+        """
+
+        results = self._section(
+            "Results",
+            html.Strong(id="results-count", children="Loading...", className="rail-results"),
+            html.Div(id="filter-summary", className="rail-hint"),
+            html.Small(id="filter-summary-text", className="rail-hint d-block"),
+        )
+
+        search = self._section(
+            "Find a gauge",
+            dbc.InputGroup([
+                dcc.Input(
+                    id="search-input",
+                    type="text",
+                    placeholder="Site ID or station name",
+                    className="form-control",
+                ),
+                dbc.Button("\u00d7", id="clear-search", color="outline-secondary", size="sm",
+                           title="Clear search", className="rail-clear"),
             ]),
-            dbc.CardBody([
-                
-                # Search Box
-                html.Div([
-                    html.Label("🔍 Search Sites:", className="fw-bold mb-2"),
-                    dbc.InputGroup([
-                        dcc.Input(
-                            id="search-input",
-                            type="text",
-                            placeholder="Search by Site ID or Station Name...",
-                            className="form-control",
-                            style={'height': '38px'}
-                        ),
-                        dbc.Button("✕", id="clear-search", color="outline-secondary", size="sm")
-                    ], className="mb-3")
-                ]),
-                
-                # Real-time Data Filter — TEMPORARILY HIDDEN
-                # Real-time data ingestion is not yet wired up. The toggle and
-                # its info element are kept in the tree (hidden) so that the
-                # existing Dash callbacks wired to `realtime-filter` /
-                # `realtime-filter-info` continue to resolve. Remove the
-                # surrounding display:none wrapper to re-enable the UI.
-                html.Div([
-                    html.Div([
-                        html.Label("📊 Real-time Data:", className="fw-bold mb-2"),
-                        html.Div([
-                            dbc.Switch(
-                                id="realtime-filter",
-                                label="Show only stations with real-time data",
-                                value=False,
-                                className="mb-2"
-                            ),
-                            html.Small(
-                                id="realtime-filter-info",
-                                className="text-muted d-block",
-                                children="Stations with enhanced visualizations (15-min data overlays)"
-                            )
-                        ])
-                    ], className="mb-3")
-                ], style={'display': 'none'}),
-                
-                # Forecast Data Filters
-                html.Div([
-                    html.Div([
-                        html.Label("🌊 River Forecasts:", className="fw-bold mb-2"),
-                        html.Div([
-                            dbc.Switch(
-                                id="forecast-filter",
-                                label="Show only NWRFC forecast stations",
-                                value=False,
-                                className="mb-2"
-                            ),
-                            html.Small(
-                                id="forecast-filter-info",
-                                className="text-muted d-block mb-2",
-                                children="Stations with NWRFC river forecast model assignments (~292)"
-                            ),
-                            dbc.Switch(
-                                id="resid-cast-filter",
-                                label="Show only ResidCast-corrected stations",
-                                value=False,
-                                className="mb-1"
-                            ),
-                            html.Small(
-                                className="text-muted d-block mb-2",
-                                children="Stations served a bias-corrected ResidCast forecast (~215)"
-                            ),
-                            dbc.Switch(
-                                id="ealstm-filter",
-                                label="Show only EA-LSTM forecast stations",
-                                value=False,
-                                className="mb-1"
-                            ),
-                            html.Small(
-                                className="text-muted d-block",
-                                children="CAMELS-overlap basins with precipitation-runoff forecasts (37 stations)"
-                            ),
-                        ])
-                    ], className="mb-3")
-                ]),
-                
-                # Station Status Filter (Active / Inactive)
-                html.Div([
-                    html.Label("📍 Station Status:", className="fw-bold mb-2"),
-                    dbc.RadioItems(
-                        id="station-status-filter",
-                        options=[
-                            {"label": "All Stations", "value": "all"},
-                            {"label": "Active (recent data)", "value": "active"},
-                            {"label": "Inactive (no recent data)", "value": "inactive"},
-                        ],
-                        value="active",
-                        inline=True,
-                        className="mb-2"
-                    ),
-                    html.Small(
-                        id="station-status-info",
-                        className="text-muted d-block",
-                        children="Active = has discharge data in the last 6 months"
-                    )
-                ], className="mb-3"),
-                
-                # State Filter
-                html.Div([
-                    html.Label("States/Provinces:", className="fw-bold"),
-                    dbc.Checklist(
-                        id="state-filter",
-                        options=[],  # Will be populated dynamically
-                        value=["OR", "WA", "ID", "MT", "NV", "BC"],
-                        inline=True,
-                        className="mb-3"
-                    )
-                ]),
-                
-                # Drainage Area Filter
-                html.Div([
-                    html.Label("Drainage Area (sq mi):", className="fw-bold"),
-                    html.Div(id="drainage-area-display", className="mb-2 small text-muted"),
-                    dcc.RangeSlider(
-                        id="drainage-area-filter",
-                        min=0, max=90000, step=1000,
-                        value=[0, 90000],
-                        marks={
-                            0: {'label': '0', 'style': {'fontSize': '10px'}},
-                            10000: {'label': '10K', 'style': {'fontSize': '10px'}},
-                            25000: {'label': '25K', 'style': {'fontSize': '10px'}},
-                            50000: {'label': '50K', 'style': {'fontSize': '10px'}},
-                            90000: {'label': '90K', 'style': {'fontSize': '10px'}}
-                        },
-                        tooltip={"placement": "bottom", "always_visible": True}
-                    )
-                ], className="mb-3"),
-                
-                # Basin Filter
-                html.Div([
-                    html.Label("River Basin:", className="fw-bold"),
-                    dcc.Dropdown(
-                        id="basin-filter",
-                        options=[],  # Will be populated from data
-                        value=[],
-                        multi=True,
-                        placeholder="Select basins (optional)",
-                        className="mb-3"
-                    )
-                ]),
-                
-                # HUC Code Filter
-                html.Div([
-                    html.Label("HUC Code (Watershed):", className="fw-bold"),
-                    dcc.Dropdown(
-                        id="huc-filter",
-                        options=[],  # Will be populated from data
-                        value=[],
-                        multi=True,
-                        placeholder="Select HUC codes (optional)",
-                        className="mb-3"
-                    )
-                ]),
-                
-                # Results Summary
-                html.Hr(),
-                html.Div([
-                    html.Strong(id="results-count", children="Loading..."),
-                    html.Div(id="filter-summary", className="small text-muted mt-1")
-                ])
-            ])
-        ], className="h-100", style={'maxHeight': '85vh', 'overflowY': 'auto', 'WebkitOverflowScrolling': 'touch'})
-    
+        )
+
+        # Real-time Data Filter - TEMPORARILY HIDDEN
+        # Real-time data ingestion is not yet wired up. The toggle and its info
+        # element stay in the tree (hidden) so the Dash callbacks wired to
+        # `realtime-filter` / `realtime-filter-info` keep resolving. Remove the
+        # display:none wrapper to re-enable the UI.
+        realtime = html.Div([
+            html.Label("Real-time data", className="rail-label"),
+            dbc.Switch(
+                id="realtime-filter",
+                label="Show only stations with real-time data",
+                value=False,
+            ),
+            html.Small(
+                id="realtime-filter-info",
+                className="rail-hint d-block",
+                children="Stations with enhanced visualizations (15-min data overlays)",
+            ),
+        ], style={'display': 'none'})
+
+        forecasts = self._section(
+            "Forecasts",
+            dbc.Switch(
+                id="forecast-filter",
+                label="NWRFC forecast stations",
+                value=False,
+            ),
+            html.Small(
+                id="forecast-filter-info",
+                className="rail-hint d-block",
+                children="Stations with NWRFC river forecast model assignments (~292)",
+            ),
+            dbc.Switch(
+                id="resid-cast-filter",
+                label="ResidCast-corrected stations",
+                value=False,
+            ),
+            html.Small(
+                className="rail-hint d-block",
+                children="Served a bias-corrected ResidCast forecast (~215)",
+            ),
+            dbc.Switch(
+                id="ealstm-filter",
+                label="EA-LSTM forecast stations",
+                value=False,
+            ),
+            html.Small(
+                className="rail-hint d-block",
+                children="CAMELS-overlap basins with precipitation-runoff forecasts (37 stations)",
+            ),
+        )
+
+        status = self._section(
+            "Station status",
+            dbc.RadioItems(
+                id="station-status-filter",
+                options=[
+                    {"label": "All", "value": "all"},
+                    {"label": "Active", "value": "active"},
+                    {"label": "Inactive", "value": "inactive"},
+                ],
+                value="active",
+                className="btn-group rail-segmented",
+                inputClassName="btn-check",
+                labelClassName="btn btn-outline-secondary btn-sm",
+                labelCheckedClassName="active",
+            ),
+            html.Small(
+                id="station-status-info",
+                className="rail-hint d-block",
+                children="Active = has discharge data in the last 6 months",
+            ),
+        )
+
+        region = self._section(
+            "States and provinces",
+            dbc.Checklist(
+                id="state-filter",
+                options=[],  # Populated dynamically
+                value=["OR", "WA", "ID", "MT", "NV", "BC"],
+                className="rail-checklist",
+            ),
+        )
+
+        drainage = self._section(
+            "Drainage area (sq mi)",
+            html.Div(id="drainage-area-display", className="rail-hint mb-2"),
+            dcc.RangeSlider(
+                id="drainage-area-filter",
+                min=0, max=90000, step=1000,
+                value=[0, 90000],
+                marks={
+                    0: {'label': '0', 'style': {'fontSize': '10px'}},
+                    10000: {'label': '10K', 'style': {'fontSize': '10px'}},
+                    25000: {'label': '25K', 'style': {'fontSize': '10px'}},
+                    50000: {'label': '50K', 'style': {'fontSize': '10px'}},
+                    90000: {'label': '90K', 'style': {'fontSize': '10px'}},
+                },
+                tooltip={"placement": "bottom", "always_visible": True},
+            ),
+        )
+
+        watershed = self._section(
+            "Watershed",
+            html.Label("River basin", className="rail-label"),
+            dcc.Dropdown(
+                id="basin-filter",
+                options=[],  # Populated from data
+                value=[],
+                multi=True,
+                placeholder="Select basins (optional)",
+                className="mb-3",
+            ),
+            html.Label("HUC code", className="rail-label"),
+            dcc.Dropdown(
+                id="huc-filter",
+                options=[],  # Populated from data
+                value=[],
+                multi=True,
+                placeholder="Select HUC codes (optional)",
+            ),
+        )
+
+        return html.Div(
+            [results, *([legend] if legend is not None else []), search, realtime, forecasts, status, region, drainage, watershed],
+            className="filter-rail",
+        )
+
     def create_filter_status_bar(self) -> html.Div:
         """Create a compact status bar showing current filters."""
         return html.Div([

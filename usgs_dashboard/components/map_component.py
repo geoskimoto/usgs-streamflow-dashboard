@@ -20,23 +20,29 @@ from ..utils.config import (
     MIN_ZOOM_LEVEL, MAX_ZOOM_LEVEL, DEFAULT_ZOOM_LEVEL
 )
 
-# Percentile band configuration: (band_key, label, hex_color, opacity, marker_size_factor)
+# Flow-vs-normal classes. The API reports 10 fine percentile bands; the map shows 5 classes
+# (the usual "much below ... much above normal" reading), so related bands share one color,
+# one legend entry and one trace. Colors are the colorblind-safe palette from assets/theme.css
+# (light-theme values, because the basemap stays light in both themes).
+# Row: (label, color, opacity, size_factor, [band keys from the API])
+_PERCENTILE_CLASSES = [
+    ('Much below normal (< 10th)',  '#D55E00', 0.92, 1.20, ['p0_4', 'p5_10']),
+    ('Below normal (10th–25th)',    '#E69F00', 0.90, 1.10, ['p11_25']),
+    ('Normal (25th–75th)',          '#4C9A7B', 0.88, 1.00, ['p26_50', 'p51_75']),
+    # 'p76_100' is the backward-compat alias: remove after StreamflowOps deploys the new band keys
+    ('Above normal (75th–90th)',    '#56B4E9', 0.90, 1.10, ['p76_85', 'p86_90', 'p76_100']),
+    ('Much above normal (> 90th)',  '#0A4F9C', 0.93, 1.25, ['p91_95', 'p96_98', 'p99_100']),
+    # Non-percentile states keep the colors defined in Documentation/DISPLAY_BEHAVIOR_SPEC.md
+    ('Active — No Percentile',      '#32CD32', 0.70, 0.90, ['active_no_band']),
+    ('No Flow Data',                '#808080', 0.60, 0.90, ['no_data']),
+    ('Inactive',                    '#404040', 0.40, 0.80, ['inactive']),
+]
+
+# Per-band view of the same table: (band_key, label, color, opacity, size_factor).
 PERCENTILE_GROUP_CONFIG = [
-    ('p0_4',    '< 5th percentile',        '#880E4F', 0.92, 1.25),
-    ('p5_10',   '5th – 10th percentile',   '#E64A19', 0.90, 1.15),
-    ('p11_25',  '10th – 25th percentile',  '#F9A825', 0.88, 1.05),
-    ('p26_50',  '25th – 50th percentile',  '#2E7D32', 0.88, 1.00),
-    ('p51_75',  '50th – 75th percentile',  '#1976D2', 0.90, 1.05),
-    ('p76_85',  '75th – 85th percentile',  '#1565C0', 0.92, 1.15),
-    ('p86_90',  '85th – 90th percentile',  '#0D47A1', 0.93, 1.20),
-    ('p91_95',  '90th – 95th percentile',  '#0A3585', 0.93, 1.25),
-    ('p96_98',  '95th – 98th percentile',  '#07256B', 0.94, 1.30),
-    ('p99_100', '> 98th percentile',       '#041552', 0.95, 1.35),
-    # Backward-compat alias: remove after StreamflowOps deploys new band keys
-    ('p76_100', '> 75th percentile',       '#0D47A1', 0.92, 1.15),
-    ('active_no_band', 'Active — No Percentile', '#32CD32', 0.70, 0.90),
-    ('no_data',        'No Flow Data',           '#808080', 0.60, 0.90),
-    ('inactive',       'Inactive',               '#404040', 0.40, 0.80),
+    (band, label, color, opacity, size)
+    for label, color, opacity, size, bands in _PERCENTILE_CLASSES
+    for band in bands
 ]
 
 PERCENTILE_LABELS = {cfg[0]: cfg[1] for cfg in PERCENTILE_GROUP_CONFIG}
@@ -114,19 +120,11 @@ class ModernMapComponent:
         
         # Update layout with modern map configuration
         fig.update_layout(
-            margin=dict(r=0, t=30, l=0, b=0),
+            margin=dict(r=0, t=0, l=0, b=0),
             font=dict(family="Arial", size=12),
-            legend=dict(
-                orientation="v",
-                yanchor="top",
-                y=0.99,
-                xanchor="left",
-                x=0.01,
-                bgcolor="rgba(255, 255, 255, 0.9)",
-                bordercolor="black",
-                borderwidth=1,
-                font=dict(size=10),
-            ),
+            # The legend is rendered in the filter rail (#map-legend), built from the
+            # trace names/colors by a clientside callback in app.py.
+            showlegend=False,
             # NEW: hover configuration for modern maps
             hoverlabel=dict(
                 bgcolor="white",
@@ -292,8 +290,8 @@ class ModernMapComponent:
         tile = self._TILE_CONFIGS.get(map_style, self._TILE_CONFIGS['usgs-national'])
         fig = go.Figure()
 
-        for band_key, label, color, opacity, size_factor in PERCENTILE_GROUP_CONFIG:
-            group_df = map_data[map_data['map_group'] == band_key]
+        for label, color, opacity, size_factor, band_keys in _PERCENTILE_CLASSES:
+            group_df = map_data[map_data['map_group'].isin(band_keys)]
             if group_df.empty:
                 continue
 
@@ -330,11 +328,9 @@ class ModernMapComponent:
                      uirevision=map_style),
             uirevision=map_style,
             height=height,
-            margin=dict(r=0, t=50, l=0, b=0),
-            title=f"USGS Streamflow Gauges - Pacific Northwest ({len(gauges_df)} gauges) - {tile['label']}",
+            margin=dict(r=0, t=0, l=0, b=0),
             font=dict(family="Arial", size=12),
-            legend=dict(orientation="v", yanchor="top", y=0.99, xanchor="left", x=0.01,
-                        bgcolor="rgba(255, 255, 255, 0.9)", bordercolor="black", borderwidth=1),
+            showlegend=False,   # legend lives in the filter rail (#map-legend)
         )
 
         return fig

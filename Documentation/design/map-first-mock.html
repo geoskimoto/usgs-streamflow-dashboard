@@ -1,0 +1,345 @@
+<title>Streamflow Dashboard Mock</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Fira+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: slim top bar, collapsible filter rail, full-bleed map, bottom detail drawer with the water-year plot. */
+:root{
+  --bg:#F4F7FA; --surface:#FFFFFF; --surface-2:#EDF2F7; --line:#D9E1EA; --fg:#14243A; --fg-2:#4A5C73; --fg-3:#6B7C90;
+  --accent:#1E5FB4; --accent-fg:#FFFFFF; --accent-soft:#E3EEFB; --focus:#1E5FB4;
+  --map-land:#E7EDE4; --map-water:#CFE1EE; --map-line:#B7C8D6; --shadow:0 1px 2px rgba(20,36,58,.08),0 4px 14px rgba(20,36,58,.08);
+  --p-low:#D55E00; --p-below:#E69F00; --p-normal:#4C9A7B; --p-above:#56B4E9; --p-high:#0A4F9C; --p-off:#8A96A3;
+  --band-outer:#DCE7F3; --band-inner:#BDD2EA; --median:#5E7894; --obs:#14243A;
+  --f-resid:#00897B; --f-ealstm:#C77700; --f-blend:#8E3FB0;
+  --ui:'Fira Sans',system-ui,-apple-system,'Segoe UI',sans-serif; --mono:'Fira Code',ui-monospace,Menlo,monospace;
+  --wave-a:#1a7fc1; --wave-b:#5ab4d6; --wave-c:#a8d8ea;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0C1522; --surface:#142133; --surface-2:#1B2B41; --line:#26384F; --fg:#E6EDF6; --fg-2:#A4B4C8; --fg-3:#8496AC;
+  --accent:#5AA2F0; --accent-fg:#071426; --accent-soft:#1B3250; --focus:#7DB6F5;
+  --map-land:#16251F; --map-water:#0F2638; --map-line:#2A4358; --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35);
+  --p-low:#F28A3A; --p-below:#F2B84B; --p-normal:#5DB596; --p-above:#6EC1F0; --p-high:#3E8EE0; --p-off:#6F7C8B;
+  --band-outer:#1B2E46; --band-inner:#26436A; --median:#7E98B6; --obs:#F2F6FB;
+  --f-resid:#3CC4B4; --f-ealstm:#F0A63A; --f-blend:#C48BE0; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0C1522; --surface:#142133; --surface-2:#1B2B41; --line:#26384F; --fg:#E6EDF6; --fg-2:#A4B4C8; --fg-3:#8496AC;
+  --accent:#5AA2F0; --accent-fg:#071426; --accent-soft:#1B3250; --focus:#7DB6F5;
+  --map-land:#16251F; --map-water:#0F2638; --map-line:#2A4358; --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35);
+  --p-low:#F28A3A; --p-below:#F2B84B; --p-normal:#5DB596; --p-above:#6EC1F0; --p-high:#3E8EE0; --p-off:#6F7C8B;
+  --band-outer:#1B2E46; --band-inner:#26436A; --median:#7E98B6; --obs:#F2F6FB;
+  --f-resid:#3CC4B4; --f-ealstm:#F0A63A; --f-blend:#C48BE0; color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 var(--ui);padding-left:max(0px,env(safe-area-inset-left,0px));padding-right:max(0px,env(safe-area-inset-right,0px))}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+.app{display:grid;grid-template-rows:48px 1fr;height:100%;min-height:560px}
+.top{display:flex;align-items:center;gap:12px;padding:0 12px;background:var(--surface);border-bottom:1px solid var(--line);min-width:0}
+.brand{display:flex;align-items:center;gap:8px;font-weight:600;letter-spacing:.01em;white-space:nowrap}
+.brand svg{color:var(--accent)}
+.brand small{font-weight:400;color:var(--fg-3);font-size:12px}
+.spacer{flex:1}
+.iconbtn{display:inline-grid;place-items:center;width:34px;height:34px;border:1px solid transparent;border-radius:8px;background:transparent;cursor:pointer;color:var(--fg-2);transition:background .15s,color .15s}
+.iconbtn:hover{background:var(--surface-2);color:var(--fg)}
+.iconbtn[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:5px 11px;cursor:pointer;color:var(--fg-2);font-size:13px;transition:background .15s}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+.seg button:not([aria-pressed="true"]):hover{background:var(--surface-2)}
+.datebox{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:4px 10px;background:var(--surface);font-size:13px;color:var(--fg-2)}
+.datebox b{color:var(--fg);font-weight:500}
+.updated{font-size:12px;color:var(--fg-3);white-space:nowrap}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--p-normal);margin-right:6px}
+
+.work{display:grid;grid-template-columns:292px 1fr;min-height:0;transition:grid-template-columns .2s}
+.work.collapsed{grid-template-columns:0 1fr}
+.rail{background:var(--surface);border-right:1px solid var(--line);overflow:auto;min-width:0;visibility:visible}
+.work.collapsed .rail{visibility:hidden}
+.rail section{padding:14px 16px;border-bottom:1px solid var(--line)}
+.rail h3{margin:0 0 10px;font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--fg-3)}
+.search{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:0 10px;background:var(--bg)}
+.search input{border:0;background:transparent;padding:8px 0;width:100%;outline:none}
+.search:focus-within{border-color:var(--focus);box-shadow:0 0 0 2px var(--accent-soft)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 11px;font-size:12.5px;cursor:pointer;color:var(--fg-2);transition:background .15s}
+.chip:hover{background:var(--surface-2)}
+.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:500}
+.legend{display:grid;gap:7px}
+.legend label{display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13px}
+.legend .sw{width:12px;height:12px;border-radius:50%;flex:none}
+.legend .ct{margin-left:auto;color:var(--fg-3);font-size:12px}
+.legend input{accent-color:var(--accent)}
+.toggle{display:flex;align-items:center;justify-content:space-between;padding:5px 0;font-size:13px}
+.toggle input{accent-color:var(--accent);width:16px;height:16px}
+
+.stage{position:relative;min-width:0;min-height:0;overflow:hidden;background:var(--map-water)}
+.map{position:absolute;inset:0;width:100%;height:100%;display:block}
+.map-ctl{position:absolute;top:12px;right:calc(var(--panel-w) + 12px);display:grid;gap:6px;z-index:2;transition:right .2s}
+.map-ctl .iconbtn{background:var(--surface);border-color:var(--line);box-shadow:var(--shadow)}
+.railtoggle{position:absolute;top:12px;left:12px;z-index:2;background:var(--surface);border-color:var(--line);box-shadow:var(--shadow)}
+.count{position:absolute;top:12px;left:56px;z-index:2;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 11px;font-size:12.5px;box-shadow:var(--shadow);color:var(--fg-2)}
+.count b{color:var(--fg)}
+.marker{cursor:pointer;transition:r .12s}
+.marker:hover{stroke-width:3}
+.tip{position:absolute;z-index:3;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;box-shadow:var(--shadow);font-size:12.5px;display:none;min-width:170px}
+.tip strong{display:block;font-weight:600}
+.tip span{color:var(--fg-3)}
+
+.stage{--panel-w:min(560px,48%)}
+.stage.panel-min{--panel-w:48px}
+.map{right:var(--panel-w);width:auto;transition:right .2s}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:var(--panel-w);z-index:4;background:var(--surface);border-left:1px solid var(--line);box-shadow:var(--shadow);display:flex;flex-direction:column;transition:width .2s}
+.drawer.min{overflow:hidden}
+.drawer.min .d-head>*:not(#min){display:none}
+.drawer.min .d-head{padding:8px;border-bottom:0;justify-content:center}
+.drawer.min .d-body{display:none}
+.d-head{display:flex;align-items:center;gap:10px 12px;padding:14px 12px 12px 16px;border-bottom:1px solid var(--line);min-width:0;flex-wrap:wrap}
+.d-head .spacer{display:none}
+.d-title{min-width:0;flex:1 1 0}
+.d-title h2{white-space:normal!important}
+.pill{order:4}
+.stats{order:5;flex-basis:100%;margin:0!important;justify-content:space-between;padding:4px 0}
+#range{order:6;flex-basis:100%;display:flex}
+#range button{flex:1;padding:6px 8px}
+.d-title h2{margin:0;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.d-title p{margin:0;font-size:12px;color:var(--fg-3)}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:500;background:var(--accent-soft);color:var(--fg)}
+.pill i{width:8px;height:8px;border-radius:50%;background:var(--p-above);display:block}
+.stats{display:flex;gap:18px;margin-left:8px}
+.stat small{display:block;font-size:11px;color:var(--fg-3);letter-spacing:.04em;text-transform:uppercase}
+.stat b{font-size:15px;font-weight:500}
+.d-body{flex:1;min-height:0;display:grid;grid-template-columns:1fr;grid-template-rows:minmax(220px,1fr) auto;gap:0}
+.plotwrap{position:relative;min-width:0;min-height:0;padding:6px 8px 4px 4px}
+.plot{width:100%;height:100%;display:block}
+.plot text{fill:var(--fg-3);font:11px var(--mono)}
+.fc{border-top:1px solid var(--line);padding:12px 16px 16px;display:grid;grid-template-columns:1fr 1fr;align-content:start;gap:9px 16px}
+.fc h4,.fc .note{grid-column:1/-1}
+.fc h4{margin:0;font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--fg-3)}
+.fc label{display:flex;align-items:center;gap:9px;font-size:13px;cursor:pointer}
+.fc input{accent-color:var(--accent)}
+.fc svg{flex:none}
+.fc .sub{color:var(--fg-3);font-size:11.5px;margin-left:auto}
+.note{font-size:11.5px;color:var(--fg-3);margin-top:4px}
+.load{position:absolute;inset:0;background:color-mix(in srgb,var(--surface) 82%,transparent);display:none;place-items:center;z-index:3;border-radius:0 0 12px 12px}
+.load.on{display:grid}
+.hydro-loading-wrapper{display:flex;flex-direction:column;align-items:center;gap:10px}
+.hydro-wave-container{display:flex;align-items:flex-end;gap:5px;height:40px}
+.hydro-wave-bar{width:7px;border-radius:4px 4px 0 0;background:linear-gradient(180deg,var(--wave-a) 0%,var(--wave-b) 60%,var(--wave-c) 100%);animation:hydro-wave 1.1s ease-in-out infinite}
+.hydro-wave-bar:nth-child(1){animation-delay:0s}.hydro-wave-bar:nth-child(2){animation-delay:.1s}.hydro-wave-bar:nth-child(3){animation-delay:.2s}.hydro-wave-bar:nth-child(4){animation-delay:.3s}.hydro-wave-bar:nth-child(5){animation-delay:.4s}.hydro-wave-bar:nth-child(6){animation-delay:.3s}.hydro-wave-bar:nth-child(7){animation-delay:.2s}
+@keyframes hydro-wave{0%,100%{height:8px;opacity:.5}50%{height:36px;opacity:1}}
+.hydro-loading-label{font-size:13px;color:var(--fg-2);letter-spacing:.04em}
+.mockflag{position:absolute;bottom:4px;left:12px;font-size:11px;color:var(--fg-3);z-index:5;background:var(--surface);padding:1px 8px;border-radius:6px;border:1px solid var(--line)}
+@media (prefers-reduced-motion:reduce){.hydro-wave-bar{animation:none;height:24px}.work,.drawer{transition:none}}
+@media (max-width:860px){
+  .work,.work.collapsed{grid-template-columns:1fr}
+  .rail{position:absolute;z-index:6;left:0;top:48px;bottom:0;width:292px;max-width:86vw;box-shadow:var(--shadow)}
+  .work.collapsed .rail{display:none}
+  .work{position:relative}
+  .stage,.stage.panel-min{--panel-w:0px}
+  .map{right:0}
+  .drawer{top:auto;left:0;width:auto;height:58%;border-left:0;border-top:1px solid var(--line)}
+  .drawer.min{height:56px}
+  .fc{display:none}
+  .updated,.brand small,.stats{display:none}
+  .count{display:none}
+  .map-ctl{top:12px;right:12px}
+}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8c3 0 3-2 6-2s3 2 6 2 3-2 6-2"/><path d="M3 14c3 0 3-2 6-2s3 2 6 2 3-2 6-2"/><path d="M3 20c3 0 3-2 6-2s3 2 6 2 3-2 6-2"/></svg>
+      <span>Streamflow Dashboard</span><small>Pacific Northwest &amp; Western US</small>
+    </div>
+    <div class="spacer"></div>
+    <div class="datebox" title="Historical date"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Conditions on <b class="num">Jun 14, 2026</b></div>
+    <span class="updated"><span class="dot"></span>Updated 12 min ago</span>
+    <button class="iconbtn" id="themeBtn" aria-label="Switch to dark mode" title="Toggle light / dark">
+      <svg id="themeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"></svg>
+    </button>
+  </header>
+
+  <div class="work" id="work">
+    <aside class="rail" id="rail" aria-label="Filters">
+      <section>
+        <h3>Find a gauge</h3>
+        <div class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" type="search" placeholder="Name or USGS ID" aria-label="Search gauges"></div>
+      </section>
+      <section>
+        <h3>Region</h3>
+        <div class="chips" id="states"></div>
+      </section>
+      <section>
+        <h3>Current flow vs. normal</h3>
+        <div class="legend" id="legend"></div>
+      </section>
+      <section>
+        <h3>Gauge status</h3>
+        <div class="seg" id="status" style="display:flex"><button aria-pressed="true" style="flex:1">Active</button><button aria-pressed="false" style="flex:1">All</button><button aria-pressed="false" style="flex:1">Inactive</button></div>
+      </section>
+      <section>
+        <h3>Plot options</h3>
+        <label class="toggle">Percentile bands <input type="checkbox" checked></label>
+        <label class="toggle">Median and mean <input type="checkbox" checked></label>
+        <label class="toggle">Log discharge axis <input type="checkbox"></label>
+      </section>
+    </aside>
+
+    <main class="stage" id="stage">
+      <button class="iconbtn railtoggle" id="railBtn" aria-label="Hide filters" aria-pressed="true" title="Filters">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+      </button>
+      <div class="count" id="count"></div>
+      <svg class="map" id="map" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Map of stream gauges colored by current flow percentile"></svg>
+      <div class="map-ctl">
+        <button class="iconbtn" aria-label="Zoom in"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button class="iconbtn" aria-label="Zoom out"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+        <button class="iconbtn" aria-label="Reset view"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
+      </div>
+      <div class="tip" id="tip"></div>
+
+      <section class="drawer" id="drawer" aria-label="Selected gauge">
+        <div class="d-head">
+          <div class="d-title">
+            <h2>Skagit River near Mount Vernon, WA</h2>
+            <p class="num">USGS 12200500 · NWRFC MVRW1 · 35 water years of record</p>
+          </div>
+          <span class="pill"><i></i>Above normal · 78th percentile</span>
+          <div class="stats">
+            <div class="stat"><small>Now</small><b class="num">21,400 cfs</b></div>
+            <div class="stat"><small>Median for date</small><b class="num">15,900 cfs</b></div>
+            <div class="stat"><small>Peak WY2026</small><b class="num">61,300 cfs</b></div>
+          </div>
+          <div class="spacer"></div>
+          <div class="seg" id="range"><button aria-pressed="true">This water year</button><button aria-pressed="false">30 years</button><button aria-pressed="false">Full record</button></div>
+          <button class="iconbtn" id="reload" aria-label="Preview loading state" title="Preview wave spinner"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg></button>
+          <button class="iconbtn" id="min" aria-label="Collapse detail panel" title="Collapse"><svg id="minIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+        </div>
+        <div class="d-body">
+          <div class="plotwrap">
+            <svg class="plot" id="plot" role="img" aria-label="Water year discharge with percentile bands and forecasts"></svg>
+            <div class="load" id="load"><div class="hydro-loading-wrapper"><div class="hydro-wave-container"><div class="hydro-wave-bar"></div><div class="hydro-wave-bar"></div><div class="hydro-wave-bar"></div><div class="hydro-wave-bar"></div><div class="hydro-wave-bar"></div><div class="hydro-wave-bar"></div><div class="hydro-wave-bar"></div></div><div class="hydro-loading-label">Loading water year…</div></div></div>
+          </div>
+          <div class="fc">
+            <h4>Forecasts</h4>
+            <label><input type="checkbox" checked><svg width="30" height="8"><line x1="0" y1="4" x2="30" y2="4" stroke="var(--f-resid)" stroke-width="2.2" stroke-dasharray="6 4"/></svg>ResidCast<span class="sub">dashed</span></label>
+            <label><input type="checkbox" checked><svg width="30" height="8"><line x1="0" y1="4" x2="30" y2="4" stroke="var(--f-ealstm)" stroke-width="2.4" stroke-dasharray="1.5 4" stroke-linecap="round"/></svg>EA-LSTM<span class="sub">dotted</span></label>
+            <label><input type="checkbox" checked><svg width="30" height="8"><line x1="0" y1="4" x2="30" y2="4" stroke="var(--f-blend)" stroke-width="2.2" stroke-dasharray="8 3 1.5 3"/></svg>Blended<span class="sub">dash-dot</span></label>
+            <label><input type="checkbox"><svg width="30" height="8"><line x1="0" y1="4" x2="30" y2="4" stroke="var(--fg-3)" stroke-width="2"/></svg>NWRFC raw</label>
+            <p class="note">Newest run shown. Earlier runs are hidden until you turn them on.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+<div class="mockflag">Design mock · example data, not live observations</div>
+
+<script>
+(function(){
+  var root=document.documentElement,NS='http://www.w3.org/2000/svg';
+  function el(n,a,p){var e=document.createElementNS(NS,n);for(var k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e}
+  /* theme */
+  var ICON_SUN='<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+  var ICON_MOON='<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
+  function isDark(){var t=root.getAttribute('data-theme');if(t)return t==='dark';return matchMedia('(prefers-color-scheme: dark)').matches}
+  function paintTheme(){var d=isDark();document.getElementById('themeIcon').innerHTML=d?ICON_SUN:ICON_MOON;var b=document.getElementById('themeBtn');b.setAttribute('aria-label',d?'Switch to light mode':'Switch to dark mode')}
+  document.getElementById('themeBtn').onclick=function(){root.setAttribute('data-theme',isDark()?'light':'dark');paintTheme()};
+  paintTheme();
+
+  /* percentile classes */
+  var CLS=[{k:'low',l:'Much below normal',s:'< 10th',c:'var(--p-low)'},{k:'below',l:'Below normal',s:'10–25th',c:'var(--p-below)'},{k:'normal',l:'Normal',s:'25–75th',c:'var(--p-normal)'},{k:'above',l:'Above normal',s:'75–90th',c:'var(--p-above)'},{k:'high',l:'Much above normal',s:'> 90th',c:'var(--p-high)'},{k:'off',l:'No recent data',s:'',c:'var(--p-off)'}];
+  var counts={};
+  var states=['WA','OR','ID','MT','CA','NV'];
+  var st=document.getElementById('states');
+  states.forEach(function(s,i){var b=document.createElement('button');b.className='chip';b.textContent=s;b.setAttribute('aria-pressed',i<3?'true':'false');b.onclick=function(){b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true')};st.appendChild(b)});
+
+  /* map */
+  var map=document.getElementById('map');
+  var defs=el('defs',{},map);
+  el('rect',{width:1000,height:700,fill:'var(--map-water)'},map);
+  el('path',{d:'M310 0 L560 0 L600 60 L640 90 L700 110 L760 150 L830 170 L1000 190 L1000 700 L720 700 L660 640 L600 600 L520 560 L440 520 L380 470 L350 400 L330 330 L345 260 L320 200 L335 130 L300 60Z',fill:'var(--map-land)',stroke:'var(--map-line)','stroke-width':1.2},map);
+  el('path',{d:'M470 110 Q520 90 560 70 L600 60 L640 90 L600 130 Q550 150 500 140Z',fill:'var(--map-water)',stroke:'var(--map-line)'},map);
+  [['M520 150 Q560 230 540 300 T600 430 T680 520','2.6'],['M690 180 Q650 260 640 330 T600 430','2'],['M600 430 Q520 450 430 440 T360 410','2.2'],['M560 120 Q580 170 610 190','1.4'],['M780 300 Q720 340 690 400 T640 520','1.6'],['M450 250 Q490 290 480 350','1.2'],['M840 250 Q800 330 760 420','1.4']].forEach(function(r){el('path',{d:r[0],fill:'none',stroke:'var(--map-line)','stroke-width':r[1],'stroke-linecap':'round'},map)});
+  [['SEATTLE',470,170],['PORTLAND',420,380],['BOISE',770,520],['SPOKANE',730,215]].forEach(function(c){var t=el('text',{x:c[1]+8,y:c[2],fill:'var(--fg-3)','font-size':11,'font-family':'Fira Sans, sans-serif','letter-spacing':'0.1em'},map);t.textContent=c[0];el('circle',{cx:c[1],cy:c[2]-3,r:2.6,fill:'var(--fg-3)'},map)});
+  var seed=7;function rnd(){seed=(seed*16807)%2147483647;return seed/2147483647}
+  var pts=[];
+  var rivers=[[520,150,540,300],[600,430,680,520],[430,440,360,410],[690,180,640,330],[780,300,690,400],[450,250,480,350],[840,250,760,420]];
+  for(var i=0;i<95;i++){var r=rivers[i%rivers.length],t=rnd();var x=r[0]+(r[2]-r[0])*t+(rnd()-.5)*46,y=r[1]+(r[3]-r[1])*t+(rnd()-.5)*46;var v=rnd();var k=v<.07?'low':v<.2?'below':v<.6?'normal':v<.82?'above':v<.93?'high':'off';pts.push({x:x,y:y,k:k,id:(12000000+Math.floor(rnd()*400000)).toString()})}
+  pts[3]={x:548,y:226,k:'above',id:'12200500',sel:true};
+  var g=el('g',{},map);
+  pts.forEach(function(p){counts[p.k]=(counts[p.k]||0)+1;var c=CLS.filter(function(z){return z.k===p.k})[0];
+    var m=el('circle',{cx:p.x,cy:p.y,r:p.sel?9:6.5,fill:c.c,stroke:p.sel?'var(--fg)':'var(--surface)','stroke-width':p.sel?3:1.6,class:'marker',tabindex:0,role:'button','aria-label':'Gauge '+p.id+', '+c.l},g);
+    m.addEventListener('mouseenter',function(e){showTip(p,c)});m.addEventListener('mouseleave',function(){tip.style.display='none'});
+    m.addEventListener('click',function(){spin()});m.addEventListener('keydown',function(e){if(e.key==='Enter')spin()})});
+  var tip=document.getElementById('tip'),stage=document.getElementById('stage');
+  function showTip(p,c){var mr=map.getBoundingClientRect(),sr=stage.getBoundingClientRect();var sc=Math.max(mr.width/1000,mr.height/700);var ox=(mr.width-1000*sc)/2,oy=(mr.height-700*sc)/2;
+    var x=mr.left-sr.left+ox+p.x*sc+14,y=mr.top-sr.top+oy+p.y*sc-10;tip.innerHTML='<strong>'+(p.sel?'Skagit River near Mount Vernon':'Gauge')+'</strong><span class="num">USGS '+p.id+'</span><br><span style="color:'+c.c+'">●</span> '+c.l;tip.style.left=Math.min(x,sr.width-190)+'px';tip.style.top=y+'px';tip.style.display='block'}
+  var total=pts.length;document.getElementById('count').innerHTML='<b class="num">'+total+'</b> active gauges in view';
+  var lg=document.getElementById('legend');
+  CLS.forEach(function(c){var l=document.createElement('label');l.innerHTML='<input type="checkbox" checked><span class="sw" style="background:'+c.c+'"></span>'+c.l+'<span class="ct num">'+(counts[c.k]||0)+'</span>';lg.appendChild(l)});
+
+  /* plot */
+  var plot=document.getElementById('plot'),wrap=plot.parentNode;
+  var DAYS=365,TODAY=256,FC=14;
+  var MON=['Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep'],MST=[0,31,61,92,123,151,182,212,243,273,304,335];
+  function med(d){return 6500+5200*Math.exp(-Math.pow((d-70)/38,2))+2600*Math.exp(-Math.pow((d-120)/30,2))+11500*Math.exp(-Math.pow((d-235)/44,2))+1200*Math.exp(-Math.pow((d-20)/18,2))}
+  var obs=[],s2=3,wob=0;function r2(){s2=(s2*16807)%2147483647;return s2/2147483647-.5}
+  for(var d=0;d<=TODAY;d++){wob=wob*.92+r2()*.22;var storm=2.4*Math.exp(-Math.pow((d-62)/5,2))+1.3*Math.exp(-Math.pow((d-98)/6,2));obs.push(med(d)*(0.92+wob+storm*(d<130?1:0)+(d>200?.28:0)))}
+  var last=obs[TODAY];
+  function fcl(k,sc){var a=[];for(var i=0;i<=FC;i++)a.push(last*(1+sc*(i/FC)+.05*Math.sin(i*k)));return a}
+  var F=[{c:'var(--f-resid)',da:'7 5',w:2.2,v:fcl(1.1,-.12),cap:'round'},{c:'var(--f-ealstm)',da:'1.5 5',w:2.6,v:fcl(.8,-.22),cap:'round'},{c:'var(--f-blend)',da:'9 3 2 3',w:2.2,v:fcl(.9,-.17),cap:'butt'}];
+  var M={l:56,r:16,t:14,b:26},geo={};
+  function drawPlot(){
+    while(plot.firstChild)plot.removeChild(plot.firstChild);
+    var W=wrap.clientWidth-12,H=wrap.clientHeight-10;if(W<100||H<80)return;
+    plot.setAttribute('viewBox','0 0 '+W+' '+H);
+    var pw=W-M.l-M.r,ph=H-M.t-M.b,ymax=40000;
+    function X(d){return M.l+pw*d/(DAYS-1)}function Y(v){return M.t+ph*(1-v/ymax)}
+    geo={X:X,Y:Y,pw:pw,ph:ph,W:W,H:H};
+    for(var v=0;v<=ymax;v+=10000){el('line',{x1:M.l,x2:M.l+pw,y1:Y(v),y2:Y(v),stroke:'var(--line)','stroke-width':1},plot);var t=el('text',{x:M.l-8,y:Y(v)+4,'text-anchor':'end'},plot);t.textContent=v.toLocaleString('en-US')}
+    var yt=el('text',{x:0,y:0,transform:'translate(12,'+(M.t+ph/2)+') rotate(-90)','text-anchor':'middle'},plot);yt.textContent='Discharge (cfs)';
+    MON.forEach(function(m,i){var t=el('text',{x:X(MST[i]+15),y:H-8,'text-anchor':'middle'},plot);t.textContent=m;if(i>0)el('line',{x1:X(MST[i]),x2:X(MST[i]),y1:M.t+ph,y2:M.t+ph+4,stroke:'var(--line)'},plot)});
+    function band(a,b,fill){var p='M';for(var d=0;d<DAYS;d++)p+=(d?'L':'')+X(d)+' '+Y(med(d)*a);for(d=DAYS-1;d>=0;d--)p+='L'+X(d)+' '+Y(med(d)*b);el('path',{d:p+'Z',fill:fill},plot)}
+    band(.5,1.8,'var(--band-outer)');band(.72,1.35,'var(--band-inner)');
+    var mp='';for(var d2=0;d2<DAYS;d2++)mp+=(d2?'L':'M')+X(d2)+' '+Y(med(d2));el('path',{d:mp,fill:'none',stroke:'var(--median)','stroke-width':1.4,'stroke-dasharray':'3 3'},plot);
+    el('rect',{x:X(TODAY),y:M.t,width:X(TODAY+FC)-X(TODAY),height:ph,fill:'var(--accent-soft)',opacity:.55},plot);
+    var op='';obs.forEach(function(v,i){op+=(i?'L':'M')+X(i)+' '+Y(v)});el('path',{d:op,fill:'none',stroke:'var(--obs)','stroke-width':2,'stroke-linejoin':'round'},plot);
+    F.forEach(function(f){var p='';f.v.forEach(function(v,i){p+=(i?'L':'M')+X(TODAY+i)+' '+Y(v)});el('path',{d:p,fill:'none',stroke:f.c,'stroke-width':f.w,'stroke-dasharray':f.da,'stroke-linecap':f.cap},plot)});
+    el('line',{x1:X(TODAY),x2:X(TODAY),y1:M.t,y2:M.t+ph,stroke:'var(--fg-3)','stroke-dasharray':'2 3'},plot);
+    el('circle',{cx:X(TODAY),cy:Y(last),r:4.5,fill:'var(--obs)',stroke:'var(--surface)','stroke-width':2},plot);
+    var tl=el('text',{x:X(TODAY)-6,y:M.t+11,'text-anchor':'end'},plot);tl.textContent='Today';
+    /* in-plot key for observed and bands */
+    var lx=M.l+10,ly=M.t+8;
+    [['Observed','line','var(--obs)'],['25th–75th','box','var(--band-inner)'],['10th–90th','box','var(--band-outer)'],['Median','dash','var(--median)']].forEach(function(k,i){var x=lx+i*92;
+      if(k[1]==='line')el('line',{x1:x,x2:x+16,y1:ly,y2:ly,stroke:k[2],'stroke-width':2},plot);else if(k[1]==='dash')el('line',{x1:x,x2:x+16,y1:ly,y2:ly,stroke:k[2],'stroke-width':1.4,'stroke-dasharray':'3 3'},plot);else el('rect',{x:x,y:ly-5,width:16,height:10,fill:k[2],rx:2},plot);
+      var tt=el('text',{x:x+21,y:ly+4},plot);tt.textContent=k[0]});
+    /* hover */
+    var cl=el('line',{y1:M.t,y2:M.t+ph,stroke:'var(--fg-2)','stroke-width':1,opacity:0},plot);
+    var lab=el('g',{opacity:0},plot);var lr=el('rect',{rx:6,fill:'var(--surface)',stroke:'var(--line)',width:150,height:58},lab);var l1=el('text',{x:10,y:18,style:'fill:var(--fg)'},lab),l2=el('text',{x:10,y:33},lab),l3=el('text',{x:10,y:48},lab);
+    var hit=el('rect',{x:M.l,y:M.t,width:pw,height:ph,fill:'transparent'},plot);
+    hit.addEventListener('mousemove',function(e){var b=plot.getBoundingClientRect(),sx=W/b.width;var px=(e.clientX-b.left)*sx;var d=Math.max(0,Math.min(DAYS-1,Math.round((px-M.l)/pw*(DAYS-1))));
+      var mi=0;for(var i=0;i<MST.length;i++)if(d>=MST[i])mi=i;var day=d-MST[mi]+1;var yr=mi<3?2025:2026;
+      cl.setAttribute('x1',X(d));cl.setAttribute('x2',X(d));cl.setAttribute('opacity',1);
+      l1.textContent=MON[mi]+' '+day+', '+yr;l2.textContent=d<=TODAY?'Observed '+Math.round(obs[d]).toLocaleString('en-US'):'Forecast '+Math.round(F[2].v[d-TODAY]||0).toLocaleString('en-US');l3.textContent='Median   '+Math.round(med(d)).toLocaleString('en-US');
+      var lxp=Math.min(X(d)+10,W-160);lab.setAttribute('transform','translate('+lxp+','+(M.t+24)+')');lr.setAttribute('width',150);lr.setAttribute('height',58);lab.setAttribute('opacity',1)});
+    hit.addEventListener('mouseleave',function(){cl.setAttribute('opacity',0);lab.setAttribute('opacity',0)});
+  }
+  /* controls */
+  var work=document.getElementById('work'),rb=document.getElementById('railBtn');
+  rb.onclick=function(){var c=work.classList.toggle('collapsed');rb.setAttribute('aria-pressed',c?'false':'true');rb.setAttribute('aria-label',c?'Show filters':'Hide filters');setTimeout(function(){drawPlot()},230)};
+  if(matchMedia('(max-width:860px)').matches){work.classList.add('collapsed');rb.setAttribute('aria-pressed','false')}
+  var dr=document.getElementById('drawer'),mn=document.getElementById('min');
+  mn.onclick=function(){var m=dr.classList.toggle('min');stage.classList.toggle('panel-min',m);document.getElementById('minIcon').innerHTML=m?'<path d="m15 6-6 6 6 6"/>':'<path d="m9 6 6 6-6 6"/>';mn.setAttribute('aria-label',m?'Expand detail panel':'Collapse detail panel');setTimeout(drawPlot,230)};
+  ['range','status'].forEach(function(id){var box=document.getElementById(id);box.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;[].forEach.call(box.children,function(x){x.setAttribute('aria-pressed',x===b?'true':'false')});if(id==='range')spin()})});
+  var ld=document.getElementById('load'),tm;function spin(){ld.classList.add('on');clearTimeout(tm);tm=setTimeout(function(){ld.classList.remove('on')},2200)}
+  document.getElementById('reload').onclick=spin;
+  addEventListener('resize',drawPlot);
+  if(window.ResizeObserver)new ResizeObserver(drawPlot).observe(wrap);
+  drawPlot();
+})();
+</script>

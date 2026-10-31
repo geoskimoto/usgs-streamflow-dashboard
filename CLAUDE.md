@@ -16,7 +16,10 @@ A Plotly Dash dashboard visualizing USGS streamflow data for the Pacific Northwe
 app.py  (Dash app, callbacks, layout)
 manage_cache.py  (CLI for rebuilding/clearing the stats cache)
 assets/
-  └─ spinner.css   ← hydrology wave loading spinner
+  ├─ theme.css        ← design tokens (light/dark), Bootstrap variable mapping, top bar, rail, panel, hover card
+  ├─ spinner.css      ← hydrology wave loading spinner (colors from theme tokens)
+  ├─ map_legend.js    ← click-to-toggle for the rail map legend
+  ├─ hover_zoom.js    ← owns #map-hover-panel position/visibility
   └─ usgs_dashboard/
        ├─ data/data_manager.py          ← USGSDataManager (public API to callbacks)
        │     ├─ stats_cache_manager.py  ← parquet cache for per-day-of-WY statistics
@@ -25,10 +28,11 @@ assets/
        ├─ components/
        │     ├─ map_component.py    ← Plotly scatter_map with percentile coloring
        │     ├─ viz_manager.py      ← orchestrates water-year plots
-       │     └─ filter_panel.py     ← sidebar filter UI
+       │     └─ filter_panel.py     ← filter rail UI (flat sections)
        └─ utils/
              ├─ water_year_calculator.py  ← SINGLE SOURCE OF TRUTH for water-year logic
              ├─ water_year_datetime.py    ← Plotly-aware water-year datetime helpers
+             ├─ plot_theme.py             ← Plotly light/dark templates (mirrors theme.css tokens)
              └─ config.py                ← constants, colors, state list, etc.
 data/
   └─ stats_cache/  ← parquet files: <site_id>_WY<year>.parquet (gitignored)
@@ -50,6 +54,27 @@ Key standalone file:
    - `get_flow_statistics()` loads pre-computed per-day-of-WY stats from `data/stats_cache/` (parquet). On cache miss, fetches full history, computes stats, and writes the cache.
    - `viz_manager.create_fast_water_year_plot()` renders current year + percentile bands + forecasts with no historical year trace loop.
 6. "Last 30 Years" / "Full Period of Record" buttons trigger the full history path: `get_streamflow_data()` → `create_streamflow_plot()` with `history_mode='30yr'` or `'all'`.
+
+---
+
+## UI Layout and Theming (map-first redesign)
+
+Layout: sticky top bar (brand, Dashboard/Admin, flow-date picker, filters toggle, theme toggle) → filter rail
+(left, collapsible) → map stage (fit-to-window) with a collapsible **detail panel** on the right (gauge info,
+history buttons, water-year plot, period-of-record analysis). Below 1200px the panel stacks under the map.
+Design reference: `Documentation/design/map-first-mock.html`; plan and decisions: `Documentation/MAP_FIRST_REDESIGN_PLAN.md`.
+
+- **Theming:** light is the default; dark is `body.dark-mode`, toggled by the clientside callback behind `#dark-mode-btn`,
+  which also writes `dark-mode-store` (read by the map and plot callbacks). Colors come from tokens in `assets/theme.css`;
+  never hard-code a color in a component. Figure colors live in `utils/plot_theme.py` — change both files together.
+- **Icons:** CSS-mask helper `_icon()` / `.ui-icon-*`. Do not name a class `.icon` (collides with Plotly's modebar `svg.icon`).
+- **Map legend:** drawn in the rail by a clientside callback from the figure's traces; the Plotly legend is off.
+  Map shows 5 flow-vs-normal classes (see `DISPLAY_BEHAVIOR_SPEC.md` §2).
+- **Hover card:** deliberately a light card in both themes (the pre-rendered hover PNGs use the light plot theme). Do not add a
+  callback that writes `#map-hover-panel`'s `style` (see `hover_zoom.js`).
+- **Callback ids are stable:** the redesign moved components without renaming them. `tests/test_layout_ids.py` guards the
+  required ids and that every callback target exists in the layout.
+- **Local visual checks:** the app sits behind SSO, so run it locally with the auth check stubbed (do not commit that stub).
 
 ---
 
