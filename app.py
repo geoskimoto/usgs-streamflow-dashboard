@@ -115,47 +115,44 @@ gauges_df = pd.DataFrame()
 selected_gauge_id = None
 
 
+def _icon(name: str) -> html.Span:
+    """CSS-mask icon (see .icon-* in assets/theme.css); inherits the text color."""
+    return html.Span(className=f"icon icon-{name}", **{"aria-hidden": "true"})
+
+
 def create_header():
-    """Create the application header with enhanced styling."""
-    return dbc.Container([
-        dbc.Row([
-            dbc.Col([
-                # Enhanced header with gradient background and better typography
-                html.Div([
-                    html.H1(APP_TITLE, 
-                           className="display-3 mb-2", 
-                           style={
-                               "fontWeight": "700",
-                               "background": "linear-gradient(135deg, #1f77b4 0%, #2ca02c 100%)",
-                               "webkitBackgroundClip": "text",
-                               "webkitTextFillColor": "transparent",
-                               "backgroundClip": "text",
-                               "textAlign": "center"
-                           }),
-                    html.P(APP_DESCRIPTION,
-                           className="lead mb-3 text-center d-none d-md-block",
-                           style={
-                               "fontSize": "1.1rem",
-                               "color": "#6c757d",
-                               "maxWidth": "800px",
-                               "margin": "0 auto",
-                               "lineHeight": "1.6"
-                           }),
-                    html.Hr(className="d-none d-md-block",
-                            style={"width": "60%", "margin": "1.5rem auto", "border": "2px solid #e9ecef"}),
-                ], id="site-header", style={
-                    "background": "linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%)",
-                    "padding": "1rem",
-                    "borderRadius": "15px",
-                    "boxShadow": "0 4px 6px rgba(0, 0, 0, 0.07)",
-                    "border": "1px solid rgba(0, 0, 0, 0.05)",
-                    "marginBottom": "1rem"
-                })
-            ])
-        ])
-    ], fluid=True)
+    """Slim sticky top bar: brand, view switch, flow-date picker, filter and theme toggles.
 
-
+    Every control keeps the id it had before the redesign; callbacks are unchanged.
+    """
+    title, _, region = APP_TITLE.partition(" - ")
+    return html.Header(id="site-header", className="topbar", children=[
+        html.Div(className="topbar-brand", children=[
+            _icon("waves"),
+            html.Span(title, className="topbar-title"),
+            html.Span(region, className="topbar-sub d-none d-xl-inline"),
+        ]),
+        dbc.ButtonGroup([
+            dbc.Button("Dashboard", id="show-dashboard-btn", color="outline-secondary", size="sm"),
+            dbc.Button("Admin", id="show-admin-btn", color="outline-secondary", size="sm"),
+        ], className="topbar-nav"),
+        html.Div(className="topbar-spacer"),
+        html.Div(className="topbar-date", children=[
+            html.Small("Flow conditions for", className="topbar-date-label d-none d-lg-inline"),
+            dbc.Button("\u2212", id="prev-date-btn", color="outline-secondary", size="sm",
+                       title="Previous day", className="topbar-step"),
+            dbc.Input(type="date", id="percentile-date-picker", size="sm", className="topbar-date-input"),
+            dbc.Button("+", id="next-date-btn", color="outline-secondary", size="sm",
+                       title="Next day", className="topbar-step"),
+            html.Small(id="percentile-source-label", children="Observed conditions",
+                       className="topbar-date-source d-none d-xl-inline"),
+        ]),
+        dbc.Button("Filters", id="mobile-sidebar-btn", color="outline-primary", size="sm",
+                   className="d-lg-none", n_clicks=0),
+        dbc.Button("Hide filters", id="sidebar-toggle-btn", color="outline-secondary", size="sm",
+                   className="d-none d-lg-inline-block"),
+        dbc.Button("Dark Mode", id="dark-mode-btn", color="outline-secondary", size="sm"),
+    ])
 
 
 def create_sidebar():
@@ -431,73 +428,11 @@ def create_main_content():
         # Map section
         dbc.Card([
             dbc.CardHeader(
-                dbc.Row([
-                    # Left: title + station count
-                    dbc.Col(
-                        [
-                            html.Span("🗺️ ", className="fw-semibold"),
-                            html.Span("Map", className="fw-semibold me-2 d-sm-none"),
-                            html.Span("Streamflow Gauges Map", className="fw-semibold me-2 d-none d-sm-inline"),
-                            dbc.Badge(id="gauge-count-badge", color="info", className="align-middle"),
-                        ],
-                        width="auto",
-                        className="d-flex align-items-center",
-                    ),
-                    # Right: label + [−] date picker [+]
-                    dbc.Col(
-                        dbc.Row(
-                            [
-                                dbc.Col(
-                                    html.Small(
-                                        "Flow conditions for date:",
-                                        className="text-muted",
-                                        style={"whiteSpace": "nowrap", "fontSize": "0.75rem"},
-                                    ),
-                                    width="auto",
-                                    className="d-none d-sm-block",  # hide label on phones
-                                ),
-                                dbc.Col(
-                                    dbc.Button(
-                                        "−", id="prev-date-btn",
-                                        color="secondary", outline=True, size="sm",
-                                        title="Previous day",
-                                        style={"minWidth": "32px", "minHeight": "32px"},
-                                    ),
-                                    width="auto",
-                                ),
-                                dbc.Col(
-                                    [
-                                        dbc.Input(
-                                            type="date",
-                                            id="percentile-date-picker",
-                                            size="sm",
-                                            style={"width": "140px", "fontSize": "0.8rem"},
-                                        ),
-                                        html.Small(
-                                            id='percentile-source-label',
-                                            children="Observed conditions",
-                                            className="text-muted d-block mt-1",
-                                            style={"fontSize": "0.7rem", "whiteSpace": "nowrap"},
-                                        ),
-                                    ],
-                                    width="auto",
-                                ),
-                                dbc.Col(
-                                    dbc.Button(
-                                        "+", id="next-date-btn",
-                                        color="secondary", outline=True, size="sm",
-                                        title="Next day",
-                                        style={"minWidth": "32px", "minHeight": "32px"},
-                                    ),
-                                    width="auto",
-                                ),
-                            ],
-                            align="center",
-                            className="g-1 flex-nowrap",
-                        ),
-                        width="auto",
-                    ),
-                ], align="center", className="g-0 flex-nowrap justify-content-between"),
+                html.Div([
+                    html.Span("Streamflow Gauges Map", className="fw-semibold me-2 d-none d-sm-inline"),
+                    html.Span("Map", className="fw-semibold me-2 d-sm-none"),
+                    dbc.Badge(id="gauge-count-badge", color="info", className="align-middle"),
+                ], className="d-flex align-items-center"),
                 className="py-2",
             ),
             dbc.CardBody([
@@ -655,43 +590,9 @@ def create_main_content():
 
 
 # Simplified layout without complex tabs - everything always exists
-app.layout = dbc.Container([
+app.layout = html.Div([
     create_header(),
-    
-    # Navigation and control buttons
-    dbc.Row([
-        dbc.Col([
-            dbc.ButtonGroup([
-                dbc.Button("🏞️ Dashboard", id="show-dashboard-btn", color="primary", className="me-2"),
-                dbc.Button("🔧 Admin", id="show-admin-btn", color="secondary"),
-            ])
-        ], width="auto"),
-        dbc.Col([
-            dbc.Button(
-                "Filters",
-                id="mobile-sidebar-btn",
-                color="outline-primary",
-                size="sm",
-                className="d-lg-none me-2",
-                n_clicks=0,
-            ),
-            dbc.ButtonGroup([
-                dbc.Button(
-                    "Dark Mode",
-                    id="dark-mode-btn",
-                    color="outline-secondary",
-                    size="sm",
-                ),
-                dbc.Button(
-                    "◀️ Hide Sidebar",
-                    id="sidebar-toggle-btn",
-                    color="outline-secondary",
-                    size="sm",
-                    className="d-none d-lg-inline-block",
-                ),
-            ], className="float-end")
-        ], width="auto")
-    ], className="mb-3 d-flex justify-content-between align-items-center"),
+    dbc.Container([
     
     # Dashboard content (always exists, just hidden/shown)
     html.Div([
@@ -803,7 +704,8 @@ app.layout = dbc.Container([
         ],
     ),
 
-], fluid=True)
+    ], fluid=True, className="pt-3"),
+])
 
 
 # ── Mobile clientside helpers ─────────────────────────────────────────────────
@@ -2109,25 +2011,25 @@ def toggle_sidebar(desktop_clicks, mobile_clicks, current_class):
         if "d-block" in current_class and "d-none" not in current_class:
             # Currently visible on mobile -> hide
             return ("sidebar-col d-none d-lg-block",
-                    "◀️ Hide Sidebar", "main-content-col flex-grow-1", "Filters")
+                    "Hide filters", "main-content-col flex-grow-1", "Filters")
         else:
             # Currently hidden on mobile -> show full-width
             return ("sidebar-col d-block",
-                    "◀️ Hide Sidebar", "main-content-col flex-grow-1", "Close")
+                    "Hide filters", "main-content-col flex-grow-1", "Close")
 
     if trigger == "sidebar-toggle-btn":
         # Desktop toggle
         is_hidden = desktop_clicks and (desktop_clicks % 2 == 1)
         if is_hidden:
             return ("sidebar-col d-none",
-                    "▶️ Show Sidebar", "main-content-col w-100", "Filters")
+                    "Show filters", "main-content-col w-100", "Filters")
         else:
             return ("sidebar-col d-none d-lg-block",
-                    "◀️ Hide Sidebar", "main-content-col flex-grow-1", "Filters")
+                    "Hide filters", "main-content-col flex-grow-1", "Filters")
 
     # Default state (initial load)
     return ("sidebar-col d-none d-lg-block",
-            "◀️ Hide Sidebar", "main-content-col flex-grow-1", "Filters")
+            "Hide filters", "main-content-col flex-grow-1", "Filters")
 
 
 # =============================================

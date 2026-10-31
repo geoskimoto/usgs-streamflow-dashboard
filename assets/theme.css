@@ -236,9 +236,48 @@ body.dark-mode ::-webkit-scrollbar-thumb { background-color: var(--line); border
     .sidebar-col .card-header h5 { font-size: 1rem; }
 }
 
-/* Site header (replaced by the top bar in step 2) */
-#site-header { background: var(--surface) !important; border-color: var(--line) !important; }
-body.dark-mode #site-header { box-shadow: var(--shadow) !important; }
+/* ---- Icons (CSS masks; inherit text color) ------------------------------ */
+.icon {
+    display: inline-block;
+    flex: none;
+    width: 20px;
+    height: 20px;
+    background-color: currentColor;
+    -webkit-mask: var(--icon) center / contain no-repeat;
+    mask: var(--icon) center / contain no-repeat;
+}
+.icon-waves {
+    --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8c3 0 3-2 6-2s3 2 6 2 3-2 6-2'/%3E%3Cpath d='M3 14c3 0 3-2 6-2s3 2 6 2 3-2 6-2'/%3E%3Cpath d='M3 20c3 0 3-2 6-2s3 2 6 2 3-2 6-2'/%3E%3C/svg%3E");
+}
+
+/* ---- Top bar -------------------------------------------------------------- */
+.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 48px;
+    padding: 6px 16px;
+    background-color: var(--surface);
+    border-bottom: 1px solid var(--line);
+}
+.topbar-brand { display: flex; align-items: center; gap: 8px; color: var(--accent); white-space: nowrap; }
+.topbar-title { color: var(--fg); font-weight: 600; font-size: 15px; letter-spacing: .01em; }
+.topbar-sub { color: var(--fg-3); font-size: 12px; }
+.topbar-spacer { flex: 1 1 auto; }
+.topbar .btn { font-size: 13px; padding: 4px 11px; white-space: nowrap; }
+.topbar-nav .btn { min-width: 84px; }
+.topbar-date { display: flex; align-items: center; gap: 6px; }
+.topbar-date-label, .topbar-date-source { color: var(--fg-3); white-space: nowrap; font-size: 12px; }
+.topbar-date-input { width: 138px; font-family: var(--font-mono); font-size: 12.5px; }
+.topbar .topbar-step { min-width: 32px; min-height: 32px; padding: 0; }
+@media (max-width: 575.98px) {
+    .topbar { gap: 8px; padding: 6px 10px; flex-wrap: wrap; }
+    .topbar-nav { display: none; }
+    .topbar-spacer { display: none; }
+}
 
 @media (prefers-reduced-motion: reduce) {
     * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
