@@ -1,0 +1,246 @@
+/* ==========================================================================
+   Streamflow Dashboard — theme tokens and base styles.
+
+   Light is the default. Dark is `body.dark-mode`, toggled by the existing
+   clientside callback behind #dark-mode-btn (it also writes dark-mode-store,
+   which the plot callbacks read). Do not add a second theme mechanism.
+
+   Rule: components take colors from the tokens below, never from literals.
+   Design reference: Documentation/design/map-first-mock.html
+   ========================================================================== */
+
+:root {
+    --bg: #F4F7FA;
+    --surface: #FFFFFF;
+    --surface-2: #EDF2F7;
+    --line: #D9E1EA;
+    --fg: #14243A;
+    --fg-2: #4A5C73;
+    --fg-3: #6B7C90;
+    --accent: #1E5FB4;
+    --accent-fg: #FFFFFF;
+    --accent-soft: #E3EEFB;
+    --focus: #1E5FB4;
+    --input-bg: #FFFFFF;
+    --shadow: 0 1px 2px rgba(20, 36, 58, .08), 0 4px 14px rgba(20, 36, 58, .08);
+
+    /* Flow percentile classes (colorblind-safe: orange -> green -> blue) */
+    --p-low: #D55E00;
+    --p-below: #E69F00;
+    --p-normal: #4C9A7B;
+    --p-above: #56B4E9;
+    --p-high: #0A4F9C;
+    --p-off: #8A96A3;
+
+    /* Forecast traces */
+    --f-resid: #00897B;
+    --f-ealstm: #C77700;
+    --f-blend: #8E3FB0;
+
+    /* Wave spinner */
+    --wave-a: #1a7fc1;
+    --wave-b: #5ab4d6;
+    --wave-c: #a8d8ea;
+
+    --font-ui: 'Fira Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'Fira Code', ui-monospace, Menlo, monospace;
+    --radius: 8px;
+}
+
+body.dark-mode {
+    --bg: #0C1522;
+    --surface: #142133;
+    --surface-2: #1B2B41;
+    --line: #26384F;
+    --fg: #E6EDF6;
+    --fg-2: #A4B4C8;
+    --fg-3: #8496AC;
+    --accent: #5AA2F0;
+    --accent-fg: #071426;
+    --accent-soft: #1B3250;
+    --focus: #7DB6F5;
+    --input-bg: #1B2B41;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .35);
+
+    --p-low: #F28A3A;
+    --p-below: #F2B84B;
+    --p-normal: #5DB596;
+    --p-above: #6EC1F0;
+    --p-high: #3E8EE0;
+    --p-off: #6F7C8B;
+
+    --f-resid: #3CC4B4;
+    --f-ealstm: #F0A63A;
+    --f-blend: #C48BE0;
+
+    --wave-a: #3E8EE0;
+    --wave-b: #6EC1F0;
+    --wave-c: #A9DDF7;
+}
+
+/* ---- Base + Bootstrap variable mapping ---------------------------------- */
+body {
+    --bs-body-bg: var(--bg);
+    --bs-body-color: var(--fg);
+    --bs-border-color: var(--line);
+    --bs-card-bg: var(--surface);
+    --bs-card-border-color: var(--line);
+    --bs-link-color: var(--accent);
+    --bs-link-hover-color: var(--accent);
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-ui);
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.font-mono, code, kbd, samp { font-family: var(--font-mono); }
+
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.text-muted, .text-secondary { color: var(--fg-3) !important; }
+hr { border-color: var(--line); opacity: 1; }
+
+.card {
+    background-color: var(--surface);
+    border-color: var(--line);
+    border-radius: var(--radius);
+    color: var(--fg);
+}
+.card-header {
+    background-color: var(--surface);
+    border-bottom-color: var(--line);
+    color: var(--fg);
+}
+.card-body { color: var(--fg); }
+.card-footer { background-color: var(--surface-2); border-top-color: var(--line); }
+
+/* Buttons: primary actions use the accent token */
+.btn { border-radius: var(--radius); transition: background-color .15s, border-color .15s, color .15s; }
+.btn-primary {
+    --bs-btn-bg: var(--accent);
+    --bs-btn-border-color: var(--accent);
+    --bs-btn-color: var(--accent-fg);
+    --bs-btn-hover-bg: var(--accent);
+    --bs-btn-hover-border-color: var(--accent);
+    --bs-btn-hover-color: var(--accent-fg);
+    --bs-btn-active-bg: var(--accent);
+    --bs-btn-active-border-color: var(--accent);
+    --bs-btn-active-color: var(--accent-fg);
+    --bs-btn-disabled-bg: var(--accent);
+    --bs-btn-disabled-border-color: var(--accent);
+    filter: none;
+}
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-outline-primary {
+    --bs-btn-color: var(--accent);
+    --bs-btn-border-color: var(--accent);
+    --bs-btn-hover-bg: var(--accent-soft);
+    --bs-btn-hover-color: var(--accent);
+    --bs-btn-hover-border-color: var(--accent);
+    --bs-btn-active-bg: var(--accent);
+    --bs-btn-active-color: var(--accent-fg);
+    --bs-btn-active-border-color: var(--accent);
+}
+.btn-outline-secondary {
+    --bs-btn-color: var(--fg-2);
+    --bs-btn-border-color: var(--line);
+    --bs-btn-hover-bg: var(--surface-2);
+    --bs-btn-hover-color: var(--fg);
+    --bs-btn-hover-border-color: var(--line);
+}
+.btn-secondary {
+    --bs-btn-bg: var(--surface-2);
+    --bs-btn-border-color: var(--line);
+    --bs-btn-color: var(--fg);
+    --bs-btn-hover-bg: var(--line);
+    --bs-btn-hover-border-color: var(--line);
+    --bs-btn-hover-color: var(--fg);
+}
+
+/* Form controls */
+.form-control, .form-select, textarea, select,
+input[type="text"], input[type="password"], input[type="number"], input[type="date"] {
+    background-color: var(--input-bg);
+    border-color: var(--line);
+    color: var(--fg);
+}
+.form-check-input:checked { background-color: var(--accent); border-color: var(--accent); }
+label, .form-label, .form-check-label { color: var(--fg-2); }
+body.dark-mode input[type="date"] { color-scheme: dark; }
+
+/* React-Select (dcc.Dropdown) */
+.Select-control { background-color: var(--input-bg); border-color: var(--line); }
+.Select-value-label, .Select-placeholder, .Select-input > input { color: var(--fg) !important; }
+.Select-arrow { border-top-color: var(--fg-3); }
+.Select--single > .Select-control .Select-value { color: var(--fg); }
+.Select-menu-outer { background-color: var(--surface); border-color: var(--line); }
+.Select-option { background-color: var(--surface); color: var(--fg); }
+.Select-option.is-focused, .Select-option:hover { background-color: var(--surface-2); color: var(--fg); }
+.Select-option.is-selected { background-color: var(--accent); color: var(--accent-fg); }
+
+/* Badges, alerts, tables, modals, lists */
+.badge.bg-secondary { background-color: var(--fg-3) !important; }
+.badge.bg-light { background-color: var(--surface-2) !important; color: var(--fg) !important; }
+
+body.dark-mode .alert-info    { background-color: #1a3a5c; border-color: #2979c8; color: #9ecbff; }
+body.dark-mode .alert-success { background-color: #0d2b14; border-color: #1a7a2c; color: #87dfa5; }
+body.dark-mode .alert-warning { background-color: #3a2a00; border-color: #b37700; color: #ffd97d; }
+body.dark-mode .alert-danger  { background-color: #2b0d0d; border-color: #7a1a1a; color: #e48787; }
+
+.table { color: var(--fg); --bs-table-bg: var(--surface); --bs-table-border-color: var(--line); }
+body.dark-mode .table { --bs-table-striped-bg: var(--surface-2); }
+
+.modal-content { background-color: var(--surface); color: var(--fg); border-color: var(--line); }
+.modal-header { border-bottom-color: var(--line); }
+.modal-footer { border-top-color: var(--line); }
+body.dark-mode .modal-header .btn-close { filter: invert(1) grayscale(1) brightness(2); }
+
+.list-group-item { background-color: var(--surface); border-color: var(--line); color: var(--fg); }
+
+/* Scrollbars */
+body.dark-mode ::-webkit-scrollbar { background-color: var(--surface); width: 8px; }
+body.dark-mode ::-webkit-scrollbar-thumb { background-color: var(--line); border-radius: 4px; }
+
+/* ---- Existing responsive layout (moved from app.index_string, unchanged) -- */
+.sidebar-col {
+    background-color: var(--surface);
+    border-right: 1px solid var(--line);
+    padding: 1rem;
+    overflow-y: auto;
+}
+.main-content-col {
+    padding: 1rem;
+    transition: all 0.3s ease-in-out;
+    min-width: 0;
+}
+@media (min-width: 992px) {
+    .sidebar-col { min-height: 100vh; flex: 0 0 auto !important; }
+    .layout-row { flex-wrap: nowrap !important; display: flex !important; }
+}
+@media (max-width: 991.98px) {
+    .sidebar-col { border-right: none; }
+    .main-content-col { padding: 0.5rem; }
+}
+.plotly-graph-div { width: 100% !important; height: auto !important; }
+.main-content-col .card { margin-bottom: 1rem; }
+.date-picker-compact .DateInput,
+.date-picker-compact .DateInput_input {
+    font-size: 0.8rem !important;
+    width: 110px !important;
+    padding: 4px 6px !important;
+}
+.date-picker-compact .SingleDatePickerInput { border-radius: 4px; }
+@media (max-width: 992px) {
+    .sidebar-col { font-size: 0.9rem; }
+    .sidebar-col .card-header h5 { font-size: 1rem; }
+}
+
+/* Site header (replaced by the top bar in step 2) */
+#site-header { background: var(--surface) !important; border-color: var(--line) !important; }
+body.dark-mode #site-header { box-shadow: var(--shadow) !important; }
+
+@media (prefers-reduced-motion: reduce) {
+    * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+    .hydro-wave-bar { animation: none !important; height: 24px; }
+}
