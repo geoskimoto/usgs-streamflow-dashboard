@@ -274,120 +274,99 @@ def create_sidebar():
 
 
 def create_public_sidebar():
-    """Create the public sidebar without admin controls."""
+    """Create the public sidebar (filter rail) without admin controls.
+
+    Every control id and default value is unchanged from the card-based layout.
+    """
     return [
-        # Simplified Filter Panel
         filter_panel.create_filter_panel(),
-        
-        html.Br(),
-        
-        # Public Dashboard Controls (View-only settings)
-        dbc.Card([
-            dbc.CardHeader(html.H5("⚙️ Display Settings", className="mb-0")),
-            dbc.CardBody([
-                # Map controls
-                html.H6("Map Settings", className="text-muted mb-2"),
-                
-                dbc.Label("Map Style:"),
-                dcc.Dropdown(
-                    id="map-style-dropdown",
-                    options=[
-                        {"label": "🏞️ USGS National Map", "value": "usgs-national"},
-                        {"label": "🏔️ Stamen Terrain", "value": "stamen-terrain"},
-                        {"label": "🌍 National Geographic", "value": "natgeo"},
-                        {"label": "🛰️ Satellite", "value": "esri-satellite"},
-                    ],
-                    value="usgs-national",
-                    className="mb-3"
-                ),
-                
-                dbc.Label("Watershed Boundaries:"),
-                dbc.Checklist(
-                    id="basin-boundaries-checklist",
-                    options=[
-                        {"label": " Major Basins (HUC2)", "value": "huc2"},
-                        {"label": " Sub-Regions (HUC4)", "value": "huc4"},
-                        {"label": " Accounting Units (HUC6)", "value": "huc6"},
-                        {"label": " Sub-Basins (HUC8)", "value": "huc8"}
-                    ],
-                    value=["huc2", "huc4"],  # Show HUC2 and HUC4 by default
-                    inline=False,
-                    className="mb-2"
-                ),
-                html.P("Display watershed boundaries on the map", 
-                      className="small text-muted mb-3"),
-                
-                html.Hr(),
-                
-                # Visualization controls
-                html.H6("Visualization Controls", className="text-muted mb-2"),
-                
-                dbc.Label("Years to Highlight:"),
-                dbc.Input(
-                    id="highlight-years-input",
-                    type="text",
-                    placeholder="e.g., 2025, 2024, 2023",
-                    className="mb-2"
-                ),
-                html.P("Highlight specific years in charts (comma-separated)", 
-                      className="small text-muted mb-3"),
-                
-                html.Hr(),
-                
-                # Plot size controls
-                html.H6("Plot Size Controls", className="text-muted mb-2"),
-                
-                dbc.Label("Map Height:"),
-                dcc.Dropdown(
-                    id="map-height-dropdown",
-                    options=[
-                        {"label": "📱 Compact (500px)", "value": 500},
-                        {"label": "📊 Standard (700px)", "value": 700},
-                        {"label": "🖥️ Large (900px)", "value": 900},
-                        {"label": "📺 Extra Large (1200px)", "value": 1200},
-                    ],
-                    value=700,
-                    className="mb-3"
-                ),
-                
-                dbc.Label("Chart Height:"),
-                dcc.Dropdown(
-                    id="chart-height-dropdown",
-                    options=[
-                        {"label": "📱 Compact (400px)", "value": 400},
-                        {"label": "📊 Standard (500px)", "value": 500},
-                        {"label": "🖥️ Large (600px)", "value": 600},
-                        {"label": "📺 Extra Large (800px)", "value": 800},
-                    ],
-                    value=600,
-                    className="mb-3"
-                ),
-                
-                dbc.Label("Additional Options:"),
-                dbc.Checklist(
-                    id="plot-options-checklist",
-                    options=[
-                        {"label": "🔍 Enable plot zoom & pan", "value": "enable_zoom"},
-                        {"label": "📱 Responsive sizing", "value": "responsive"},
-                        {"label": "🖼️ Show plot toolbar", "value": "show_toolbar"},
-                    ],
-                    value=["enable_zoom", "show_toolbar"],
-                    className="mb-3"
-                ),
-            ])
-        ], className="mb-3"),
-        
-        # Gauge information card
-        dbc.Card([
-            dbc.CardHeader(html.H5("📍 Selected Gauge", className="mb-0")),
-            dbc.CardBody([
-                html.Div(id="gauge-info-content", children=[
-                    html.P("Select a gauge on the map to view details.", 
-                          className="text-muted")
-                ])
-            ])
-        ], className="mb-3"),
+
+        # Map display settings (view-only)
+        html.Section([
+            html.H3("Map", className="rail-heading"),
+            html.Label("Map style", className="rail-label"),
+            dcc.Dropdown(
+                id="map-style-dropdown",
+                options=[
+                    {"label": "USGS National Map", "value": "usgs-national"},
+                    {"label": "Stamen Terrain", "value": "stamen-terrain"},
+                    {"label": "National Geographic", "value": "natgeo"},
+                    {"label": "Satellite", "value": "esri-satellite"},
+                ],
+                value="usgs-national",
+                className="mb-3",
+            ),
+            html.Label("Watershed boundaries", className="rail-label"),
+            dbc.Checklist(
+                id="basin-boundaries-checklist",
+                options=[
+                    {"label": "Major basins (HUC2)", "value": "huc2"},
+                    {"label": "Sub-regions (HUC4)", "value": "huc4"},
+                    {"label": "Accounting units (HUC6)", "value": "huc6"},
+                    {"label": "Sub-basins (HUC8)", "value": "huc8"},
+                ],
+                value=["huc2", "huc4"],  # Show HUC2 and HUC4 by default
+                inline=False,
+                className="rail-checklist",
+            ),
+            html.Label("Map height", className="rail-label mt-3"),
+            dcc.Dropdown(
+                id="map-height-dropdown",
+                options=[
+                    {"label": "Compact (500px)", "value": 500},
+                    {"label": "Standard (700px)", "value": 700},
+                    {"label": "Large (900px)", "value": 900},
+                    {"label": "Extra large (1200px)", "value": 1200},
+                ],
+                value=700,
+            ),
+        ], className="rail-section"),
+
+        # Plot display settings (view-only)
+        html.Section([
+            html.H3("Plots", className="rail-heading"),
+            html.Label("Years to highlight", className="rail-label"),
+            dbc.Input(
+                id="highlight-years-input",
+                type="text",
+                placeholder="e.g., 2025, 2024, 2023",
+            ),
+            html.Small("Highlight specific years in charts (comma-separated)", className="rail-hint d-block mt-1 mb-3"),
+            html.Label("Chart height", className="rail-label"),
+            dcc.Dropdown(
+                id="chart-height-dropdown",
+                options=[
+                    {"label": "Compact (400px)", "value": 400},
+                    {"label": "Standard (500px)", "value": 500},
+                    {"label": "Large (600px)", "value": 600},
+                    {"label": "Extra large (800px)", "value": 800},
+                ],
+                value=600,
+                className="mb-3",
+            ),
+            html.Label("Additional options", className="rail-label"),
+            dbc.Checklist(
+                id="plot-options-checklist",
+                options=[
+                    {"label": "Enable plot zoom & pan", "value": "enable_zoom"},
+                    {"label": "Responsive sizing", "value": "responsive"},
+                    {"label": "Show plot toolbar", "value": "show_toolbar"},
+                ],
+                value=["enable_zoom", "show_toolbar"],
+                className="rail-checklist",
+            ),
+        ], className="rail-section"),
+
+        # Selected gauge details (moves to the right-hand panel in step 5)
+        html.Section([
+            html.H3("Selected gauge", className="rail-heading"),
+            html.Div(id="gauge-info-content", children=[
+                html.P("Select a gauge on the map to view details.", className="rail-hint")
+            ]),
+        ], className="rail-section"),
     ]
+
+
 def create_admin_content():
     """Create the admin panel content."""
     from dashboard_admin import create_enhanced_admin_content
@@ -1787,16 +1766,16 @@ def update_filter_summary(gauges_data):
         # Create dynamic state options with current counts
         state_options = []
         state_labels = {
-            'OR': '🌲 Oregon',
-            'WA': '🏔️ Washington', 
-            'ID': '⛰️ Idaho',
-            'MT': '⛰️ Montana',
-            'CA': '☀️ California',
-            'NV': '🏜️ Nevada',
-            'UT': '🏔️ Utah',
-            'AZ': '🌵 Arizona',
-            'CO': '⛰️ Colorado',
-            'BC': '🍁 British Columbia'
+            'OR': 'Oregon',
+            'WA': 'Washington', 
+            'ID': 'Idaho',
+            'MT': 'Montana',
+            'CA': 'California',
+            'NV': 'Nevada',
+            'UT': 'Utah',
+            'AZ': 'Arizona',
+            'CO': 'Colorado',
+            'BC': 'British Columbia'
         }
         
         for state in ['OR', 'WA', 'ID', 'MT', 'CA', 'NV', 'UT', 'AZ', 'CO', 'BC']:
