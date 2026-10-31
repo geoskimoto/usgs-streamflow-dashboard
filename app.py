@@ -39,6 +39,7 @@ map_component = get_map_component()
 viz_manager = get_visualization_manager()
 filter_panel = SimplifiedFilterPanel()
 from resid_cast.precip_runoff_adapter import PrecipRunoffAdapter
+from usgs_dashboard.utils import plot_theme
 _precip_adapter = PrecipRunoffAdapter()
 
 # Start percentile background refresh thread (fetches from StreamflowOps every 30 min)
@@ -1010,7 +1011,7 @@ def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin
     if ctx.triggered:
         trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
         # Don't auto-fit for map style, height changes, or when map is just being built from store
-        if trigger_id in ['map-style-dropdown', 'map-height-dropdown', 'gauges-store', 'percentile-bands-store']:
+        if trigger_id in ['map-style-dropdown', 'map-height-dropdown', 'gauges-store', 'percentile-bands-store', 'dark-mode-store']:
             auto_fit = False
     
     # Convert data to DataFrame
@@ -1514,10 +1515,9 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
     if nwrfc_id:
         site_label += f" / NWRFC {nwrfc_id}"
 
-    plot_template = 'plotly_dark' if dark_mode else 'plotly'
-
     def _card(title, fig, graph_id=None):
-        fig.update_layout(template=plot_template, hovermode='x unified')
+        plot_theme.apply_theme(fig, bool(dark_mode))
+        fig.update_layout(hovermode='x unified')
         graph_kwargs = dict(figure=fig, config=graph_config, style=graph_style)
         if graph_id:
             graph_kwargs['id'] = graph_id
@@ -1642,7 +1642,6 @@ def render_annual_summary(requested, dark_mode, selected_gauge, gauges_data,
     if nwrfc_id:
         site_label += f" / NWRFC {nwrfc_id}"
 
-    plot_template = 'plotly_dark' if dark_mode else 'plotly'
     selected_options = plot_options or []
     graph_config = {
         "displaylogo": False,
@@ -1656,7 +1655,7 @@ def render_annual_summary(requested, dark_mode, selected_gauge, gauges_data,
         graph_style["width"] = "100%"
 
     def _por_card(title, fig):
-        fig.update_layout(template=plot_template)
+        plot_theme.apply_theme(fig, bool(dark_mode))
         return dbc.Card([
             dbc.CardHeader([
                 html.Div(f"{title} — {site_label} — {station_name}",

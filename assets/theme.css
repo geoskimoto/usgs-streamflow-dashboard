@@ -445,6 +445,12 @@ body.dark-mode ::-webkit-scrollbar-thumb { background-color: var(--line); border
 .hover-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: baseline; }
 .hover-coord { color: #5A6B80; font-family: var(--font-mono); font-size: 10.5px; margin-top: 2px; }
 
+/* Plots inside the detail panel: drop the nested card chrome (the panel is the card). */
+.detail-scroll .card { border: 0; background: transparent; margin-bottom: 1rem; }
+.detail-scroll .card-header { background: transparent; border-bottom: 0; padding: 0 0 6px; }
+.detail-scroll .card-header > div:first-child { font-size: 13px; font-weight: 600; color: var(--fg); }
+.detail-scroll .card-body { padding: 0; background: transparent !important; }
+
 @media (prefers-reduced-motion: reduce) {
     * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
     .hydro-wave-bar { animation: none !important; height: 24px; }
