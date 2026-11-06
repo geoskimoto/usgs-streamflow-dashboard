@@ -419,8 +419,30 @@ body.dark-mode ::-webkit-scrollbar-thumb { background-color: var(--line); border
 .detail-scroll .js-plotly-plot, .detail-scroll .plotly-graph-div { max-width: 100%; }
 
 @media (min-width: 1200px) {
-    .workspace { grid-template-columns: minmax(0, 1fr) clamp(460px, 44%, 680px); transition: grid-template-columns .2s; }
+    /* --detail-w is set by assets/panel_resize.js when the user drags the divider. */
+    .workspace {
+        grid-template-columns: minmax(0, 1fr) min(var(--detail-w, clamp(460px, 44%, 680px)), calc(100% - 336px));
+        transition: grid-template-columns .2s;
+    }
+    .workspace.is-resizing { transition: none; }
     .workspace.panel-collapsed { grid-template-columns: minmax(0, 1fr) 48px; }
+    /* Drag handle = the panel's left edge (see assets/panel_resize.js). */
+    .detail-panel::before {
+        content: "";
+        position: absolute;
+        z-index: 6;
+        left: 0; top: 0; bottom: 0;
+        width: 10px;
+        cursor: col-resize;
+        background: linear-gradient(90deg, transparent 3px, var(--line) 3px, var(--line) 5px, transparent 5px);
+        opacity: .6;
+        transition: opacity .15s, background-color .15s;
+    }
+    .detail-panel:hover::before,
+    .detail-panel.is-grab::before { opacity: 1; background-color: var(--surface-2); }
+    .panel-collapsed .detail-panel::before { display: none; }
+    body.is-col-resizing { cursor: col-resize; user-select: none; }
+    body.is-col-resizing .js-plotly-plot { pointer-events: none; }
     .detail-panel {
         position: sticky;
         top: 64px;                         /* top bar + page gutter */
