@@ -46,3 +46,21 @@ Status: approved design, tests-first. Scale: existing dashboard, no new infra.
 4. `viz_manager` + `streamflow_analyzer` labels.
 5. UI toggle + callback wiring.
 6. Independent mutation/semantic review; deploy per CLAUDE.md.
+
+## Addendum (2026-11-13): precision + review gaps
+
+### R9 — cms hover precision
+In cms mode, `apply_unit_labels` rewrites the number format of every **flow** placeholder in a trace's `hovertemplate` to `,.4r` (4 significant digits, thousands separator): placeholders `%{y:<fmt>}`, `%{customdata[<n>]:<fmt>}` where `<fmt>` is any d3 format ending in `f` (e.g. `.0f`, `,.0f`, `.1f`, `,.1f`).
+- Result e.g. `%{y:,.0f}` -> `%{y:,.4r}`; `%{customdata[2]:.1f}` -> `%{customdata[2]:,.4r}`.
+- NOT touched: `%{x:...}` (e.g. exceedance %), bare `%{customdata}` (date text), `%{y}` with no format, anything non-flow.
+- cfs mode: hovertemplates are byte-identical to what the builder produced (no format rewriting).
+- Idempotent (applying twice == once). Word-boundary: the unit word replacement only touches the standalone token `cfs` (so `cfs_forecast`, `mcfs` untouched).
+- Applies to every builder and overlay already covered in tests/test_unit_toggle_viz.py.
+
+### R10 — review gaps to pin
+- `USGSDataManager.convert_forecast_runs(runs, display_unit)`: cfs/None-ish -> returns runs unchanged; cms -> converts every numeric column whose name contains discharge/flow/cfs (e.g. `discharge_cfs`) by 1/35.3146667, leaves `datetime` and non-numeric columns alone, does NOT mutate the caller's run dicts or DataFrames, keeps `run_date`/`model_label` keys, passes through empty/None/runs with empty or non-DataFrame `data`. Also check `get_resid_cast_forecasts`, `get_blended_forecasts`, `get_nwrfc_forecasts`, `get_forecast_data` apply it (mock the underlying adapters/clients).
+- Real-time: `get_realtime_data(site, display_unit)` converts per-row from `unit` (cms->cfs default); empty stays empty. `create_fast_water_year_plot(..., data_manager=dm, unit=u)` and `create_streamflow_plot(..., data_manager=dm, unit=u)` must call `dm.get_realtime_data(site_id, display_unit=u)` (assert on the mock) and the realtime trace's plotted values must equal what the mock returned (builders don't rescale).
+- `_native_unit`: mode of `unit` column; ignores NaN; all-NaN/empty/absent column -> 'cfs'; mixed frame picks majority; unknown strings raise ValueError.
+- `get_flow_statistics` returns a copy: mutating the result doesn't change the next call's result / cached frame; `get_current_year_data` on empty frame returns empty.
+- `convert_flow(x, u, u)` for Series/ndarray returns an equal-valued *copy* (not same object); `normalize_unit('  CFS ')` -> 'cfs'.
+- `apply_unit_labels(fig, 'cms', set_title=False)` leaves y-axis title untouched on a title-less figure; `set_title=True` adds `Discharge (m³/s)`.
