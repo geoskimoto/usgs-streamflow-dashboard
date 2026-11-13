@@ -593,6 +593,7 @@ app.layout = html.Div([
     
     # Store components for data persistence and authentication
     dcc.Store(id='dark-mode-store', data=False),  # True = dark mode (default off; light mode)
+    dcc.Store(id='flow-unit-store', data='cfs'),  # display unit; no storage_type -> resets to cfs on every load
     dcc.Store(id='annual-summary-requested', data=False),
     dcc.Store(id='gauges-store'),
     dcc.Store(id='selected-gauge-store'),
@@ -1367,18 +1368,20 @@ def update_history_mode(selected_gauge, n_30yr, n_full, n_fast):
      Input('plot-options-checklist', 'value'),
      Input('history-mode-store', 'data'),
      Input('dark-mode-store', 'data'),
-     Input('refresh-live-plot-btn', 'n_clicks')],
+     Input('refresh-live-plot-btn', 'n_clicks'),
+     Input('flow-unit-store', 'data')],
     [State('gauges-store', 'data'),
      State('window-width-store', 'data')]
 )
 def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_options,
-                       history_mode, dark_mode, refresh_n_clicks, gauges_data, window_width):
+                       history_mode, dark_mode, refresh_n_clicks, flow_unit, gauges_data, window_width):
     """Generate and display all streamflow plots for the selected site."""
     if not selected_gauge:
         return [html.P("Select a gauge on the map to view streamflow plots.", className="text-muted")], None, None
 
     triggered_id = callback_context.triggered_id if callback_context.triggered else None
     force_live = (triggered_id == 'refresh-live-plot-btn')
+    flow_unit = flow_unit or 'cfs'
 
     # Parse highlight years
     highlight_years = []
@@ -1414,12 +1417,13 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
     # Fetch NWRFC and ResidCast forecasts (fast — small payloads)
     forecast_data = None
     try:
-        forecast_data = data_manager.get_nwrfc_forecasts(selected_gauge, num_runs=5)
+        forecast_data = data_manager.get_nwrfc_forecasts(selected_gauge, num_runs=5, display_unit=flow_unit)
     except Exception as e:
         logger.warning(f"Forecast fetch failed for {selected_gauge}: {e}")
-    resid_cast_data = data_manager.get_resid_cast_forecasts(selected_gauge, num_runs=5)
-    precip_runoff_data = _precip_adapter.get_forecasts(selected_gauge, num_runs=5)
-    blended_data = data_manager.get_blended_forecasts(selected_gauge, num_runs=5)
+    resid_cast_data = data_manager.get_resid_cast_forecasts(selected_gauge, num_runs=5, display_unit=flow_unit)
+    precip_runoff_data = data_manager.convert_forecast_runs(
+        _precip_adapter.get_forecasts(selected_gauge, num_runs=5), flow_unit)
+    blended_data = data_manager.get_blended_forecasts(selected_gauge, num_runs=5, display_unit=flow_unit)
 
     # ── Water year plot: fast vs full-history paths ───────────────────────
     fast_fig_dict = None
@@ -1427,7 +1431,7 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
 
     if history_mode in ('30yr', 'all'):
         # Full history path: fetch complete record, render with year traces
-        streamflow_data = data_manager.get_streamflow_data(selected_gauge)
+        streamflow_data = data_manager.get_streamflow_data(selected_gauge, display_unit=flow_unit)
         if streamflow_data is None or streamflow_data.empty:
             return [dbc.Alert(f"No streamflow data available for site {selected_gauge}", color="warning")], None, None
         wy_fig = viz_manager.create_streamflow_plot(
@@ -1441,10 +1445,12 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
             precip_runoff_data=precip_runoff_data,
             blended_data=blended_data,
             history_mode=history_mode,
+            unit=flow_unit,
         )
     else:
         # Fast path: serve from plot cache when available, else compute and cache
-        if not force_live and plot_cache_manager.exists(selected_gauge):
+        use_plot_cache = (flow_unit == 'cfs')  # cached figures are always cfs
+        if use_plot_cache and not force_live and plot_cache_manager.exists(selected_gauge):
             fig_dict, generated_at = plot_cache_manager.get(selected_gauge)
             if fig_dict is not None:
                 wy_fig = go.Figure(fig_dict)
@@ -1458,13 +1464,13 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
             else:
                 force_live = True  # cache read failed, fall through to live
 
-        if force_live or not plot_cache_manager.exists(selected_gauge) or fast_fig_dict is None:
-            current_year_data = data_manager.get_current_year_data(selected_gauge)
-            statistics = data_manager.get_flow_statistics(selected_gauge)
+        if force_live or not use_plot_cache or not plot_cache_manager.exists(selected_gauge) or fast_fig_dict is None:
+            current_year_data = data_manager.get_current_year_data(selected_gauge, display_unit=flow_unit)
+            statistics = data_manager.get_flow_statistics(selected_gauge, display_unit=flow_unit)
             if current_year_data is None or current_year_data.empty:
                 # Station has no current water-year data (inactive/historical).
                 # Fall back to full period of record so historical stations are still viewable.
-                streamflow_data = data_manager.get_streamflow_data(selected_gauge)
+                streamflow_data = data_manager.get_streamflow_data(selected_gauge, display_unit=flow_unit)
                 if streamflow_data is None or streamflow_data.empty:
                     return [dbc.Alert(f"No streamflow data available for site {selected_gauge}", color="warning")], None, None
                 wy_fig = viz_manager.create_streamflow_plot(
@@ -1478,6 +1484,7 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
                     precip_runoff_data=precip_runoff_data,
                     blended_data=blended_data,
                     history_mode='all',
+                    unit=flow_unit,
                 )
                 now_iso = datetime.now().isoformat()
                 cache_meta = {'cached': False, 'generated_at': now_iso, 'age_seconds': 0}
@@ -1492,8 +1499,10 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
                     precip_runoff_data=precip_runoff_data,
                     blended_data=blended_data,
                     data_manager=data_manager,
+                    unit=flow_unit,
                 )
-                plot_cache_manager.save(selected_gauge, wy_fig)
+                if use_plot_cache:
+                    plot_cache_manager.save(selected_gauge, wy_fig)
                 now_iso = datetime.now().isoformat()
                 cache_meta = {'cached': False, 'generated_at': now_iso, 'age_seconds': 0}
                 fast_fig_dict = wy_fig.to_dict()
@@ -1604,7 +1613,8 @@ def toggle_annual_summary_requested(selected_gauge, n_clicks):
 
 @app.callback(
     Output('annual-summary-container', 'children'),
-    [Input('annual-summary-requested', 'data')],
+    [Input('annual-summary-requested', 'data'),
+     Input('flow-unit-store', 'data')],
     [State('dark-mode-store', 'data'),
      State('selected-gauge-store', 'data'),
      State('gauges-store', 'data'),
@@ -1613,10 +1623,11 @@ def toggle_annual_summary_requested(selected_gauge, n_clicks):
      State('window-width-store', 'data')],
     prevent_initial_call=True,
 )
-def render_annual_summary(requested, dark_mode, selected_gauge, gauges_data,
+def render_annual_summary(requested, flow_unit, dark_mode, selected_gauge, gauges_data,
                           chart_height, plot_options, window_width):
     """Render period-of-record plots only when explicitly requested via button."""
     from dash.exceptions import PreventUpdate
+    flow_unit = flow_unit or 'cfs'
     if not requested or not selected_gauge:
         raise PreventUpdate
 
@@ -1630,7 +1641,7 @@ def render_annual_summary(requested, dark_mode, selected_gauge, gauges_data,
                 nwrfc_id = gauge.get('nwrfc_id')
                 break
 
-    streamflow_data = data_manager.get_streamflow_data(selected_gauge)
+    streamflow_data = data_manager.get_streamflow_data(selected_gauge, display_unit=flow_unit)
     if streamflow_data is None or streamflow_data.empty:
         return [dbc.Alert(
             f"No historical data available for site {selected_gauge}.",
@@ -1670,7 +1681,7 @@ def render_annual_summary(requested, dark_mode, selected_gauge, gauges_data,
     for title, plot_type in [("Annual Summary", "annual"), ("Flow Duration Curve", "flow_duration")]:
         try:
             if plot_type == "flow_duration":
-                fig = viz_manager.create_flow_duration_curve(selected_gauge, streamflow_data)
+                fig = viz_manager.create_flow_duration_curve(selected_gauge, streamflow_data, unit=flow_unit)
             else:
                 fig = viz_manager.create_streamflow_plot(
                     selected_gauge, streamflow_data,
@@ -1678,6 +1689,7 @@ def render_annual_summary(requested, dark_mode, selected_gauge, gauges_data,
                     highlight_years=[],
                     show_percentiles=True, show_statistics=True,
                     data_manager=data_manager,
+                    unit=flow_unit,
                 )
             cards.append(_por_card(title, fig))
         except Exception as e:
@@ -2001,6 +2013,13 @@ app.clientside_callback(
      Output('dark-mode-store', 'data')],
     Input('dark-mode-btn', 'n_clicks'),
     prevent_initial_call=True,
+)
+
+# Mirror the flow-unit radio into its store (plot callbacks read the store)
+app.clientside_callback(
+    "function(v) { return v || 'cfs'; }",
+    Output('flow-unit-store', 'data'),
+    Input('flow-unit-toggle', 'value'),
 )
 
 

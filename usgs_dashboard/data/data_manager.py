@@ -542,10 +542,14 @@ class USGSDataManager:
         site_id: str, 
         start_date: str = None, 
         end_date: str = None,
-        years_back: int = None
+        years_back: int = None,
+        display_unit: Optional[str] = None
     ) -> pd.DataFrame:
         """
         Get daily mean discharge data for a site.
+
+        Returned in each station's native unit (cfs/cms, see 'unit' column)
+        unless display_unit is given; the stats cache must be fed native data.
         
         Parameters:
         -----------
@@ -592,6 +596,8 @@ class USGSDataManager:
             df = self._format_streamflow_data(df, site_id)
             
             logger.info(f"✅ Retrieved {len(df)} observations for {site_id}")
+            if display_unit is not None:
+                df = convert_frame(df, display_unit)
             return df
             
         except Exception as e:
@@ -658,7 +664,7 @@ class USGSDataManager:
         return normalize_unit(units.mode().iloc[0]) if not units.empty else 'cfs'
 
     @staticmethod
-    def _convert_forecast_runs(runs, display_unit: str):
+    def convert_forecast_runs(runs, display_unit: str):
         """Convert flow columns of forecast runs (sources are always cfs) for display."""
         if not runs or normalize_unit(display_unit) == 'cfs':
             return runs
@@ -721,7 +727,8 @@ class USGSDataManager:
         site_id: str, 
         start_date: str = None, 
         end_date: str = None,
-        hours_back: int = 48
+        hours_back: int = 48,
+        display_unit: str = 'cfs'
     ) -> pd.DataFrame:
         """
         Get real-time 15-minute discharge data.
@@ -768,7 +775,7 @@ class USGSDataManager:
             df = self._format_realtime_data(df, site_id)
             
             logger.info(f"✅ Retrieved {len(df)} realtime observations for {site_id}")
-            return df
+            return convert_frame(df, display_unit)
             
         except Exception as e:
             logger.error(f"Error fetching realtime data for {site_id}: {e}")
@@ -896,7 +903,7 @@ class USGSDataManager:
             forecast_runs = self.adapter.get_forecast_data(site_id, num_days=num_days)
             if forecast_runs:
                 logger.info(f"Got {len(forecast_runs)} forecast runs for {site_id}")
-            return self._convert_forecast_runs(forecast_runs, display_unit)
+            return self.convert_forecast_runs(forecast_runs, display_unit)
         except Exception as e:
             logger.warning(f"Error getting forecast data for {site_id}: {e}")
             return None
@@ -964,7 +971,7 @@ class USGSDataManager:
             runs = self._resid_cast.get_forecasts(site_id, num_runs=num_runs)
             if runs:
                 logger.info(f"Got {len(runs)} ResidCast forecast series for {site_id}")
-            return self._convert_forecast_runs(runs, display_unit)
+            return self.convert_forecast_runs(runs, display_unit)
         except Exception as e:
             logger.warning(f"Error getting ResidCast forecasts for {site_id}: {e}")
             return []
@@ -997,7 +1004,7 @@ class USGSDataManager:
             runs = self._blended_forecast.get_forecasts(site_id, num_runs=num_runs)
             if runs:
                 logger.info(f"Got blended forecast for {site_id}")
-            return self._convert_forecast_runs(runs, display_unit)
+            return self.convert_forecast_runs(runs, display_unit)
         except Exception as e:
             logger.warning(f"Error getting blended forecast for {site_id}: {e}")
             return []
@@ -1026,7 +1033,7 @@ class USGSDataManager:
                 runs = self.adapter.get_nwrfc_forecasts(site_id)
             else:
                 runs = self.adapter.get_forecast_data(site_id)
-            return self._convert_forecast_runs(runs, display_unit)
+            return self.convert_forecast_runs(runs, display_unit)
         except Exception as exc:
             logger.warning(f"get_nwrfc_forecasts({site_id}): {exc}")
             return None

@@ -25,6 +25,11 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 PLOT_CACHE_DIR = str(_REPO_ROOT / "data" / "plot_cache")
 _WATER_YEAR_START = 10  # October
 
+# Cached figures are always rendered in cfs. Entries written before the unit
+# toggle carry no marker (BC stations were cached as raw cms mislabelled cfs),
+# so they are treated as a miss and rebuilt.
+_CACHE_UNIT = "cfs"
+
 
 def _current_water_year() -> int:
     now = datetime.now()
@@ -51,6 +56,8 @@ def get(site_id: str) -> tuple[Optional[dict], Optional[datetime]]:
     try:
         with open(meta_p) as f:
             meta = json.load(f)
+        if meta.get("display_unit") != _CACHE_UNIT:
+            return None, None
         generated_at = datetime.fromisoformat(meta["generated_at"])
         with open(fig_p) as f:
             fig_dict = json.load(f)
@@ -82,6 +89,7 @@ def save(site_id: str, figure: go.Figure) -> None:
             "generated_at": datetime.now().isoformat(),
             "site_id": site_id,
             "water_year": wy,
+            "display_unit": _CACHE_UNIT,
         }
         with tempfile.NamedTemporaryFile("w", dir=dir_, suffix=".tmp", delete=False) as f:
             json.dump(meta, f)
@@ -96,8 +104,8 @@ def save(site_id: str, figure: go.Figure) -> None:
 
 def exists(site_id: str) -> bool:
     """Return True if a valid cache entry exists for the current water year."""
-    wy = _current_water_year()
-    return _meta_path(site_id, wy).exists() and _cache_path(site_id, wy).exists()
+    fig_dict, _ = get(site_id)
+    return fig_dict is not None
 
 
 def age_seconds(site_id: str) -> Optional[float]:

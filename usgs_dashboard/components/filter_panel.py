@@ -122,6 +122,26 @@ class SimplifiedFilterPanel:
             ),
         )
 
+        units = self._section(
+            "Flow units",
+            dbc.RadioItems(
+                id="flow-unit-toggle",
+                options=[
+                    {"label": "cfs", "value": "cfs"},
+                    {"label": "m³/s (cms)", "value": "cms"},
+                ],
+                value="cfs",
+                className="btn-group rail-segmented",
+                inputClassName="btn-check",
+                labelClassName="btn btn-outline-secondary btn-sm",
+                labelCheckedClassName="active",
+            ),
+            html.Small(
+                className="rail-hint d-block",
+                children="Applies to all plots. Canadian (BC) stations report m³/s natively.",
+            ),
+        )
+
         region = self._section(
             "States and provinces",
             dbc.Checklist(
@@ -172,7 +192,7 @@ class SimplifiedFilterPanel:
         )
 
         return html.Div(
-            [results, *([legend] if legend is not None else []), search, realtime, forecasts, status, region, drainage, watershed],
+            [results, *([legend] if legend is not None else []), search, realtime, forecasts, status, units, region, drainage, watershed],
             className="filter-rail",
         )
 

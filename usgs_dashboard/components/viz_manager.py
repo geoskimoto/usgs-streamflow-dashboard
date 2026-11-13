@@ -135,7 +135,7 @@ class VisualizationManager:
         realtime_data = None
         if data_manager:
             try:
-                realtime_data = data_manager.get_realtime_data(site_id)
+                realtime_data = data_manager.get_realtime_data(site_id, display_unit=unit)
                 if not realtime_data.empty:
                     logger.debug(f"Retrieved {len(realtime_data)} real-time records for visualization")
                 else:
