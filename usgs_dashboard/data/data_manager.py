@@ -15,6 +15,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from ..utils.config import TARGET_STATES, CACHE_DURATION, MAX_YEARS_LOAD, GAUGE_COLORS
+from ..utils.units import convert_frame, normalize_unit
 
 # Import DataOps adapter
 from dataops_adapter import get_adapter
@@ -597,7 +598,7 @@ class USGSDataManager:
             logger.error(f"Error fetching streamflow data for {site_id}: {e}")
             return pd.DataFrame()
 
-    def get_current_year_data(self, site_id: str) -> pd.DataFrame:
+    def get_current_year_data(self, site_id: str, display_unit: str = 'cfs') -> pd.DataFrame:
         """
         Return daily mean discharge for the current water year only (Oct 1 → today).
 
@@ -609,13 +610,16 @@ class USGSDataManager:
         now = datetime.now()
         current_wy = get_water_year(now, WATER_YEAR_START)
         wy_start = datetime(current_wy - 1, WATER_YEAR_START, 1)
-        return self.get_streamflow_data(
+        df = self.get_streamflow_data(
             site_id,
             start_date=wy_start.strftime("%Y-%m-%d"),
             end_date=now.strftime("%Y-%m-%d"),
         )
+        if df.empty:
+            return df
+        return convert_frame(df, display_unit)
 
-    def get_flow_statistics(self, site_id: str) -> pd.DataFrame:
+    def get_flow_statistics(self, site_id: str, display_unit: str = 'cfs') -> pd.DataFrame:
         """
         Return cached per-day-of-water-year statistics for site_id.
 
@@ -629,12 +633,48 @@ class USGSDataManager:
         -------
         pd.DataFrame with columns: day_of_wy, q10, q25, q50, q75, q90, mean, median
         Empty DataFrame if insufficient historical data.
+
+        The stats cache is always computed and stored in the station's native
+        unit (cfs for USGS, cms for Environment Canada). display_unit only
+        converts the returned copy — the cache is never written converted.
         """
         from .stats_cache_manager import get_statistics
         full_data = self.get_streamflow_data(site_id)
         if full_data.empty:
             return pd.DataFrame()
-        return get_statistics(site_id, full_data)
+        stats = get_statistics(site_id, full_data)
+        if stats.empty:
+            return stats
+        stats = stats.copy()
+        stats['unit'] = self._native_unit(full_data)
+        return convert_frame(stats, display_unit)
+
+    @staticmethod
+    def _native_unit(df: pd.DataFrame) -> str:
+        """Native flow unit of a station frame (most common 'unit' value; cfs if absent)."""
+        if 'unit' not in df.columns:
+            return 'cfs'
+        units = df['unit'].dropna()
+        return normalize_unit(units.mode().iloc[0]) if not units.empty else 'cfs'
+
+    @staticmethod
+    def _convert_forecast_runs(runs, display_unit: str):
+        """Convert flow columns of forecast runs (sources are always cfs) for display."""
+        if not runs or normalize_unit(display_unit) == 'cfs':
+            return runs
+        out = []
+        for run in runs:
+            df = run.get('data')
+            if not isinstance(df, pd.DataFrame) or df.empty:
+                out.append(run)
+                continue
+            cols = [c for c in df.columns
+                    if any(t in c.lower() for t in ('discharge', 'flow', 'cfs'))
+                    and pd.api.types.is_numeric_dtype(df[c])]
+            converted = dict(run)
+            converted['data'] = convert_frame(df.assign(unit='cfs'), display_unit, cols=cols)
+            out.append(converted)
+        return out
 
     def _format_streamflow_data(self, df: pd.DataFrame, site_id: str) -> pd.DataFrame:
         """
@@ -832,7 +872,7 @@ class USGSDataManager:
         """
         return self.adapter.get_status()
 
-    def get_forecast_data(self, site_id: str, num_days: int = 5) -> Optional[List[Dict]]:
+    def get_forecast_data(self, site_id: str, num_days: int = 5, display_unit: str = 'cfs') -> Optional[List[Dict]]:
         """
         Get NWRFC forecast data for a USGS station (multiple days).
         
@@ -856,7 +896,7 @@ class USGSDataManager:
             forecast_runs = self.adapter.get_forecast_data(site_id, num_days=num_days)
             if forecast_runs:
                 logger.info(f"Got {len(forecast_runs)} forecast runs for {site_id}")
-            return forecast_runs
+            return self._convert_forecast_runs(forecast_runs, display_unit)
         except Exception as e:
             logger.warning(f"Error getting forecast data for {site_id}: {e}")
             return None
@@ -899,7 +939,7 @@ class USGSDataManager:
             return set()
 
     def get_resid_cast_forecasts(
-        self, site_id: str, num_runs: int = 5
+        self, site_id: str, num_runs: int = 5, display_unit: str = 'cfs'
     ) -> List[Dict]:
         """
         Get ResidCast ML forecast runs for a USGS station.
@@ -924,13 +964,13 @@ class USGSDataManager:
             runs = self._resid_cast.get_forecasts(site_id, num_runs=num_runs)
             if runs:
                 logger.info(f"Got {len(runs)} ResidCast forecast series for {site_id}")
-            return runs
+            return self._convert_forecast_runs(runs, display_unit)
         except Exception as e:
             logger.warning(f"Error getting ResidCast forecasts for {site_id}: {e}")
             return []
 
     def get_blended_forecasts(
-        self, site_id: str, num_runs: int = 5
+        self, site_id: str, num_runs: int = 5, display_unit: str = 'cfs'
     ) -> List[Dict]:
         """
         Get the current model-blender blended forecast for a USGS station.
@@ -957,12 +997,12 @@ class USGSDataManager:
             runs = self._blended_forecast.get_forecasts(site_id, num_runs=num_runs)
             if runs:
                 logger.info(f"Got blended forecast for {site_id}")
-            return runs
+            return self._convert_forecast_runs(runs, display_unit)
         except Exception as e:
             logger.warning(f"Error getting blended forecast for {site_id}: {e}")
             return []
 
-    def get_nwrfc_forecasts(self, site_id: str, num_runs: int = 5) -> Optional[List[Dict]]:
+    def get_nwrfc_forecasts(self, site_id: str, num_runs: int = 5, display_unit: str = 'cfs') -> Optional[List[Dict]]:
         """Get NWRFC forecast runs. Respects USE_NWRFC_WEB_FORECASTS flag.
 
         When USE_NWRFC_WEB_FORECASTS=true, tries nwrfc_web source first
@@ -983,9 +1023,10 @@ class USGSDataManager:
         """
         try:
             if self._use_nwrfc_web:
-                return self.adapter.get_nwrfc_forecasts(site_id)
+                runs = self.adapter.get_nwrfc_forecasts(site_id)
             else:
-                return self.adapter.get_forecast_data(site_id)
+                runs = self.adapter.get_forecast_data(site_id)
+            return self._convert_forecast_runs(runs, display_unit)
         except Exception as exc:
             logger.warning(f"get_nwrfc_forecasts({site_id}): {exc}")
             return None
