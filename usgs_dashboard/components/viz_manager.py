@@ -6,6 +6,9 @@ Integrates streamflow analysis and visualization capabilities.
 
 import sys
 import os
+import re
+import inspect
+import functools
 import logging
 import pandas as pd
 import plotly.graph_objects as go
@@ -27,8 +30,57 @@ except ImportError:
     StreamflowVisualizer = None
 
 from ..utils.config import WATER_YEAR_START, DEFAULT_PERCENTILES
+from ..utils.units import normalize_unit, unit_label, axis_title
 from ..utils.water_year_datetime import get_water_year_handler
 from ..utils.water_year_calculator import get_water_year, get_day_of_water_year
+
+
+_UNIT_WORD = re.compile(r"\bcfs\b")
+
+
+def apply_unit_labels(fig: go.Figure, unit: str = "cfs", set_title: bool = True) -> go.Figure:
+    """
+    Make a figure's flow labels match `unit` (hovertemplates and y-axis title).
+
+    Builders plot the values they are given (conversion happens in the data
+    layer, see USGSDataManager display_unit); this only fixes the labels, so
+    the 'cfs' literals in the builders stay the canonical default. No-op for cfs
+    apart from adding a y-axis title where none exists.
+    """
+    unit = normalize_unit(unit)
+    label = unit_label(unit)
+    if unit != "cfs":
+        for trace in fig.data:
+            ht = getattr(trace, "hovertemplate", None)
+            if isinstance(ht, str):
+                trace.hovertemplate = _UNIT_WORD.sub(label, ht)
+    if set_title:
+        titles = [k for k in fig.layout if k.startswith("yaxis") and fig.layout[k].title.text]
+        if titles:
+            for k in titles:
+                t = fig.layout[k].title.text
+                if unit != "cfs" and _UNIT_WORD.search(t):
+                    fig.layout[k].title.text = _UNIT_WORD.sub(label, t)
+        else:
+            fig.update_layout(yaxis_title=axis_title(unit))
+    return fig
+
+
+def unit_labelled(set_title: bool = True):
+    """Decorator: relabel the returned figure for the method's `unit` argument."""
+    def deco(func):
+        sig = inspect.signature(func)
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            fig = func(*args, **kwargs)
+            unit = sig.bind(*args, **kwargs)
+            unit.apply_defaults()
+            if isinstance(fig, go.Figure):
+                apply_unit_labels(fig, unit.arguments.get("unit", "cfs"), set_title)
+            return fig
+        return wrapper
+    return deco
 
 
 class VisualizationManager:
@@ -41,6 +93,7 @@ class VisualizationManager:
         self.current_site_id = None
         self.wy_handler = get_water_year_handler()  # Water year datetime handler
         
+    @unit_labelled(True)
     def create_streamflow_plot(self, site_id: str, streamflow_data: pd.DataFrame,
                              plot_type: str = 'water_year',
                              highlight_years: List[int] = None,
@@ -51,7 +104,7 @@ class VisualizationManager:
                              resid_cast_data: list = None,
                              precip_runoff_data: list = None,
                              blended_data: list = None,
-                             history_mode: str = "all") -> go.Figure:
+                             history_mode: str = "all", unit: str = 'cfs') -> go.Figure:
         """
         Create streamflow visualization plot.
         
@@ -187,12 +240,13 @@ class VisualizationManager:
         
         return fig
     
+    @unit_labelled(True)
     def _create_fallback_plot(self, site_id: str, data: pd.DataFrame,
                             plot_type: str, highlight_years: List[int],
                             show_percentiles: bool = True,
                             show_statistics: bool = True, realtime_data: pd.DataFrame = None,
                             forecast_data: pd.DataFrame = None,
-                            history_mode: str = "all") -> go.Figure:
+                            history_mode: str = "all", unit: str = 'cfs') -> go.Figure:
         """
         Create basic fallback plot when integrated tools aren't available.
         Robust date handling:
@@ -274,8 +328,9 @@ class VisualizationManager:
         date = wy_start + pd.Timedelta(days=day_of_wy - 1)
         return date.strftime('%b %-d')
     
+    @unit_labelled(True)
     def _create_basic_water_year_plot(self, data: pd.DataFrame, value_col: str,
-                                    highlight_years: List[int]) -> go.Figure:
+                                    highlight_years: List[int], unit: str = 'cfs') -> go.Figure:
         """Create basic water year plot."""
         
         # Add water year and day of water year
@@ -368,6 +423,7 @@ class VisualizationManager:
         
         return fig
     
+    @unit_labelled(True)
     def create_fast_water_year_plot(
         self,
         site_id: str,
@@ -378,6 +434,7 @@ class VisualizationManager:
         precip_runoff_data: list = None,
         blended_data: list = None,
         data_manager=None,
+        unit: str = 'cfs',
     ) -> go.Figure:
         """
         Render the water year plot without loading historical year traces.
@@ -579,13 +636,14 @@ class VisualizationManager:
 
         return fig
 
+    @unit_labelled(True)
     def _create_enhanced_water_year_plot(self, data: pd.DataFrame, value_col: str,
                                        highlight_years: List[int],
                                        show_percentiles: bool = True,
                                        show_statistics: bool = True,
                                        realtime_data: pd.DataFrame = None,
                                        forecast_data: pd.DataFrame = None,
-                                       history_mode: str = "all") -> go.Figure:
+                                       history_mode: str = "all", unit: str = 'cfs') -> go.Figure:
         """
         Create enhanced water year plot with percentile bands.
         Robust date handling: Only set index to a valid date column ('datetime', 'date', 'timestamp').
@@ -950,7 +1008,8 @@ class VisualizationManager:
         )
         return fig
     
-    def _add_forecast_overlay(self, fig: go.Figure, forecast_data) -> go.Figure:
+    @unit_labelled(False)
+    def _add_forecast_overlay(self, fig: go.Figure, forecast_data, unit: str = 'cfs') -> go.Figure:
         """
         Add NWRFC forecast data as overlays on a water year plot.
         
@@ -1060,7 +1119,8 @@ class VisualizationManager:
         
         return fig
     
-    def _add_resid_cast_overlay(self, fig: go.Figure, resid_cast_data: list) -> go.Figure:
+    @unit_labelled(False)
+    def _add_resid_cast_overlay(self, fig: go.Figure, resid_cast_data: list, unit: str = 'cfs') -> go.Figure:
         """Add ResidCast ML forecast series to a water year plot.
 
         Each model variant gets its own colour. Multiple runs per variant are
@@ -1175,7 +1235,8 @@ class VisualizationManager:
 
         return fig
 
-    def _add_precip_overlay(self, fig: go.Figure, precip_runoff_data: list) -> go.Figure:
+    @unit_labelled(False)
+    def _add_precip_overlay(self, fig: go.Figure, precip_runoff_data: list, unit: str = 'cfs') -> go.Figure:
         """Add EA-LSTM precip-runoff forecast traces to a water year plot.
 
         Uses amber/orange palette to distinguish from ResidCast teal/green/blue family.
@@ -1267,7 +1328,8 @@ class VisualizationManager:
 
         return fig
 
-    def _add_blended_overlay(self, fig: go.Figure, blended_data: list) -> go.Figure:
+    @unit_labelled(False)
+    def _add_blended_overlay(self, fig: go.Figure, blended_data: list, unit: str = 'cfs') -> go.Figure:
         """Add model-blender blended forecast traces to a water year plot.
 
         Uses a purple/magenta palette to distinguish from ResidCast's
@@ -1455,7 +1517,8 @@ class VisualizationManager:
         )
         return fig
 
-    def _create_basic_timeseries_plot(self, data: pd.DataFrame, value_col: str) -> go.Figure:
+    @unit_labelled(True)
+    def _create_basic_timeseries_plot(self, data: pd.DataFrame, value_col: str, unit: str = 'cfs') -> go.Figure:
         """Create basic timeseries plot."""
         
         fig = go.Figure()
@@ -1517,8 +1580,9 @@ class VisualizationManager:
         
         return fig
     
+    @unit_labelled(True)
     def create_gauge_comparison_plot(self, gauge_data_dict: Dict[str, pd.DataFrame],
-                                   comparison_type: str = 'annual') -> go.Figure:
+                                   comparison_type: str = 'annual', unit: str = 'cfs') -> go.Figure:
         """
         Create comparison plot for multiple gauges.
         
@@ -1581,7 +1645,8 @@ class VisualizationManager:
         
         return fig
     
-    def create_flow_duration_curve(self, site_id: str, data: pd.DataFrame) -> go.Figure:
+    @unit_labelled(True)
+    def create_flow_duration_curve(self, site_id: str, data: pd.DataFrame, unit: str = 'cfs') -> go.Figure:
         """Create flow duration curve for a gauge."""
         
         # Make a copy to avoid modifying the original data
@@ -1716,7 +1781,8 @@ class VisualizationManager:
         
         return stats
 
-    def _add_realtime_overlay(self, fig: go.Figure, realtime_data: pd.DataFrame, site_id: str) -> go.Figure:
+    @unit_labelled(False)
+    def _add_realtime_overlay(self, fig: go.Figure, realtime_data: pd.DataFrame, site_id: str, unit: str = 'cfs') -> go.Figure:
         """Add real-time data overlay to existing plot."""
         try:
             # Find the discharge column in real-time data
