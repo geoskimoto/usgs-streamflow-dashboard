@@ -36,6 +36,10 @@ from ..utils.water_year_calculator import get_water_year, get_day_of_water_year
 
 
 _UNIT_WORD = re.compile(r"\bcfs\b")
+# Flow-valued hover placeholders with a fixed-decimal d3 format, e.g. %{y:,.0f},
+# %{customdata[2]:.1f}. x placeholders and bare %{customdata} (date text) don't match.
+_FLOW_FIXED_FMT = re.compile(r"(%\{(?:y|customdata\[\d+\]):),?\.\d+f\}")
+_CMS_FLOW_FMT = ",.4r"  # 4 significant digits: 0.004120, 28.43, 1,235
 
 
 def apply_unit_labels(fig: go.Figure, unit: str = "cfs", set_title: bool = True) -> go.Figure:
@@ -53,7 +57,11 @@ def apply_unit_labels(fig: go.Figure, unit: str = "cfs", set_title: bool = True)
         for trace in fig.data:
             ht = getattr(trace, "hovertemplate", None)
             if isinstance(ht, str):
-                trace.hovertemplate = _UNIT_WORD.sub(label, ht)
+                ht = _UNIT_WORD.sub(label, ht)
+                # m³/s values are ~35x smaller than cfs: fixed decimals would round
+                # small flows to 0, so use significant digits instead.
+                trace.hovertemplate = _FLOW_FIXED_FMT.sub(
+                    lambda m: m.group(1) + _CMS_FLOW_FMT + "}", ht)
     if set_title:
         titles = [k for k in fig.layout if k.startswith("yaxis") and fig.layout[k].title.text]
         if titles:
