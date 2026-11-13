@@ -201,11 +201,12 @@ def test_overlay_hovers_use_requested_unit(method, arg, unit):
 
 @pytest.mark.parametrize("unit", ["cfs", "cms"])
 def test_nwrfc_forecast_overlay_hovers_use_requested_unit(unit):
-    df = pd.DataFrame({"datetime": pd.date_range("2026-11-05", periods=8),
-                       "discharge_cfs": np.linspace(40, 80, 8)})
-    fig = _vm()._add_forecast_overlay(go.Figure(), df, unit=unit)
+    # Contract (see _add_forecast_overlay docstring): list of {'run_date', 'data'} dicts.
+    fig = _vm()._add_forecast_overlay(go.Figure(), _fc_list(), unit=unit)
+    assert len(fig.data) >= 1
     for h in _hovers(fig):
         assert OTHER[unit] not in h
+    assert any(LABEL[unit] in h for h in _hovers(fig))
 
 
 @pytest.mark.parametrize("unit", ["cfs", "cms"])
