@@ -568,7 +568,7 @@ class VisualizationManager:
         # ── Real-time overlay ──────────────────────────────────────────────
         if data_manager is not None:
             try:
-                realtime_data = data_manager.get_realtime_data(site_id)
+                realtime_data = data_manager.get_realtime_data(site_id, display_unit=unit)
                 if not realtime_data.empty:
                     rt = realtime_data.copy()
                     for col in ("datetime", "date"):
