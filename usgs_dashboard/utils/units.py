@@ -9,6 +9,7 @@ into the stats cache.
 from __future__ import annotations
 
 import math
+import re
 from typing import Iterable, Optional
 
 import pandas as pd
@@ -23,11 +24,14 @@ _ALIASES = {
 }
 _LABELS = {"cfs": "cfs", "cms": "m³/s"}
 
-# Flow-valued columns converted by default in convert_frame.
-FLOW_COLUMNS = (
-    "discharge", "discharge_cfs",
-    "q10", "q25", "q50", "q75", "q90", "mean", "median",
-)
+# Flow-valued columns converted by default in convert_frame. Percentile columns
+# (q03, q10, ... q97) are matched by pattern so a new percentile can't be missed.
+FLOW_COLUMNS = ("discharge", "discharge_cfs", "mean", "median")
+_PERCENTILE_COL = re.compile(r"^q\d+$")
+
+
+def _is_flow_column(name) -> bool:
+    return name in FLOW_COLUMNS or bool(_PERCENTILE_COL.match(str(name)))
 
 
 def normalize_unit(unit) -> str:
@@ -78,7 +82,7 @@ def convert_frame(
     target = normalize_unit(to_unit)
     out = df.copy()
     if cols is None:
-        cols = [c for c in FLOW_COLUMNS if c in out.columns]
+        cols = [c for c in out.columns if _is_flow_column(c)]
     else:
         cols = [c for c in cols if c in out.columns]
 
