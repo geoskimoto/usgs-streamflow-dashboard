@@ -33,6 +33,7 @@ assets/
              ├─ water_year_calculator.py  ← SINGLE SOURCE OF TRUTH for water-year logic
              ├─ water_year_datetime.py    ← Plotly-aware water-year datetime helpers
              ├─ plot_theme.py             ← Plotly light/dark templates (mirrors theme.css tokens)
+             ├─ water_year_volume.py      ← pure cfs-days/kaf volume math, gap summary, cumulative bands
              └─ config.py                ← constants, colors, state list, etc.
 data/
   └─ stats_cache/  ← parquet files: <site_id>_WY<year>.parquet (gitignored)
@@ -53,7 +54,8 @@ Key standalone file:
    - `get_current_year_data()` fetches only the current water year (~200 rows).
    - `get_flow_statistics()` loads pre-computed per-day-of-WY stats from `data/stats_cache/` (parquet). On cache miss, fetches full history, computes stats, and writes the cache.
    - `viz_manager.create_fast_water_year_plot()` renders current year + percentile bands + forecasts with no historical year trace loop.
-6. "Last 30 Years" / "Full Period of Record" buttons trigger the full history path: `get_streamflow_data()` → `create_streamflow_plot()` with `history_mode='30yr'` or `'all'`.
+6. The **Water Year Volume** card (observed only) renders after the period-of-record button: `data_manager.get_water_year_volume()` (5-min per-site cache, cfs-days) -> `viz_manager.create_water_year_volume_plot()`. Cumulative/Daily and kaf/cfs-days are card-local toggles, independent of cfs/cms. See `DISPLAY_BEHAVIOR_SPEC.md` and `docs/superpowers/plans/2026-11-20-water-year-volume-plot.md`.
+7. "Last 30 Years" / "Full Period of Record" buttons trigger the full history path: `get_streamflow_data()` → `create_streamflow_plot()` with `history_mode='30yr'` or `'all'`.
 
 ---
 

@@ -148,6 +148,15 @@ These plots include individual annual traces or a continuous time-series line (n
 
 ---
 
+### Water Year Volume Card (Period-of-Record, Observed Only)
+
+Shown with Annual Summary and Flow Duration Curve after "Load period-of-record analysis"; hidden and cleared on a new station selection. Plan: `docs/superpowers/plans/2026-11-20-water-year-volume-plot.md` (R1-R25).
+
+- **Modes:** Cumulative (volume since Oct 1, bands = percentiles of cumulative curves across historical water years) and Daily (volume per day, bands = the existing per-day flow stats).
+- **Units:** kaf or cfs-days, chosen on the card. Independent of the cfs/cms toggle, which does not re-render this card. Canonical unit is cfs-days (daily mean cfs x 1 day); kaf = cfs-days x 1.983471 / 1000. cms-native stations are converted to cfs first.
+- **Gaps:** a missing day adds no volume and is never interpolated. The current year with missing days shows "N missing days - cumulative volume is a lower bound". A historical year with >5% missing days is excluded from the bands (logged); bands need >=10 qualifying years, otherwise the plot says "Not enough complete years for percentile bands".
+- **Observed trace** runs from Oct 1 to the last observed day only. No forecasts.
+
 ## 5. Intended Behavior: Current Water Year Data
 
 ### When current water year data should appear
