@@ -48,7 +48,11 @@ def test_render_passes_gauge_volume_mode_unit_and_dark_to_builder(app_module):
         dmm.get_water_year_volume.return_value = {"status": "ok"}
         _render(app_module, mode="daily", unit="cfs-days", dark=True)
     dmm.get_water_year_volume.assert_called_once_with("111")
-    vm.create_water_year_volume_plot.assert_called_once_with("111", {"status": "ok"}, "daily", "cfs-days", True)
+    from datetime import datetime
+    now = datetime.today()
+    cur = now.year + 1 if now.month >= 10 else now.year
+    vm.create_water_year_volume_plot.assert_called_once_with(
+        "111", {"status": "ok"}, "daily", "cfs-days", True, highlight_years=[cur])
 
 
 def test_render_none_mode_and_unit_fall_back_to_defaults(app_module):

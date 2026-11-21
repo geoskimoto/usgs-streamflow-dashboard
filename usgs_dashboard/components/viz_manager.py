@@ -29,7 +29,7 @@ except ImportError:
     StreamflowData = None
     StreamflowVisualizer = None
 
-from ..utils.config import WATER_YEAR_START, DEFAULT_PERCENTILES
+from ..utils.config import WATER_YEAR_START, DEFAULT_PERCENTILES, HIGHLIGHT_YEAR_COLORS, HIGHLIGHT_LINE_WIDTH
 from ..utils.units import normalize_unit, unit_label, axis_title
 from ..utils.water_year_datetime import get_water_year_handler
 from ..utils.water_year_calculator import get_water_year, get_day_of_water_year, get_water_year_length
@@ -802,16 +802,7 @@ class VisualizationManager:
         current_wy = get_water_year(pd.Timestamp.now(), WATER_YEAR_START)
         
         # Define colors for highlighted years (excluding current water year)
-        highlight_colors = [
-            '#FF8C00',  # Dark Orange  
-            '#9932CC',  # Dark Orchid
-            '#228B22',  # Forest Green
-            '#DC143C',  # Crimson
-            '#FF1493',  # Deep Pink
-            '#32CD32',  # Lime Green
-            '#FF6347',  # Tomato
-            '#8A2BE2'   # Blue Violet
-        ]
+        highlight_colors = HIGHLIGHT_YEAR_COLORS
         
         # Plot each year
         # Track if we've shown the "All Historical Years" legend
@@ -840,7 +831,7 @@ class VisualizationManager:
                 highlight_index = highlight_years.index(year)
                 color_index = highlight_index % len(highlight_colors)
                 line_color = highlight_colors[color_index]
-                line_width = 3
+                line_width = HIGHLIGHT_LINE_WIDTH
                 opacity = 1.0
                 showlegend = True
                 name = f"WY {year}"
@@ -1598,12 +1589,15 @@ class VisualizationManager:
     }
 
     def create_water_year_volume_plot(self, site_id: str, vol: Optional[dict], mode: str,
-                                      vol_unit: str, dark: bool) -> go.Figure:
+                                      vol_unit: str, dark: bool,
+                                      highlight_years: Optional[list] = None) -> go.Figure:
         """
         Observed water-year volume vs. historical percentile bands.
 
         vol is the dict from USGSDataManager.get_water_year_volume (volumes in cfs-days).
         mode: 'cumulative' (since Oct 1) or 'daily'. vol_unit: 'kaf' or 'cfs-days'.
+        highlight_years: optional water years (the sidebar's "Years to highlight") drawn as thin
+        lines, colored by their index in this list exactly as the Water Year Plot colors them.
         Falls back to a friendly message figure when vol is missing, empty or errored.
         """
         status = (vol or {}).get('status')
@@ -1629,6 +1623,7 @@ class VisualizationManager:
         has_bands = bands is not None and len(bands) > 0
         if has_bands:
             self._add_wyv_bands(fig, bands, _x, scale, hover)
+        self._add_wyv_highlights(fig, vol, highlight_years, current_wy, obs_col, scale, _x, hover)
 
         fig.add_trace(go.Scatter(
             x=_x(obs['day_of_wy']), y=scale(obs[obs_col].to_numpy(dtype=float)).tolist(),
@@ -1683,6 +1678,40 @@ class VisualizationManager:
                 x=x, y=scale(bands['q50'].to_numpy(dtype=float)).tolist(), mode='lines', name='Median',
                 line=dict(color=plot_theme.COLORWAY[1], width=1.5, dash='dash'),
                 hovertemplate=hover.replace('LABEL', 'Median')))
+
+    @staticmethod
+    def _add_wyv_highlights(fig: go.Figure, vol: dict, highlight_years, current_wy: int,
+                            obs_col: str, scale, to_x, hover: str) -> None:
+        """One thin line per highlighted water year present in the volume table.
+
+        The current water year is skipped (it is the "Observed" trace); unknown years,
+        duplicates and non-integer entries are ignored. Missing days are flagged in the
+        legend name and never interpolated.
+        """
+        table, summary = vol['table'], vol.get('summary')
+        seen = set()
+        for idx, year in enumerate(highlight_years or []):
+            if isinstance(year, bool) or not isinstance(year, (int, np.integer)):
+                continue
+            year = int(year)
+            if year == current_wy or year in seen:
+                continue
+            seen.add(year)
+            rows = table[table['water_year'] == year]
+            if rows.empty:
+                continue
+            name = f"WY {year}"
+            if isinstance(summary, pd.DataFrame) and 'missing_days' in summary.columns:
+                hit = summary[summary['water_year'] == year]
+                missing = int(hit['missing_days'].iloc[0]) if not hit.empty else 0
+                if missing:
+                    name += f" ({missing} missing day{'s' if missing != 1 else ''})"
+            fig.add_trace(go.Scatter(
+                x=to_x(rows['day_of_wy']), y=scale(rows[obs_col].to_numpy(dtype=float)).tolist(),
+                mode='lines', name=name, connectgaps=False,
+                line=dict(color=HIGHLIGHT_YEAR_COLORS[idx % len(HIGHLIGHT_YEAR_COLORS)], width=HIGHLIGHT_LINE_WIDTH),
+                hovertemplate=hover.replace('LABEL', f"WY {year}"),
+            ))
 
     @staticmethod
     def _wyv_message_figure(text: str, dark: bool) -> go.Figure:

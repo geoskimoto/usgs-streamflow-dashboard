@@ -1415,6 +1415,13 @@ def update_history_mode(selected_gauge, n_30yr, n_full, n_fast):
 
 
 # Multi-plot callback: generates all plots for selected site
+def parse_highlight_years(text):
+    """Parse the sidebar's comma- or space-separated "Years to highlight" text into a list of ints."""
+    if not text:
+        return []
+    return [int(y) for y in _re.split(r'[,\s]+', str(text)) if y.isdigit()]
+
+
 @app.callback(
     [Output('multi-plot-container', 'children'),
      Output('fast-plot-figure-store', 'data'),
@@ -1440,15 +1447,7 @@ def update_multi_plots(selected_gauge, highlight_years_text, chart_height, plot_
     force_live = (triggered_id == 'refresh-live-plot-btn')
     flow_unit = flow_unit or 'cfs'
 
-    # Parse highlight years
-    highlight_years = []
-    if highlight_years_text:
-        try:
-            years_str = highlight_years_text.replace(' ', '')
-            if years_str:
-                highlight_years = [int(y.strip()) for y in years_str.split(',') if y.strip().isdigit()]
-        except Exception as e:
-            logger.debug(f"Error parsing highlight years: {e}")
+    highlight_years = parse_highlight_years(highlight_years_text)
 
     # Get station name and NWRFC ID
     station_name = "Unknown Station"
@@ -1775,19 +1774,20 @@ def toggle_wyv_section(requested):
      Output('wyv-graph', 'config'),
      Output('wyv-graph', 'style'),
      Output('wyv-title', 'children')],
-    [Input('annual-summary-requested', 'data'),
-     Input('wyv-mode', 'value'),
-     Input('wyv-unit', 'value'),
-     Input('dark-mode-store', 'data')],
-    [State('selected-gauge-store', 'data'),
-     State('gauges-store', 'data'),
-     State('chart-height-dropdown', 'value'),
-     State('plot-options-checklist', 'value'),
-     State('window-width-store', 'data')],
+    Input('annual-summary-requested', 'data'),
+    Input('wyv-mode', 'value'),
+    Input('wyv-unit', 'value'),
+    Input('dark-mode-store', 'data'),
+    State('selected-gauge-store', 'data'),
+    State('gauges-store', 'data'),
+    State('chart-height-dropdown', 'value'),
+    State('plot-options-checklist', 'value'),
+    State('window-width-store', 'data'),
+    Input('highlight-years-input', 'value'),   # last, so the original 9-argument call still works
     prevent_initial_call=True,
 )
 def render_water_year_volume(requested, mode, vol_unit, dark_mode, selected_gauge, gauges_data,
-                             chart_height, plot_options, window_width):
+                             chart_height, plot_options, window_width, highlight_text=None):
     """Render the Water Year Volume figure (data logic lives in data_manager/viz_manager)."""
     selected_options = plot_options or []
     config = {
@@ -1808,8 +1808,15 @@ def render_water_year_volume(requested, mode, vol_unit, dark_mode, selected_gaug
                          if g.get('site_id') == selected_gauge), 'Unknown Station')
     title = f"Water Year Volume — USGS {selected_gauge} — {station_name}"
     vol = data_manager.get_water_year_volume(selected_gauge)
+    # Same list (and so the same per-year colors) the Water Year Plot builds.
+    highlight_years = parse_highlight_years(highlight_text)
+    today = datetime.today()
+    current_wy = today.year + 1 if today.month >= 10 else today.year
+    if current_wy not in highlight_years:
+        highlight_years.append(current_wy)
     fig = viz_manager.create_water_year_volume_plot(
-        selected_gauge, vol, mode or 'cumulative', vol_unit or 'kaf', bool(dark_mode))
+        selected_gauge, vol, mode or 'cumulative', vol_unit or 'kaf', bool(dark_mode),
+        highlight_years=highlight_years)
     return fig, config, style, title
 
 

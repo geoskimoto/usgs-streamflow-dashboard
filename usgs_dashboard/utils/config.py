@@ -51,6 +51,21 @@ DEFAULT_END_DATE = current_date     # Through today's date
 WATER_YEAR_START = 10  # October 1st (month 10)
 DEFAULT_PERCENTILES = [10, 25, 50, 75, 90]
 
+# Colors for user-highlighted water years (sidebar "Years to highlight"); shared by the
+# Water Year Plot and the Water Year Volume plot so a year keeps its color in both.
+HIGHLIGHT_YEAR_COLORS = [
+    '#FF8C00',  # Dark Orange
+    '#9932CC',  # Dark Orchid
+    '#228B22',  # Forest Green
+    '#DC143C',  # Crimson
+    '#FF1493',  # Deep Pink
+    '#32CD32',  # Lime Green
+    '#FF6347',  # Tomato
+    '#8A2BE2',  # Blue Violet
+]
+
+HIGHLIGHT_LINE_WIDTH = 1.75   # user-highlighted (non-current) years, thinner than the current-year line
+
 # Water Year Volume plot (see docs/superpowers/plans/2026-11-20-water-year-volume-plot.md)
 WYV_MAX_MISSING_FRAC = 0.05   # historical years with more missing days than this are left out of the bands
 WYV_MIN_YEARS = 10            # minimum qualifying historical years needed to draw percentile bands
