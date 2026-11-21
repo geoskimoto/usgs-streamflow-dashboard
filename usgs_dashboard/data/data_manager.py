@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from ..utils.config import TARGET_STATES, CACHE_DURATION, MAX_YEARS_LOAD, GAUGE_COLORS
 from ..utils.units import convert_frame, normalize_unit
+from ..utils.water_year_volume import water_year_volume_table, cumulative_bands
 
 # Import DataOps adapter
 from dataops_adapter import get_adapter
@@ -82,6 +83,11 @@ class USGSDataManager:
         # Date range cache (grows by one day each morning — refresh hourly)
         self._date_range_cache: dict = {}
         self._date_range_cache_time: float = 0.0
+
+        # Water-year volume results, keyed by site (short TTL; mode/unit toggles reuse it)
+        self._wyv_cache: dict = {}
+        self._wyv_cache_ttl: float = 300.0
+        self._wyv_cache_lock = threading.Lock()
 
         # Forecast date range cache (1-hour TTL)
         self._forecast_date_range_cache: dict = {}
@@ -654,6 +660,58 @@ class USGSDataManager:
         stats = stats.copy()
         stats['unit'] = self._native_unit(full_data)
         return convert_frame(stats, display_unit)
+
+    def get_water_year_volume(self, site_id: str) -> Dict[str, Any]:
+        """
+        Observed water-year volume for the Water Year Volume card. Never raises.
+
+        Volumes are always in cfs-days (kaf is a display scale applied by the figure
+        builder). Returns a dict with ``status`` ('ok' | 'empty' | 'error'); when 'ok':
+        ``table``/``summary`` (see utils.water_year_volume), ``bands`` (cumulative
+        percentile bands result), ``daily_bands`` (existing per-day flow stats, which
+        are already cfs-days because 1 cfs for 1 day = 1 cfs-day), ``current_wy`` and
+        ``current_missing_days``. Only 'ok' results are cached.
+        """
+        now = time.monotonic()
+        with self._wyv_cache_lock:
+            hit = self._wyv_cache.get(site_id)
+            if hit and now - hit[0] < self._wyv_cache_ttl:
+                return hit[1]
+        try:
+            history = self.get_streamflow_data(site_id)
+            if history is None or history.empty:
+                return {'status': 'empty', 'site_id': site_id}
+            table, summary = water_year_volume_table(history)
+            if table.empty:
+                return {'status': 'empty', 'site_id': site_id}
+
+            current_wy = int(table['water_year'].max())
+            row = summary[summary['water_year'] == current_wy].iloc[0]
+            missing = int(row['missing_days'])
+            if missing:
+                logger.info("WYV %s: current water year %d has %d missing day(s) of %d elapsed",
+                            site_id, current_wy, missing, int(row['elapsed_days']))
+
+            stats = self.get_flow_statistics(site_id, display_unit='cfs')
+            daily_bands = (stats.drop(columns=['unit'], errors='ignore')
+                           if stats is not None and not stats.empty else pd.DataFrame())
+
+            result = {
+                'status': 'ok', 'site_id': site_id, 'current_wy': current_wy,
+                'table': table, 'summary': summary,
+                'bands': cumulative_bands(table, current_wy, summary, site_id),
+                'daily_bands': daily_bands, 'current_missing_days': missing,
+            }
+        except Exception as exc:
+            # Type name only: exception text from the API client can carry URLs or tokens.
+            logger.error("Water-year volume failed for %s: %s", site_id, type(exc).__name__)
+            return {'status': 'error', 'site_id': site_id}
+
+        with self._wyv_cache_lock:
+            self._wyv_cache = {k: v for k, v in self._wyv_cache.items()
+                               if now - v[0] < self._wyv_cache_ttl}
+            self._wyv_cache[site_id] = (now, result)
+        return result
 
     @staticmethod
     def _native_unit(df: pd.DataFrame) -> str:

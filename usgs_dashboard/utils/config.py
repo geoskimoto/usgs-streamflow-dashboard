@@ -51,6 +51,10 @@ DEFAULT_END_DATE = current_date     # Through today's date
 WATER_YEAR_START = 10  # October 1st (month 10)
 DEFAULT_PERCENTILES = [10, 25, 50, 75, 90]
 
+# Water Year Volume plot (see docs/superpowers/plans/2026-11-20-water-year-volume-plot.md)
+WYV_MAX_MISSING_FRAC = 0.05   # historical years with more missing days than this are left out of the bands
+WYV_MIN_YEARS = 10            # minimum qualifying historical years needed to draw percentile bands
+
 # States/Provinces to Include
 TARGET_STATES = ['OR', 'WA', 'ID', 'MT', 'NV', 'CA', 'UT', 'AZ', 'CO', 'BC']
 
