@@ -32,7 +32,9 @@ except ImportError:
 from ..utils.config import WATER_YEAR_START, DEFAULT_PERCENTILES
 from ..utils.units import normalize_unit, unit_label, axis_title
 from ..utils.water_year_datetime import get_water_year_handler
-from ..utils.water_year_calculator import get_water_year, get_day_of_water_year
+from ..utils.water_year_calculator import get_water_year, get_day_of_water_year, get_water_year_length
+from ..utils.water_year_volume import cfs_days_to_kaf
+from ..utils import plot_theme
 
 
 _UNIT_WORD = re.compile(r"\bcfs\b")
@@ -1588,6 +1590,109 @@ class VisualizationManager:
         
         return fig
     
+    # ── Water Year Volume (observed only) ────────────────────────────────────
+
+    _WYV_MESSAGES = {
+        'empty': "No daily flow history is available for this station.",
+        'error': "We could not load water year volume for this station. Please try again in a moment.",
+    }
+
+    def create_water_year_volume_plot(self, site_id: str, vol: Optional[dict], mode: str,
+                                      vol_unit: str, dark: bool) -> go.Figure:
+        """
+        Observed water-year volume vs. historical percentile bands.
+
+        vol is the dict from USGSDataManager.get_water_year_volume (volumes in cfs-days).
+        mode: 'cumulative' (since Oct 1) or 'daily'. vol_unit: 'kaf' or 'cfs-days'.
+        Falls back to a friendly message figure when vol is missing, empty or errored.
+        """
+        status = (vol or {}).get('status')
+        if status != 'ok':
+            return self._wyv_message_figure(self._WYV_MESSAGES['error' if status == 'error' else 'empty'], dark)
+
+        daily_mode = mode == 'daily'
+        scale = cfs_days_to_kaf if vol_unit == 'kaf' else (lambda x: x)
+        current_wy = int(vol['current_wy'])
+        # Dates come from the current water year; bands align to it by day of water year.
+        ref_start = pd.Timestamp(current_wy - 1, 10, 1)
+        def _x(days):
+            return ref_start + pd.to_timedelta(np.asarray(days) - 1, unit='D')
+
+        table = vol['table']
+        obs = table[table['water_year'] == current_wy]
+        obs_col = 'daily_cfs_days' if daily_mode else 'cum_cfs_days'
+        base = 'Daily volume' if daily_mode else 'Cumulative volume'
+        hover = f"%{{x|%b %d}}<br>LABEL: %{{y:.4g}} {vol_unit}<extra></extra>"
+
+        fig = go.Figure()
+        bands = vol.get('daily_bands') if daily_mode else (vol.get('bands') or {}).get('bands')
+        has_bands = bands is not None and len(bands) > 0
+        if has_bands:
+            self._add_wyv_bands(fig, bands, _x, scale, hover)
+
+        fig.add_trace(go.Scatter(
+            x=_x(obs['day_of_wy']), y=scale(obs[obs_col].to_numpy(dtype=float)).tolist(),
+            mode='lines', name='Observed', connectgaps=False,
+            line=dict(color=plot_theme.COLORWAY[0], width=2.5),
+            hovertemplate=hover.replace('LABEL', 'Observed'),
+        ))
+
+        notes = []
+        missing = int(vol.get('current_missing_days') or 0)
+        if missing:
+            notes.append(f"{missing} missing day{'s' if missing != 1 else ''} this water year — "
+                         "cumulative volume is a lower bound")
+        if not daily_mode and not has_bands:
+            notes.append("Not enough complete years for percentile bands")
+        for i, text in enumerate(notes):
+            fig.add_annotation(text=text, xref='paper', yref='paper', x=0.01, y=0.98 - 0.07 * i,
+                               xanchor='left', yanchor='top', showarrow=False, align='left',
+                               font=dict(size=12))
+
+        fig.update_layout(
+            title=dict(text=f"Water Year {current_wy} {base.lower()} ({vol_unit})", font=dict(size=14)),
+            yaxis_title=f"{base} ({vol_unit})",
+            xaxis=dict(range=[ref_start, ref_start + pd.Timedelta(days=get_water_year_length(current_wy) - 1)],
+                       tickformat='%b', dtick='M1', title='Water year (Oct 1 – Sep 30)'),
+            hovermode='x unified',
+            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='left', x=0),
+        )
+        return plot_theme.apply_theme(fig, bool(dark))
+
+    @staticmethod
+    def _add_wyv_bands(fig: go.Figure, bands: pd.DataFrame, to_x, scale, hover: str) -> None:
+        """10–90 and 25–75 shaded percentile bands plus a dashed median."""
+        x = to_x(bands['day_of_wy'])
+        outer, inner = plot_theme.COLORWAY[0], plot_theme.COLORWAY[4]
+
+        def edge(col, fill_to_prev=None, color=None, name=None):
+            if col not in bands.columns:
+                return
+            fig.add_trace(go.Scatter(
+                x=x, y=scale(bands[col].to_numpy(dtype=float)).tolist(), mode='lines',
+                line=dict(width=0, color=color), name=name or col,
+                fill='tonexty' if fill_to_prev else 'none', fillcolor=fill_to_prev,
+                showlegend=bool(name), hoverinfo='skip'))
+
+        edge('q90')
+        edge('q10', 'rgba(0,114,178,0.12)', outer, '10th–90th percentile')
+        edge('q75')
+        edge('q25', 'rgba(86,180,233,0.28)', inner, '25th–75th percentile')
+        if 'q50' in bands.columns:
+            fig.add_trace(go.Scatter(
+                x=x, y=scale(bands['q50'].to_numpy(dtype=float)).tolist(), mode='lines', name='Median',
+                line=dict(color=plot_theme.COLORWAY[1], width=1.5, dash='dash'),
+                hovertemplate=hover.replace('LABEL', 'Median')))
+
+    @staticmethod
+    def _wyv_message_figure(text: str, dark: bool) -> go.Figure:
+        """Empty figure carrying one plain, friendly message (no data traces)."""
+        fig = go.Figure()
+        fig.add_annotation(text=text, xref='paper', yref='paper', x=0.5, y=0.5,
+                           showarrow=False, font=dict(size=14))
+        fig.update_layout(xaxis=dict(visible=False), yaxis=dict(visible=False), height=300)
+        return plot_theme.apply_theme(fig, bool(dark))
+
     @unit_labelled(True)
     def create_gauge_comparison_plot(self, gauge_data_dict: Dict[str, pd.DataFrame],
                                    comparison_type: str = 'annual', unit: str = 'cfs') -> go.Figure:
