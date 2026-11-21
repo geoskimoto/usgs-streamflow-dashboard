@@ -550,6 +550,63 @@ def create_main_content():
                             html.Div(id="annual-summary-container")
                         ]
                     ),
+                    # Water Year Volume (observed): shown with the other period-of-record cards
+                    dcc.Loading(
+                        id="loading-wyv",
+                        type="default",
+                        custom_spinner=html.Div(
+                            className="hydro-loading-wrapper",
+                            children=[
+                                html.Div(
+                                    className="hydro-wave-container",
+                                    children=[html.Div(className="hydro-wave-bar") for _ in range(7)],
+                                ),
+                                html.Div("Loading water year volume…", className="hydro-loading-label"),
+                            ],
+                        ),
+                        children=[
+                            html.Div(
+                                id="wyv-section",
+                                style={"display": "none"},
+                                children=[
+                                    dbc.Card([
+                                        dbc.CardHeader(html.Div(
+                                            "Water Year Volume", id="wyv-title",
+                                            style={'fontWeight': 'bold'})),
+                                        dbc.CardBody([
+                                            html.Div([
+                                                dbc.RadioItems(
+                                                    id="wyv-mode",
+                                                    options=[
+                                                        {"label": "Cumulative", "value": "cumulative"},
+                                                        {"label": "Daily", "value": "daily"},
+                                                    ],
+                                                    value="cumulative",
+                                                    className="btn-group rail-segmented",
+                                                    inputClassName="btn-check",
+                                                    labelClassName="btn btn-outline-secondary btn-sm",
+                                                    labelCheckedClassName="active",
+                                                ),
+                                                dbc.RadioItems(
+                                                    id="wyv-unit",
+                                                    options=[
+                                                        {"label": "kaf", "value": "kaf"},
+                                                        {"label": "cfs-days", "value": "cfs-days"},
+                                                    ],
+                                                    value="kaf",
+                                                    className="btn-group rail-segmented",
+                                                    inputClassName="btn-check",
+                                                    labelClassName="btn btn-outline-secondary btn-sm",
+                                                    labelCheckedClassName="active",
+                                                ),
+                                            ], className="d-flex gap-2 mb-2"),
+                                            dcc.Graph(id="wyv-graph", config={"displaylogo": False}),
+                                        ]),
+                                    ], className="mb-3"),
+                                ],
+                            ),
+                        ],
+                    ),
                 ], className="detail-scroll"),
             ], id="detail-panel", className="detail-panel"),
         ], id="workspace", className="workspace")
@@ -1699,6 +1756,61 @@ def render_annual_summary(requested, flow_unit, dark_mode, selected_gauge, gauge
             ))
 
     return cards
+
+
+# ── Water Year Volume card (observed; independent of the cfs/cms toggle) ──────
+
+@app.callback(
+    Output('wyv-section', 'style'),
+    Input('annual-summary-requested', 'data'),
+    prevent_initial_call=True,
+)
+def toggle_wyv_section(requested):
+    """Show the card with the other period-of-record cards; hide it on a new gauge."""
+    return {"display": "block"} if requested else {"display": "none"}
+
+
+@app.callback(
+    [Output('wyv-graph', 'figure'),
+     Output('wyv-graph', 'config'),
+     Output('wyv-graph', 'style'),
+     Output('wyv-title', 'children')],
+    [Input('annual-summary-requested', 'data'),
+     Input('wyv-mode', 'value'),
+     Input('wyv-unit', 'value'),
+     Input('dark-mode-store', 'data')],
+    [State('selected-gauge-store', 'data'),
+     State('gauges-store', 'data'),
+     State('chart-height-dropdown', 'value'),
+     State('plot-options-checklist', 'value'),
+     State('window-width-store', 'data')],
+    prevent_initial_call=True,
+)
+def render_water_year_volume(requested, mode, vol_unit, dark_mode, selected_gauge, gauges_data,
+                             chart_height, plot_options, window_width):
+    """Render the Water Year Volume figure (data logic lives in data_manager/viz_manager)."""
+    selected_options = plot_options or []
+    config = {
+        "displaylogo": False,
+        "displayModeBar": "hover" if "show_toolbar" in selected_options else False,
+        "scrollZoom": "enable_zoom" in selected_options,
+        "doubleClick": "autosize" if "enable_zoom" in selected_options else "reset",
+    }
+    height = min(chart_height, 400) if window_width and window_width < 600 else chart_height
+    style = {"height": f"{height}px"}
+    if "responsive" in selected_options:
+        style["width"] = "100%"
+
+    if not requested or not selected_gauge:
+        return go.Figure(), config, style, "Water Year Volume"
+
+    station_name = next((g.get('station_name', 'Unknown Station') for g in (gauges_data or [])
+                         if g.get('site_id') == selected_gauge), 'Unknown Station')
+    title = f"Water Year Volume — USGS {selected_gauge} — {station_name}"
+    vol = data_manager.get_water_year_volume(selected_gauge)
+    fig = viz_manager.create_water_year_volume_plot(
+        selected_gauge, vol, mode or 'cumulative', vol_unit or 'kaf', bool(dark_mode))
+    return fig, config, style, title
 
 
 # Callbacks to populate dropdown options
