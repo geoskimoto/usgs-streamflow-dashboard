@@ -161,8 +161,11 @@ def test_every_figure_returning_public_builder_is_covered():
     """Guard: a new create_* builder must be added to BUILDERS (and take unit=)."""
     import inspect
     from usgs_dashboard.components.viz_manager import VisualizationManager
+    # create_water_year_volume_plot is deliberately unit-less for flow: volume has its own
+    # kaf/cfs-days toggle and ignores cfs/cms (plan R4); covered by test_viz_water_year_volume.py.
     covered = {"create_fast_water_year_plot", "create_streamflow_plot",
-               "create_gauge_comparison_plot", "create_flow_duration_curve"}
+               "create_gauge_comparison_plot", "create_flow_duration_curve",
+               "create_water_year_volume_plot"}
     public = {n for n, f in inspect.getmembers(VisualizationManager, inspect.isfunction)
               if n.startswith("create_")}
     assert public <= covered, f"uncovered builders: {public - covered}"

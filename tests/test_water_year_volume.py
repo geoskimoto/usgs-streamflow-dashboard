@@ -277,7 +277,9 @@ def test_r9_nan_discharge_counts_as_missing_day():
 def test_r9_property_gaps_never_create_volume(seed):
     rng = np.random.default_rng(seed)
     full = _frame([2014], flow=lambda wy, i: float(rng.uniform(1, 100)))
-    drop = rng.choice(full["datetime"].to_numpy(), size=int(rng.integers(1, 60)), replace=False)
+    # Never drop the final day: the final year's elapsed span ends at its last observation
+    # (R13), so a dropped last day is indistinguishable from "not yet happened".
+    drop = rng.choice(full["datetime"].iloc[:-1].to_numpy(), size=int(rng.integers(1, 60)), replace=False)
     gapped = full[~full["datetime"].isin(drop)].reset_index(drop=True)
     t_full, _ = _wyv().water_year_volume_table(full)
     t_gap, s_gap = _wyv().water_year_volume_table(gapped)
