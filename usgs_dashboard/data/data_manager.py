@@ -549,7 +549,8 @@ class USGSDataManager:
         start_date: str = None, 
         end_date: str = None,
         years_back: int = None,
-        display_unit: Optional[str] = None
+        display_unit: Optional[str] = None,
+        raise_on_error: bool = False
     ) -> pd.DataFrame:
         """
         Get daily mean discharge data for a site.
@@ -567,6 +568,10 @@ class USGSDataManager:
             End date (YYYY-MM-DD)
         years_back : int, optional
             Number of years to fetch (alternative to start_date)
+        raise_on_error : bool, default False
+            By default API/adapter errors are logged and an empty DataFrame is returned.
+            When True the exception is re-raised (unlogged here) so the caller can tell
+            "no data" from "could not load".
         
         Returns:
         --------
@@ -607,6 +612,8 @@ class USGSDataManager:
             return df
             
         except Exception as e:
+            if raise_on_error:
+                raise
             logger.error(f"Error fetching streamflow data for {site_id}: {e}")
             return pd.DataFrame()
 
@@ -678,7 +685,7 @@ class USGSDataManager:
             if hit and now - hit[0] < self._wyv_cache_ttl:
                 return hit[1]
         try:
-            history = self.get_streamflow_data(site_id)
+            history = self.get_streamflow_data(site_id, raise_on_error=True)
             if history is None or history.empty:
                 return {'status': 'empty', 'site_id': site_id}
             table, summary = water_year_volume_table(history)
