@@ -28,6 +28,7 @@ from usgs_dashboard.data import plot_cache_manager
 from usgs_dashboard.components.map_component import get_map_component
 from usgs_dashboard.components.viz_manager import get_visualization_manager
 from usgs_dashboard.components.filter_panel import SimplifiedFilterPanel
+from usgs_dashboard.utils.station_url import station_path, parse_station_site_id
 from usgs_dashboard.utils.config import (
     APP_TITLE, APP_DESCRIPTION, GAUGE_COLORS, 
     TARGET_STATES, DEFAULT_ZOOM_LEVEL, SUBSET_CONFIG
@@ -446,6 +447,15 @@ def create_main_content():
                         style={"display": "none", "cursor": "default", "fontSize": "11px"},
                     ),
                     html.Div(className="detail-spacer"),
+                    html.A("\u2190 Back to map", id="station-back-link", href="/", className="station-back-link"),
+                    dbc.Button(
+                        "Copy link",
+                        id="copy-station-link-btn",
+                        color="outline-secondary",
+                        size="sm",
+                        n_clicks=0,
+                        title="Copy a link to this station's page",
+                    ),
                     dbc.Button(
                         "Refresh",
                         id="refresh-live-plot-btn",
@@ -654,6 +664,8 @@ app.layout = html.Div([
     dcc.Store(id='annual-summary-requested', data=False),
     dcc.Store(id='gauges-store'),
     dcc.Store(id='selected-gauge-store'),
+    dcc.Store(id='url-sync-dummy'),
+    dcc.Store(id='station-page-dummy'),
     dcc.Store(id='history-mode-store', data=None),
     dcc.Store(id='streamflow-data-store'),
     dcc.Store(id='site-limit-store', data=300),
@@ -1241,37 +1253,15 @@ def update_map_container_height(map_height):
     return {"height": f"{map_height}px"}
 
 
-@app.callback(
-    [Output('selected-gauge-store', 'data'),
-     Output('selected-gauge-badge', 'children'),
-     Output('selected-gauge-badge', 'style'),
-     Output('gauge-info-content', 'children')],
-    Input('gauge-map', 'clickData'),
-    State('gauges-store', 'data')
-)
-def handle_gauge_selection(clickData, gauges_data):
-    """Handle gauge selection from map click."""
-    if not clickData or not gauges_data:
-        return None, "", {"display": "none"}, html.P("Select a gauge on the map to view details.", className="text-muted")
-    
-    # Extract site ID from click data
-    try:
-        site_id = clickData['points'][0]['customdata']
-        # Ensure site_id is a single string value, not an array
-        if isinstance(site_id, (list, tuple)):
-            site_id = site_id[0] if len(site_id) > 0 else None
-        if site_id is None:
-            return no_update, no_update, no_update, no_update
-        site_id = str(site_id)  # Ensure it's a string
-    except (KeyError, IndexError, TypeError):
-        return no_update, no_update, no_update, no_update
-    
+def build_gauge_selection(site_id, gauges_data):
+    """(site_id, badge_text, badge_style, info_children) for a known station, else None."""
+    site_id = str(site_id)
     # Get gauge metadata
     gauges_df = pd.DataFrame(gauges_data)
     gauge_info = gauges_df[gauges_df['site_id'] == site_id]
     
     if gauge_info.empty:
-        return no_update, no_update, no_update, no_update
+        return None
     
     gauge = gauge_info.iloc[0]
     
@@ -1311,6 +1301,8 @@ def handle_gauge_selection(clickData, gauges_data):
     info_content.extend([
         html.P([html.Strong("Location: "), 
                f"{gauge['latitude']:.4f}, {gauge['longitude']:.4f}"], className="mb-1"),
+        html.P(html.A("Open station page \u2197", href=station_path(site_id), target="_blank"),
+               className="mb-1 small"),
         html.Hr(),
         html.P("Streamflow analysis will load when available.", 
               className="text-muted small")
@@ -1320,6 +1312,118 @@ def handle_gauge_selection(clickData, gauges_data):
     badge_style = {"display": "inline"}
     
     return site_id, badge_text, badge_style, info_content
+
+
+def url_selection_outputs(site_id_from_url, gauges_data, current_selection, url_changed):
+    """Outputs for selecting the station named in the URL (see select_gauge_from_url)."""
+    skip = (no_update, no_update, no_update, no_update)
+    if not site_id_from_url or not gauges_data:
+        return skip
+    if not url_changed and current_selection is not None:
+        return skip  # gauge list refreshed; don't clobber the user's click
+    selection = build_gauge_selection(site_id_from_url, gauges_data)
+    if selection is None:
+        return (None, "", {"display": "none"},
+                dbc.Alert(f"Station {site_id_from_url} not found.", color="warning", className="mb-0"))
+    return selection
+
+
+@app.callback(
+    [Output('selected-gauge-store', 'data'),
+     Output('selected-gauge-badge', 'children'),
+     Output('selected-gauge-badge', 'style'),
+     Output('gauge-info-content', 'children')],
+    Input('gauge-map', 'clickData'),
+    State('gauges-store', 'data')
+)
+def handle_gauge_selection(clickData, gauges_data):
+    """Handle gauge selection from map click."""
+    if not clickData or not gauges_data:
+        return None, "", {"display": "none"}, html.P("Select a gauge on the map to view details.", className="text-muted")
+    
+    # Extract site ID from click data
+    try:
+        site_id = clickData['points'][0]['customdata']
+        # Ensure site_id is a single string value, not an array
+        if isinstance(site_id, (list, tuple)):
+            site_id = site_id[0] if len(site_id) > 0 else None
+        if site_id is None:
+            return no_update, no_update, no_update, no_update
+        site_id = str(site_id)  # Ensure it's a string
+    except (KeyError, IndexError, TypeError):
+        return no_update, no_update, no_update, no_update
+    
+    selection = build_gauge_selection(site_id, gauges_data)
+    if selection is None:
+        return no_update, no_update, no_update, no_update
+    return selection
+
+
+@app.callback(
+    [Output('selected-gauge-store', 'data', allow_duplicate=True),
+     Output('selected-gauge-badge', 'children', allow_duplicate=True),
+     Output('selected-gauge-badge', 'style', allow_duplicate=True),
+     Output('gauge-info-content', 'children', allow_duplicate=True)],
+    [Input('url', 'pathname'),
+     Input('url', 'search'),
+     Input('gauges-store', 'data')],
+    State('selected-gauge-store', 'data'),
+    prevent_initial_call=True
+)
+def select_gauge_from_url(pathname, search, gauges_data, current_selection):
+    """Select the station named by /station/<id> or /?site=<id> once the gauge list is loaded."""
+    url_changed = callback_context.triggered_id in ('url',)
+    return url_selection_outputs(parse_station_site_id(pathname, search),
+                                 gauges_data, current_selection, url_changed)
+
+
+# Keep the address bar shareable: map clicks rewrite the URL to /?site=<id> without a navigation
+# (history.replaceState does not touch dcc.Location, so nothing re-fires). Station pages keep their URL.
+app.clientside_callback(
+    """
+    function(selected, pathname) {
+        if (!selected || (pathname && pathname.indexOf('/station/') === 0)) { return window.dash_clientside.no_update; }
+        var url = '/?site=' + encodeURIComponent(selected);
+        if (window.location.pathname + window.location.search !== url) {
+            window.history.replaceState(null, '', url);
+        }
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output('url-sync-dummy', 'data'),
+    Input('selected-gauge-store', 'data'),
+    State('url', 'pathname'),
+)
+
+# Station page mode: a body class lets CSS hide the map and rail and widen the detail panel.
+app.clientside_callback(
+    """
+    function(pathname) {
+        var on = !!pathname && pathname.indexOf('/station/') === 0 && pathname.length > 9;
+        document.body.classList.toggle('station-page', on);
+        window.dispatchEvent(new Event('resize'));
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output('station-page-dummy', 'data'),
+    Input('url', 'pathname'),
+)
+
+# Copy the station-page link of the selected gauge to the clipboard.
+app.clientside_callback(
+    """
+    function(n, selected) {
+        if (!n || !selected) { return window.dash_clientside.no_update; }
+        var link = window.location.origin + '/station/' + encodeURIComponent(selected);
+        if (navigator.clipboard) { navigator.clipboard.writeText(link); }
+        return 'Copied!';
+    }
+    """,
+    Output('copy-station-link-btn', 'children'),
+    Input('copy-station-link-btn', 'n_clicks'),
+    State('selected-gauge-store', 'data'),
+    prevent_initial_call=True,
+)
 
 
 # Clientside callback: patch selection highlight into the map without a server round-trip.

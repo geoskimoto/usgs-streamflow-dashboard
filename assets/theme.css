@@ -496,3 +496,19 @@ body.dark-mode ::-webkit-scrollbar-thumb { background-color: var(--line); border
     * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
     .hydro-wave-bar { animation: none !important; height: 24px; }
 }
+
+/* ---- Station page (/station/<site_id>): detail panel only ------------------
+   Toggled by a clientside callback in app.py (body class). The map and rail stay in the DOM
+   (callback ids are shared) but are hidden; the detail panel takes the full width. */
+.station-back-link { display: none; font-size: 13px; text-decoration: none; }
+body.station-page .station-back-link { display: inline; }
+body.station-page #sidebar-col,
+body.station-page .map-stage,
+body.station-page #sidebar-toggle-btn,
+body.station-page #mobile-sidebar-btn,
+body.station-page #detail-collapse-btn { display: none !important; }
+body.station-page .workspace,
+body.station-page .workspace.panel-collapsed { grid-template-columns: minmax(0, 1fr); }
+body.station-page .detail-panel { position: static; height: auto; max-width: 1200px; margin-inline: auto; }
+body.station-page .detail-panel::before { display: none; }
+body.station-page .detail-scroll { overflow: visible; }

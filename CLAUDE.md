@@ -80,6 +80,15 @@ Design reference: `Documentation/design/map-first-mock.html`; plan and decisions
 
 ---
 
+## Station URLs
+
+- `/?site=<site_id>` — map view with that gauge selected (map clicks rewrite the address bar to this via `history.replaceState`, so the URL is always shareable).
+- `/station/<site_id>` — station page: same detail panel, full width; map and filter rail hidden by the `body.station-page` class (set by a clientside callback; CSS in `assets/theme.css`). Unknown ids show a "not found" alert.
+- Helpers live in `usgs_dashboard/utils/station_url.py`; `app.py` has `build_gauge_selection`, `url_selection_outputs` and the `select_gauge_from_url` callback. A refreshed gauge list never overrides a click — the URL only wins when the URL itself changed or nothing is selected yet.
+- The station page reuses the map view's component ids (so all plot callbacks work unchanged); the map still loads underneath, hidden.
+
+---
+
 ## Environment Variables
 
 All secrets go in `.env` (see `.env.example`). Key vars:

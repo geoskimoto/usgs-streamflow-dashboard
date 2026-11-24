@@ -12,7 +12,7 @@
 
     function ws() { return document.getElementById('workspace'); }
     function panel() { return document.getElementById('detail-panel'); }
-    function isWide() { return window.innerWidth >= WIDE; }
+    function isWide() { return window.innerWidth >= WIDE && !document.body.classList.contains('station-page'); }
     function collapsed() { var w = ws(); return !w || w.classList.contains('panel-collapsed'); }
 
     function clamp(px) {
