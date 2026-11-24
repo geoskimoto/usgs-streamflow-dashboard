@@ -133,6 +133,8 @@ def create_header():
             html.Span(title, className="topbar-title"),
             html.Span(region, className="topbar-sub d-none d-xl-inline"),
         ]),
+        dbc.Button("Hide filters", id="sidebar-toggle-btn", color="outline-secondary", size="sm",
+                   className="d-none d-lg-inline-block topbar-filters-btn"),
         dbc.ButtonGroup([
             dbc.Button("Dashboard", id="show-dashboard-btn", color="outline-secondary", size="sm"),
             dbc.Button("Admin", id="show-admin-btn", color="outline-secondary", size="sm"),
@@ -150,8 +152,6 @@ def create_header():
         ]),
         dbc.Button("Filters", id="mobile-sidebar-btn", color="outline-primary", size="sm",
                    className="d-lg-none", n_clicks=0),
-        dbc.Button("Hide filters", id="sidebar-toggle-btn", color="outline-secondary", size="sm",
-                   className="d-none d-lg-inline-block"),
         dbc.Button("Dark Mode", id="dark-mode-btn", color="outline-secondary", size="sm"),
     ])
 

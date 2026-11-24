@@ -231,6 +231,10 @@ body.dark-mode ::-webkit-scrollbar-thumb { background-color: var(--line); border
         height: calc(100vh - 48px);
     }
     .layout-row { flex-wrap: nowrap !important; display: flex !important; }
+    /* Drag handle = the rail's right edge (see assets/rail_resize.js). An inset shadow, not a
+       pseudo-element: the rail scrolls, and absolutely-positioned children would scroll with it. */
+    .sidebar-col { box-shadow: inset -2px 0 0 var(--line); }
+    .sidebar-col.is-grab { cursor: col-resize; box-shadow: inset -4px 0 0 var(--accent); }
 }
 @media (max-width: 991.98px) {
     .sidebar-col { border-right: none; }
