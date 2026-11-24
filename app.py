@@ -28,7 +28,7 @@ from usgs_dashboard.data import plot_cache_manager
 from usgs_dashboard.components.map_component import get_map_component
 from usgs_dashboard.components.viz_manager import get_visualization_manager
 from usgs_dashboard.components.filter_panel import SimplifiedFilterPanel
-from usgs_dashboard.utils.station_url import station_path, parse_station_site_id
+from usgs_dashboard.utils.station_url import station_path, parse_station_site_id, is_station_page
 from usgs_dashboard.utils.config import (
     APP_TITLE, APP_DESCRIPTION, GAUGE_COLORS, 
     TARGET_STATES, DEFAULT_ZOOM_LEVEL, SUBSET_CONFIG
@@ -666,6 +666,7 @@ app.layout = html.Div([
     dcc.Store(id='selected-gauge-store'),
     dcc.Store(id='url-sync-dummy'),
     dcc.Store(id='station-page-dummy'),
+    dcc.Store(id='deep-link-zoom-dummy'),
     dcc.Store(id='history-mode-store', data=None),
     dcc.Store(id='streamflow-data-store'),
     dcc.Store(id='site-limit-store', data=300),
@@ -1059,12 +1060,16 @@ def update_date_selection(prev_clicks, next_clicks, picker_value, range_data, fc
      Input('ealstm-filter', 'value'),
      Input('percentile-bands-store', 'data'),
      Input('dark-mode-store', 'data')],
-    [State('selected-gauge-store', 'data')]
+    [State('selected-gauge-store', 'data'),
+     State('url', 'pathname')]
 )
 def update_map_with_simplified_filters(gauges_data, map_style, map_height, basin_boundaries, search_text, states,
                                      drainage_range, basins, hucs, show_realtime_only, station_status, show_forecast_only,
-                                     show_resid_cast_only, show_ealstm_only, percentile_bands, dark_mode, selected_gauge):
+                                     show_resid_cast_only, show_ealstm_only, percentile_bands, dark_mode, selected_gauge, pathname=None):
     """Update the gauge map based on simplified filters."""
+    if is_station_page(pathname):
+        # Station page hides the map; skip the rebuild. (The URL is known by the time gauges load.)
+        return no_update, no_update, no_update
     if not gauges_data:
         empty_fig = go.Figure()
         empty_fig.update_layout(
@@ -1393,6 +1398,43 @@ app.clientside_callback(
     Output('url-sync-dummy', 'data'),
     Input('selected-gauge-store', 'data'),
     State('url', 'pathname'),
+)
+
+# Deep link (/?site=<id>): zoom the live map to that station once. Plotly.relayout on the graph div
+# (not a figure replacement) so the view survives later map rebuilds, which keep the user's view via
+# uirevision. Retries until the map has rendered. No-op on /station/ pages (map hidden) and for clicks.
+app.clientside_callback(
+    """
+    function(selected, gauges, search, pathname) {
+        var NU = window.dash_clientside.no_update;
+        if (!selected || !gauges || window.__deepLinkZoomed) { return NU; }
+        if (pathname && pathname.indexOf('/station/') === 0) { return NU; }
+        var site = new URLSearchParams(search || '').get('site');
+        if (!site || String(site) !== String(selected)) { return NU; }
+        var g = null;
+        for (var i = 0; i < gauges.length; i++) {
+            if (String(gauges[i].site_id) === String(selected)) { g = gauges[i]; break; }
+        }
+        if (!g || g.latitude == null || g.longitude == null) { return NU; }
+        window.__deepLinkZoomed = true;
+        var tries = 0;
+        (function zoom() {
+            var gd = document.querySelector('#gauge-map .js-plotly-plot');
+            if (gd && gd.data && gd.data.length && window.Plotly) {
+                window.Plotly.relayout(gd, {'map.center': {lat: g.latitude, lon: g.longitude}, 'map.zoom': 9});
+            } else if (tries++ < 50) {
+                setTimeout(zoom, 200);
+            }
+        })();
+        return NU;
+    }
+    """,
+    Output('deep-link-zoom-dummy', 'data'),
+    Input('selected-gauge-store', 'data'),
+    [State('gauges-store', 'data'),
+     State('url', 'search'),
+     State('url', 'pathname')],
+    prevent_initial_call=True,
 )
 
 # Station page mode: a body class lets CSS hide the map and rail and widen the detail panel.
